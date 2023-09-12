@@ -1,0 +1,76 @@
+[tool.poetry]
+name = "cappa"
+version = "0.1.0"
+description = ""
+authors = ["DanCardin <ddcardin@gmail.com>"]
+readme = "README.md"
+packages = [{include = "cappa", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+typing-extensions = "^4.7.1"
+typing-inspect = "^0.9.0"
+docstring-parser = "^0.15"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.7.0"
+ruff = "^0.0.286"
+mypy = ">=1.0"
+pytest = "^7.4.0"
+coverage = "^7.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+target-version = "py38"
+
+select = ["C", "D", "E", "F", "I", "N", "Q", "RET", "RUF", "S", "T", "UP", "YTT"]
+ignore = [
+    "C901",
+    "E501",
+    "S101",
+    "D1",
+    "D203",
+    "D204",
+    "D213",
+    "D215",
+    "D400",
+    "D404",
+    "D406",
+    "D407",
+    "D408",
+    "D409",
+    "D413",
+]
+
+[tool.ruff.pyupgrade]
+keep-runtime-typing = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+include = ["src/*"]
+
+[tool.mypy]
+strict_optional = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+incremental = true
+check_untyped_defs = true
+
+[tool.pytest.ini_options]
+doctest_optionflags = "NORMALIZE_WHITESPACE IGNORE_EXCEPTION_DETAIL ELLIPSIS"
+addopts = "--doctest-modules -vv --ff --strict-markers"
+norecursedirs = ".* build dist *.egg bin"
