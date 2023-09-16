@@ -7,6 +7,7 @@ install:
 
 test:
 	coverage run -m pytest src tests
+	coverage combine
 	coverage report
 	coverage xml
 

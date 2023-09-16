@@ -5,6 +5,7 @@ import typing
 
 import docstring_parser
 
+from cappa import class_inspect
 from cappa.arg import Subcommand
 from cappa.arg_def import ArgDefinition
 from cappa.command import HasCommand
@@ -28,7 +29,7 @@ class CommandDefinition(typing.Generic[T]):
     @classmethod
     def collect(cls, command: Command):
         command_cls = type(command)
-        fields = dataclasses.fields(command.cls)
+        fields = class_inspect.fields(command.cls)
         type_hints = typing.get_type_hints(command.cls, include_extras=True)
 
         title = None
@@ -126,7 +127,6 @@ class CommandDefinition(typing.Generic[T]):
                 continue
 
             value = parsed_args[arg_def.name]
-
             if isinstance(arg_def, Subcommands):
                 value = arg_def.map_result(value)
             else:
@@ -146,12 +146,13 @@ class CommandDefinition(typing.Generic[T]):
         render: typing.Callable | None = None,
         exit_with=None,
     ):
-        if not command.invoke:
-            raise ValueError("no invoke")
-
         parsed_command, instance = cls.parse_command(
             command, argv=argv, render=render, exit_with=exit_with
         )
+
+        if not parsed_command.invoke:
+            raise ValueError("no invoke")
+
         return invoke(parsed_command, instance)  # type: ignore
 
 

@@ -8,6 +8,15 @@ from cappa.arg_def import ArgAction, ArgDefinition
 from cappa.command import Command
 from cappa.command_def import CommandDefinition, Subcommands
 
+try:
+    from rich_argparse import ArgumentDefaultsRichHelpFormatter
+
+    help_formatter: type[argparse.HelpFormatter] = ArgumentDefaultsRichHelpFormatter
+    # help_formatter.styles["argparse.text"] = "italic"
+except ImportError:
+    help_formatter = argparse.ArgumentDefaultsHelpFormatter
+
+
 T = typing.TypeVar("T")
 
 
@@ -58,7 +67,7 @@ def render(
     parser = create_parser(command_def, exit_with)
 
     ns = Nestedspace()
-    result_namespace = parser.parse_args(argv, ns)
+    result_namespace = parser.parse_args(argv[1:], ns)
 
     result = to_dict(result_namespace)
     command = result.pop("__command__")
@@ -77,6 +86,8 @@ def create_parser(
         description=join_help(command_def.title, command_def.description),
         exit_on_error=False,
         exit_with=exit_with,
+        allow_abbrev=False,
+        formatter_class=help_formatter,
     )
     parser.set_defaults(__command__=command_def.command)
 
@@ -125,6 +136,9 @@ def add_argument(
         "help": arg_def.help,
     }
 
+    if not names:
+        kwargs["metavar"] = dash_name
+
     if arg_def.arg.required and names:
         kwargs["required"] = arg_def.arg.required
 
@@ -133,7 +147,7 @@ def add_argument(
 
     if arg_def.action is not arg_def.action.store_true:
         kwargs["nargs"] = num_args
-        kwargs["type"] = arg_def.arg.parser
+        kwargs["type"] = arg_def.arg.parse
 
     parser.add_argument(*names, **kwargs)
 
@@ -156,6 +170,7 @@ def add_subcommands(
             name=subcommand.command.real_name(),
             help=subcommand.title,
             description=subcommand.description,
+            formatter_class=parser.formatter_class,
         )
         subparser.set_defaults(
             __command__=subcommand.command, **{nested_dest_prefix + "__name__": name}

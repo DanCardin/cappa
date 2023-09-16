@@ -6,13 +6,15 @@ from typing import Annotated
 
 import cappa
 
+from tests.utils import parse
+
 
 def test_positional_string():
     @dataclass
     class ArgTest:
         name: str
 
-    test = cappa.parse(ArgTest, argv=["thename"])
+    test = parse(ArgTest, "thename")
     assert test.name == "thename"
 
 
@@ -21,7 +23,7 @@ def test_path():
     class ArgTest:
         name: pathlib.PurePath
 
-    test = cappa.parse(ArgTest, argv=["./file.txt"])
+    test = parse(ArgTest, "./file.txt")
     assert test.name == pathlib.PurePath("./file.txt")
 
 
@@ -30,7 +32,7 @@ def test_bool():
     class ArgTest:
         flag: bool
 
-    test = cappa.parse(ArgTest, argv=["--flag"])
+    test = parse(ArgTest, "--flag")
     assert test.flag is True
 
 
@@ -41,14 +43,12 @@ def test_list():
             default_factory=list
         )
 
-    test = cappa.parse(
+    test = parse(
         ArgTest,
-        argv=[
-            "-v",
-            "one",
-            "--variable-number",
-            "two",
-        ],
+        "-v",
+        "one",
+        "--variable-number",
+        "two",
     )
     assert test.variable_number == ["one", "two"]
 
@@ -60,9 +60,11 @@ def test_tuple():
             default=("a", 0), metadata={"cappa": cappa.Arg(long=True)}
         )
 
-    test = cappa.parse(
+    test = parse(
         ArgTest,
-        argv=["--exact-num-args", "three", "4"],
+        "--exact-num-args",
+        "three",
+        "4",
     )
     assert test.exact_num_args == ("three", 4)
 
@@ -74,5 +76,5 @@ def test_missing_value_defaults():
             default=("a", 0), metadata={"cappa": cappa.Arg(long=True)}
         )
 
-    test = cappa.parse(ArgTest, argv=[])
+    test = parse(ArgTest)
     assert test.exact_num_args == ("a", 0)

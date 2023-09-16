@@ -13,7 +13,11 @@ import typing
 from collections.abc import Callable
 from typing import Generic, Type, TypeVar
 
+from typing_inspect import is_literal_type, is_union_type
+
 from cappa.arg import Arg
+from cappa.class_inspect import Field
+from cappa.typing import render_type
 
 T = TypeVar("T")
 
@@ -40,33 +44,31 @@ class ArgDefinition(Generic[T]):
 
     @classmethod
     def collect(
-        cls, field: dataclasses.Field, raw_type_hint: Type, help: str | None = None
+        cls, field: Field, raw_type_hint: Type, help: str | None = None
     ) -> ArgDefinition[T] | None:
-        maybe_arg: tuple[Arg, type] | None = Arg.collect(field, raw_type_hint)
-        if maybe_arg is None:
-            return None
-
+        maybe_arg: tuple[Arg, type] = Arg.collect(field, raw_type_hint)
         arg, type_hint = maybe_arg
 
-        type = typing.get_origin(type_hint) or type_hint
+        typ = typing.get_origin(type_hint) or type_hint
         type_args = typing.get_args(type_hint)
 
         num_args = None
         action = ArgAction.set
 
-        if issubclass(type, bool):
-            arg = dataclasses.replace(arg, long=True)
-            action = ArgAction.store_true
+        if not is_union_type(typ):
+            # XXX: Enums should coerce, basically `typ`, which obviates choices.
 
-        if issubclass(type, list):
-            action = ArgAction.append
+            if issubclass(typ, bool):
+                arg = dataclasses.replace(arg, long=True)
+                action = ArgAction.store_true
 
-        if issubclass(type, tuple):
-            num_args = len(type_args)
+            if issubclass(typ, list):
+                action = ArgAction.append
 
-        # XXX: Enums should coerce, basically `type`, which obviates choices.
+            if issubclass(typ, tuple):
+                num_args = len(type_args)
 
-        map_result = generate_map_result(type, type_args)
+        map_result = generate_map_result(typ, type_args)
 
         return cls(
             name=field.name,
@@ -80,7 +82,20 @@ class ArgDefinition(Generic[T]):
 
 
 def generate_map_result(type_: type, type_args: tuple[type, ...]) -> typing.Callable:
-    if issubclass(type_, types.UnionType):
+    if is_literal_type(type_):
+        type_arg = type_args[0]
+        mapping_fn = type(type_arg)
+
+        def literal_mapper(value):
+            mapped_value = mapping_fn(value)
+            if mapped_value == type_arg:
+                return mapped_value
+
+            raise ValueError(f"{value} != {type_arg}")
+
+        return literal_mapper
+
+    if is_union_type(type_) or issubclass(type_, types.UnionType):
         mappers: list[typing.Callable] = [
             generate_map_result(t, typing.get_args(t))
             for t in sorted(type_args, key=type_priority_key)
@@ -94,10 +109,13 @@ def generate_map_result(type_: type, type_args: tuple[type, ...]) -> typing.Call
                     pass
 
             raise ValueError(
-                f"Could not map {value} given types: {', '.join(str(t) for t in type_args)}"
+                f"Could not map '{value}' given options: {', '.join(render_type(t) for t in type_args)}"
             )
 
         return union_mapper
+
+    if issubclass(type_, (str, bool, int, float)):
+        return type_
 
     if issubclass(type_, types.NoneType):
 
@@ -108,9 +126,6 @@ def generate_map_result(type_: type, type_args: tuple[type, ...]) -> typing.Call
             raise ValueError(value)
 
         return map_none
-
-    if issubclass(type_, (str, bool, int, float)):
-        return type_
 
     if issubclass(type_, list):
         assert type_args

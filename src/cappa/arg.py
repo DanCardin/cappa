@@ -9,7 +9,8 @@ from typing import Generic
 from typing_extensions import Self
 from typing_inspect import is_optional_type, is_union_type
 
-from cappa.typing import MISSING, T, find_type_annotation
+from cappa.class_inspect import Field
+from cappa.typing import MISSING, T, find_type_annotation, missing
 
 
 @dataclasses.dataclass
@@ -21,29 +22,30 @@ class Arg(Generic[T]):
     default: T | None | MISSING = ...
     help: str | None = None
 
-    parser: Callable[[str], T] | None = None
+    parse: Callable[[str], T] | None = None
 
     @classmethod
-    def collect(
-        cls, field: dataclasses.Field, type_hint: type
-    ) -> tuple[Self, type] | None:
+    def collect(cls, field: Field, type_hint: type) -> tuple[Self, type]:
         arg, annotation = find_type_annotation(type_hint, cls)
         if arg is None:
             arg = cls()
 
         # Dataclass field metatdata takes precedence if it exists.
         field_metadata = extract_dataclass_metadata(field)
-        if field_metadata:
-            if isinstance(field_metadata, Subcommand):
-                return None
+        assert not isinstance(field_metadata, Subcommand)
 
+        if field_metadata:
             arg = field_metadata  # type: ignore
 
         if arg.default is ...:
-            if field.default is not dataclasses.MISSING:
+            if field.default is not missing:
                 arg = dataclasses.replace(arg, default=field.default)
 
-        if arg.required is None and arg.default is ...:
+            if field.default_factory is not missing:
+                default = field.default_factory()
+                arg = dataclasses.replace(arg, default=default)
+
+        if arg.required is None and arg.default is missing:
             arg = dataclasses.replace(arg, required=not is_optional_type(annotation))
 
         return (arg, annotation)
@@ -57,7 +59,7 @@ class Subcommand:
     help: str = ""
 
     @classmethod
-    def collect(cls, field: dataclasses.Field, type_hint: type) -> Self | None:
+    def collect(cls, field: Field, type_hint: type) -> Self | None:
         subcommand, annotation = find_type_annotation(type_hint, cls)
         field_metadata = extract_dataclass_metadata(field)
         if field_metadata:
@@ -85,20 +87,19 @@ class Subcommand:
         if subcommand.required is None:
             kwargs["required"] = not has_none
 
-        if subcommand.name is ...:
-            kwargs["name"] = field.name
+        kwargs["name"] = field.name
 
         return dataclasses.replace(subcommand, **kwargs)
 
 
-def extract_dataclass_metadata(field: dataclasses.Field) -> Arg | Subcommand | None:
+def extract_dataclass_metadata(field: Field) -> Arg | Subcommand | None:
     field_metadata = field.metadata.get("cappa")
     if not field_metadata:
         return None
 
     if not isinstance(field_metadata, (Arg, Subcommand)):
         raise ValueError(
-            "dataclass field `metadata` arguments with key `cappa` should be of type `Arg` or `Subcommand`."
+            '`metadata={"cappa": <x>}` must be of type `Arg` or `Subcommand`'
         )
 
     return field_metadata

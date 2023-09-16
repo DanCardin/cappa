@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 import typing
 from dataclasses import dataclass
 
@@ -20,8 +21,7 @@ class Dep(typing.Generic[T]):
 def invoke(command: Command[T], instance: T):
     fn: Callable = resolve_invoke_handler(command)
     implicit_deps = resolve_implicit_deps(instance)
-    kwargs = fullfill_deps(command, fn, implicit_deps)
-    return fn(**kwargs)
+    return fullfill_deps(fn, implicit_deps)
 
 
 def resolve_invoke_handler(command: Command) -> Callable:
@@ -75,51 +75,44 @@ def resolve_implicit_deps(
     return deps
 
 
-def fullfill_deps(
-    command: Command[T],
-    fn: Callable,
-    implicit_deps: dict[typing.Type[HasCommand], HasCommand],
-    fullfilled_deps: dict[Dep, typing.Any] | None = None,
-) -> dict[str, typing.Any]:
+def fullfill_deps(fn: Callable, fullfilled_deps: dict) -> typing.Any:
     if fullfilled_deps is None:
         fullfilled_deps = {}
 
     result = {}
 
-    args = get_type_hints(fn)
-    for name, annotation in args.items():
+    signature = inspect.signature(fn)
+    annotations = get_type_hints(fn, include_extras=True)
+
+    for name, param in signature.parameters.items():
+        if name not in annotations:
+            continue
+
+        annotation = annotations[name]
+
         dep, annotation = find_type_annotation(annotation, Dep)
 
-        # non-annotated args are either implicit dependencies or arguments that we cannot fullfill
         if dep is None:
-            value = collect_implicit_dep(implicit_deps, annotation)
+            # Non-annotated args are either implicit dependencies (and thus already fullfilled),
+            # or arguments that we cannot fullfill
+            if annotation not in fullfilled_deps:
+                if param.default is param.empty:
+                    raise ValueError(f"{annotation} is not a valid dependency.")
 
-        else:
-            if dep in fullfilled_deps:
+                # if there's a default, we can just skip it and let the default fullfill the value.
                 continue
 
-            value = collect_explicit_dep(annotation)
+            value = fullfilled_deps[annotation]
 
-            fullfilled_deps[dep] = value
+        else:
+            # Whereas everything else should be a resolvable explicit Dep, which might have either
+            # already been fullfullfilled, or yet need to be.
+            if dep in fullfilled_deps:
+                value = fullfilled_deps[dep]
+            else:
+                value = fullfill_deps(dep.callable, fullfilled_deps)
+                fullfilled_deps[dep] = value
 
         result[name] = value
 
-    return result
-
-
-def collect_implicit_dep(
-    implicit_deps: dict[typing.Type[HasCommand], HasCommand],
-    annotation: typing.Type[HasCommand],
-) -> HasCommand:
-    if annotation not in implicit_deps:
-        raise ValueError(f"{annotation} is not a valid dependency.")
-
-    return implicit_deps[annotation]
-
-
-def collect_explicit_dep(fn: Callable):
-    return {}
-
-
-def unpack(instance, *fields: str):
-    ...
+    return fn(**result)

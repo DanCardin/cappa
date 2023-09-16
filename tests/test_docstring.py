@@ -37,12 +37,12 @@ def test_required_provided():
 
         Does a thing. and does it really well!
 
-        positional arguments:
+        Positional Arguments:
           foo         the value of foo
 
-        options:
+        Options:
           -h, --help  show this help message and exit
-          --bar       whether to bar
+          --bar       whether to bar (default: False)
         """
     )
     assert result == expected_result

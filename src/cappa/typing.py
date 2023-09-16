@@ -1,5 +1,7 @@
 import typing
 
+from typing_inspect import is_literal_type
+
 T = typing.TypeVar("T")
 
 missing = ...
@@ -30,3 +32,11 @@ def find_type_annotation(
 def assert_not_missing(value: T | MISSING) -> T:
     assert not isinstance(value, MISSING)
     return typing.cast(T, value)
+
+
+def render_type(typ) -> str:
+    if is_literal_type(typ):
+        inner = typing.get_args(typ)[0]
+        return str(inner)
+
+    return str(typ)
