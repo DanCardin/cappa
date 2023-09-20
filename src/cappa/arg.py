@@ -13,7 +13,7 @@ from typing_inspect import is_optional_type, is_union_type
 from cappa.annotation import detect_choices, generate_map_result
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.subcommand import Subcommand
-from cappa.typing import MISSING, T, find_type_annotation, missing
+from cappa.typing import MISSING, T, find_type_annotation, is_subclass, missing
 
 
 @enum.unique
@@ -49,6 +49,7 @@ class Arg(Generic[T]):
             class's value has a default. By setting this, you can force a particular value.
     """
 
+    name: str | MISSING = missing
     short: bool | str = False
     long: bool | str = False
     count: bool = False
@@ -56,7 +57,6 @@ class Arg(Generic[T]):
     help: str | None = None
     parse: Callable[[str], T] | None = None
 
-    name: str | MISSING = missing
     action: ArgAction = ArgAction.set
     num_args: int | None = None
     map_result: Callable | None = None
@@ -108,7 +108,7 @@ class Arg(Generic[T]):
 
         # Coerce raw `bool` into flags by default
         if not is_union_type(origin):
-            if issubclass(origin, bool):
+            if is_subclass(origin, bool):
                 if not long:
                     long = True
 
@@ -117,13 +117,13 @@ class Arg(Generic[T]):
         is_positional = not arg.short and not long
 
         if arg.parse is None and not is_union_type(origin):
-            if issubclass(origin, list):
+            if is_subclass(origin, list):
                 if is_positional and arg.num_args is None:
                     kwargs["num_args"] = -1
                 else:
                     kwargs["action"] = ArgAction.append
 
-            if issubclass(origin, tuple):
+            if is_subclass(origin, tuple):
                 if len(type_args) == 2 and type_args[1] == ...:
                     if is_positional and arg.num_args is None:
                         kwargs["num_args"] = -1

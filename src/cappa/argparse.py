@@ -6,7 +6,7 @@ import typing
 
 from typing_extensions import assert_never
 
-from cappa.arg import Arg
+from cappa.arg import Arg, ArgAction
 from cappa.command import Command
 from cappa.command_def import CommandDefinition, Subcommands
 from cappa.typing import assert_not_missing, assert_type
@@ -15,6 +15,23 @@ try:
     from rich import print
 except ImportError:  # pragma: no cover
     pass
+
+if sys.version_info < (3, 9):  # pragma: no cover
+    # Backport https://github.com/python/cpython/pull/3680
+    original_get_action_name = argparse._get_action_name
+
+    def _get_action_name(
+        argument: argparse.Action | None,
+    ) -> str | None:  # pragma: no cover
+        name = original_get_action_name(argument)
+
+        assert argument
+        if name is None and argument.choices:
+            return "{" + ",".join(argument.choices) + "}"
+
+        return name
+
+    argparse._get_action_name = _get_action_name
 
 
 T = typing.TypeVar("T")
@@ -55,11 +72,14 @@ def render(
     argv: list[str],
     exit_with=None,
     color: bool = True,
+    version: str | Arg | None = None,
+    help: bool | Arg = True,
 ) -> tuple[Command[T], dict[str, typing.Any]]:
     if exit_with is None:
         exit_with = sys_exit
 
     parser = create_parser(command_def, exit_with, color=color)
+    add_help_group(parser, version=version, help=help)
 
     ns = Nestedspace()
 
@@ -77,20 +97,62 @@ def render(
 
 
 def create_parser(
-    command_def: CommandDefinition, exit_with: typing.Callable, color: bool = True
+    command_def: CommandDefinition,
+    exit_with: typing.Callable,
+    color: bool = True,
 ) -> argparse.ArgumentParser:
+    kwargs: dict[str, typing.Any] = {}
+    if sys.version_info >= (3, 9):  # pragma: no cover
+        kwargs["exit_on_error"] = False
+
     parser = ArgumentParser(
         prog=command_def.command.name,
         description=join_help(command_def.title, command_def.description),
-        exit_on_error=False,
         exit_with=exit_with,
         allow_abbrev=False,
+        add_help=False,
         formatter_class=choose_help_formatter(color=color),
+        **kwargs,
     )
     parser.set_defaults(__command__=command_def.command)
 
     add_arguments(parser, command_def)
+
     return parser
+
+
+def add_help_group(
+    parser: argparse.ArgumentParser,
+    version: str | Arg | None = None,
+    help: bool | Arg = True,
+):
+    if not version and not help:
+        return
+
+    help_group = parser.add_argument_group("help")
+    if version:
+        if isinstance(version, str):
+            arg: Arg = Arg(
+                version, short="-v", long="--version", help="Show the version and exit."
+            )
+        else:
+            arg = version
+
+        add_argument(help_group, arg, version=arg.name, action=argparse._VersionAction)
+
+    if help:
+        if isinstance(help, bool):
+            arg = Arg(
+                name="help",
+                short="-h",
+                long="--help",
+                help="Show this message and exit.",
+            )
+        else:
+            arg = help
+            arg.name = "help"
+
+        add_argument(help_group, arg, action=argparse._HelpAction)
 
 
 def choose_help_formatter(color: bool = True):
@@ -121,7 +183,12 @@ def add_arguments(
             assert_never(arg)
 
 
-def add_argument(parser: argparse.ArgumentParser, arg: Arg, dest_prefix=""):
+def add_argument(
+    parser: argparse.ArgumentParser | argparse._ArgumentGroup,
+    arg: Arg,
+    dest_prefix="",
+    **extra_kwargs,
+):
     name: str = assert_not_missing(arg.name)
 
     names: list[str] = []
@@ -146,17 +213,23 @@ def add_argument(parser: argparse.ArgumentParser, arg: Arg, dest_prefix=""):
     if is_positional:
         kwargs["metavar"] = name
 
-    if arg.required and names:
+    if not is_positional and arg.required:
         kwargs["required"] = arg.required
 
     if arg.default is not ...:
         kwargs["default"] = arg.default
 
-    if arg.action is not arg.action.store_true:
+    if (
+        isinstance(arg.action, ArgAction)
+        and arg.action is not arg.action.store_true
+        and num_args is not None
+    ):
         kwargs["nargs"] = num_args
 
     if arg.choices:
         kwargs["choices"] = arg.choices
+
+    kwargs.update(extra_kwargs)
 
     parser.add_argument(*names, **kwargs)
 

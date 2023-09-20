@@ -15,7 +15,7 @@ API).
 from __future__ import annotations
 
 import cappa
-from typing import Annotated
+from typing_extensions import Annotated
 from dataclasses import dataclass
 
 

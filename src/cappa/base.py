@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import sys
 import typing
 
+from cappa.arg import Arg
 from cappa.command import Command
 from cappa.command_def import CommandDefinition
+from cappa.invoke import invoke_callable
 
 T = typing.TypeVar("T")
 
@@ -14,6 +18,8 @@ def parse(
     render: typing.Callable | None = None,
     exit_with=None,
     color: bool = True,
+    version: str | Arg | None = None,
+    help: bool | Arg = True,
 ) -> T:
     """Parse the command, returning an instance of `obj`.
 
@@ -29,18 +35,26 @@ def parse(
         exit_with: Used when parsing fails, to raise/indicate failure. By default, exits
             with SystemExit to kill the process.
         color: Whether to output in color, if the `color` extra is installed.
+        version: If a string is supplied, adds a -v/--version flag which returns the
+            given version string. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
+            fields to add a corresponding version argument.
+        help: If `True` (default to True), adds a -h/--help flag. If an `Arg` is supplied,
+            uses the `short`/`long`/`help` fields to add a corresponding help argument.
     """
     if argv is None:  # pragma: no cover
         argv = sys.argv
 
-    instance = Command.get(obj)
-    return CommandDefinition.parse(
-        instance,
+    command = Command.get(obj)
+    _, instance = CommandDefinition.parse_command(
+        command,
         argv=argv,
         render=render,
         exit_with=exit_with,
         color=color,
+        version=version,
+        help=help,
     )
+    return instance  # type: ignore
 
 
 def invoke(
@@ -50,6 +64,8 @@ def invoke(
     render: typing.Callable | None = None,
     exit_with=None,
     color: bool = True,
+    version: str | Arg | None = None,
+    help: bool | Arg = True,
 ):
     """Parse the command, and invoke the selected command or subcommand.
 
@@ -65,15 +81,25 @@ def invoke(
         exit_with: Used when parsing fails, to raise/indicate failure. By default, exits
             with SystemExit to kill the process.
         color: Whether to output in color, if the `color` extra is installed.
+        version: If a string is supplied, adds a -v/--version flag which returns the
+            given version string. If an `Arg` is supplied, uses the `name`/`short`/`long`
+            fields to add a corresponding version argument.
+        help: If `True` (default to True), adds a -h/--help flag. If an `Arg` is supplied,
+            uses the `short`/`long`/`help` fields to add a corresponding help argument.
     """
     if argv is None:  # pragma: no cover
         argv = sys.argv
 
-    instance: Command = Command.get(obj)
-    return CommandDefinition.invoke(
-        instance,
+    command: Command = Command.get(obj)
+
+    parsed_command, instance = CommandDefinition.parse_command(
+        command,
         argv=argv,
         render=render,
         exit_with=exit_with,
         color=color,
+        version=version,
+        help=help,
     )
+
+    return invoke_callable(parsed_command, instance)

@@ -15,7 +15,7 @@ class Command(typing.Generic[T]):
     """Register a cappa CLI command/subcomment.
 
     Args:
-        cls: The class representing the command/subcommand
+        cmd_cls: The class representing the command/subcommand
         name: The name of the command. If omitted, the name of the command
             will be the name of the `cls`, converted to dash-case.
         help: Optional help text. If omitted, the `cls` docstring will be parsed.
@@ -30,7 +30,7 @@ class Command(typing.Generic[T]):
             and the referenced function invoked.
     """
 
-    cls: typing.Type[T]
+    cmd_cls: typing.Type[T]
     name: str | None = None
     help: str | None = None
     invoke: Callable | str | None = None
@@ -59,7 +59,7 @@ class Command(typing.Generic[T]):
         """
 
         def wrapper(_decorated_cls):
-            instance = cls(cls=_decorated_cls, invoke=invoke, name=name, help=help)
+            instance = cls(cmd_cls=_decorated_cls, invoke=invoke, name=name, help=help)
             _decorated_cls.__cappa__ = instance
             return _decorated_cls
 
@@ -73,7 +73,7 @@ class Command(typing.Generic[T]):
         if self.name is not None:
             return self.name
 
-        cls_name = self.cls.__name__
+        cls_name = self.cmd_cls.__name__
         import re
 
         return re.sub(r"(?<!^)(?=[A-Z])", "-", cls_name).lower()

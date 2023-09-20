@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Union
 
 import pytest
 
@@ -10,7 +10,7 @@ from tests.utils import parse
 
 @dataclass
 class ArgTest:
-    name: Literal["one"] | Literal["two"] | Literal["three"] | Literal[4]
+    name: Union[Literal["one"], Literal["two"], Literal["three"], Literal[4]]
 
 
 def test_valid():

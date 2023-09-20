@@ -6,9 +6,10 @@ import enum
 import logging
 import sqlite3
 from dataclasses import dataclass, field
-from typing import Annotated, Literal
+from typing import List, Literal, Union
 
 from cappa import Arg, Dep, Subcommand, command, invoke, parse
+from typing_extensions import Annotated
 
 log = logging.getLogger(__name__)
 
@@ -29,14 +30,16 @@ class Example:
     """
 
     name: str
-    value: Annotated[int, Arg(short="-v", long="--val", default=0)]
+    value: Annotated[int, Arg(short="-V", long="--val", default=0)]
 
-    options: Annotated[Literal["one"] | Literal["two"] | Literal[3], Arg(short=True)]
+    options: Annotated[
+        Union[Literal["one"], Literal["two"], Literal[3]], Arg(short=True)
+    ]
     moptions: Annotated[OtherOptions, Arg(short=True)]
 
-    subcommand: Annotated[MeowCommand | BarkCommand, Subcommand]
+    subcommand: Annotated[Union[MeowCommand, BarkCommand], Subcommand]
 
-    flags: Annotated[list[str], Arg(short=True, long=True)] = field(
+    flags: Annotated[List[str], Arg(short=True, long=True)] = field(
         default_factory=list
     )
     flag: bool = False  # --flag
@@ -75,10 +78,10 @@ class BarkCommand:
 def main(argv=None):
     logging.basicConfig()
 
-    args: Example = parse(Example, argv=argv)
+    args: Example = parse(Example, argv=argv, version="1.2.3")
     log.info(args)
 
-    invoke(Example, argv=argv)
+    invoke(Example, argv=argv, version="1.2.3")
 
 
 if __name__ == "__main__":

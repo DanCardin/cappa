@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Union
 
 import cappa
+from typing_extensions import Annotated
 
 from tests.utils import parse
 
@@ -18,7 +21,7 @@ class Sc2:
 
 @dataclass
 class Command:
-    subcommand: Annotated[Sc1 | Sc2, cappa.Subcommand(types=[Sc1, Sc2])]
+    subcommand: Annotated[Union[Sc1, Sc2], cappa.Subcommand(types=[Sc1, Sc2])]
 
 
 def test_required_missing():

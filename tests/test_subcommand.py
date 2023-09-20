@@ -1,15 +1,18 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Union
 
 import cappa
 import pytest
+from typing_extensions import Annotated
 
 from tests.utils import parse
 
 
 @dataclass
 class RequiredMissingOne:
-    foo: Annotated[str | None, cappa.Arg(long=True)] = None
+    foo: Annotated[Union[str, None], cappa.Arg(long=True)] = None
 
 
 @dataclass
@@ -26,17 +29,19 @@ def test_required_missing():
 
 @dataclass
 class RequiredProvidedOne:
-    foo: Annotated[str | None, cappa.Arg(long=True)] = None
+    foo: Annotated[Union[str, None], cappa.Arg(long=True)] = None
 
 
 @dataclass
 class RequiredProvidedTwo:
-    bar: Annotated[str | None, cappa.Arg(long=True)] = None
+    bar: Annotated[Union[str, None], cappa.Arg(long=True)] = None
 
 
 @dataclass
 class RequiredProvided:
-    subcommand: Annotated[RequiredProvidedOne | RequiredProvidedTwo, cappa.Subcommand()]
+    subcommand: Annotated[
+        Union[RequiredProvidedOne, RequiredProvidedTwo], cappa.Subcommand()
+    ]
 
 
 def test_required_provided():

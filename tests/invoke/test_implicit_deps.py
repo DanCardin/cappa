@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Union
 
 import cappa
+from typing_extensions import Annotated
 
 from tests.utils import invoke
 
@@ -26,7 +27,7 @@ class Subcommand:
 @dataclass
 class TopLevelCommand:
     foo: Annotated[int, cappa.Arg(long=True)] = 4
-    subcommand: Annotated[Subcommand | None, cappa.Subcommand] = None
+    subcommand: Annotated[Union[Subcommand, None], cappa.Subcommand] = None
 
 
 def test_invoke_top_level_command():

@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Union
 
 import cappa
 import pytest
+from typing_extensions import Annotated
 
 from tests.utils import parse
 
 
 @dataclass
 class Command:
-    subcmd: Annotated[A | None, cappa.Subcommand(required=True)] = None
+    subcmd: Annotated[Union[A, None], cappa.Subcommand(required=True)] = None
 
 
 @dataclass

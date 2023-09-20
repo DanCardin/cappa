@@ -11,7 +11,7 @@ from tests.utils import parse
 @dataclass
 class Command:
     name: str = field(metadata={"cappa": cappa.Arg(short=True)})
-    cmd: Invalid | Invalid = field(metadata={"cappa": cappa.Subcommand()})
+    cmd: Invalid = field(metadata={"cappa": cappa.Subcommand()})
 
 
 @dataclass

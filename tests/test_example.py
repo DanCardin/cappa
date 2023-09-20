@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass, field
-from typing import Annotated
+from typing import Tuple
 
 import cappa
 
@@ -36,27 +36,10 @@ def test_bool():
     assert test.flag is True
 
 
-def test_list():
-    @dataclass
-    class ArgTest:
-        variable_number: Annotated[list[str], cappa.Arg(short=True, long=True)] = field(
-            default_factory=list
-        )
-
-    test = parse(
-        ArgTest,
-        "-v",
-        "one",
-        "--variable-number",
-        "two",
-    )
-    assert test.variable_number == ["one", "two"]
-
-
 def test_tuple():
     @dataclass
     class ArgTest:
-        exact_num_args: tuple[str, int] = field(
+        exact_num_args: Tuple[str, int] = field(
             default=("a", 0), metadata={"cappa": cappa.Arg(long=True)}
         )
 
@@ -72,7 +55,7 @@ def test_tuple():
 def test_missing_value_defaults():
     @dataclass
     class ArgTest:
-        exact_num_args: tuple[str, int] = field(
+        exact_num_args: Tuple[str, int] = field(
             default=("a", 0), metadata={"cappa": cappa.Arg(long=True)}
         )
 

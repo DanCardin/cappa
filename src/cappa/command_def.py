@@ -4,11 +4,11 @@ import dataclasses
 import typing
 
 import docstring_parser
+from typing_extensions import get_type_hints
 
 from cappa import class_inspect
 from cappa.arg import Arg
 from cappa.command import HasCommand
-from cappa.invoke import invoke
 from cappa.subcommand import Subcommand
 from cappa.typing import assert_not_missing
 
@@ -29,14 +29,14 @@ class CommandDefinition(typing.Generic[T]):
     @classmethod
     def collect(cls, command: Command):
         command_cls = type(command)
-        fields = class_inspect.fields(command.cls)
-        type_hints = typing.get_type_hints(command.cls, include_extras=True)
+        fields = class_inspect.fields(command.cmd_cls)
+        type_hints = get_type_hints(command.cmd_cls, include_extras=True)
 
         title = None
         description = command.help
         arg_help_map = {}
         if not command.help:
-            parsed_help = docstring_parser.parse(command.cls.__doc__ or "")
+            parsed_help = docstring_parser.parse(command.cmd_cls.__doc__ or "")
             title = parsed_help.short_description
             description = parsed_help.long_description
 
@@ -83,25 +83,6 @@ class CommandDefinition(typing.Generic[T]):
         )
 
     @classmethod
-    def parse(
-        cls,
-        command: Command[T],
-        *,
-        argv: list[str],
-        render: typing.Callable | None = None,
-        exit_with=None,
-        color: bool = True,
-    ) -> T:
-        _, instance = cls.parse_command(
-            command,
-            argv=argv,
-            render=render,
-            exit_with=exit_with,
-            color=color,
-        )
-        return instance  # type: ignore
-
-    @classmethod
     def parse_command(
         cls,
         command: Command[T],
@@ -110,6 +91,8 @@ class CommandDefinition(typing.Generic[T]):
         render: typing.Callable | None = None,
         exit_with=None,
         color: bool = True,
+        version: str | Arg | None = None,
+        help: bool | Arg = True,
     ) -> tuple[Command[T], HasCommand[T]]:
         command_def = cls.collect(command)
 
@@ -119,7 +102,12 @@ class CommandDefinition(typing.Generic[T]):
             render = argparse.render
 
         parsed_command, parsed_args = render(
-            command_def, argv, exit_with=exit_with, color=color
+            command_def,
+            argv,
+            exit_with=exit_with,
+            color=color,
+            version=version,
+            help=help,
         )
         result = command_def.map_result(command, parsed_args)
         return parsed_command, result
@@ -139,27 +127,7 @@ class CommandDefinition(typing.Generic[T]):
 
             kwargs[arg.name] = value
 
-        return command.cls(**kwargs)
-
-    @classmethod
-    def invoke(
-        cls,
-        command: Command[T],
-        *,
-        argv: list[str],
-        render: typing.Callable | None = None,
-        exit_with=None,
-        color: bool = True,
-    ):
-        parsed_command, instance = cls.parse_command(
-            command,
-            argv=argv,
-            render=render,
-            exit_with=exit_with,
-            color=color,
-        )
-
-        return invoke(parsed_command, instance)  # type: ignore
+        return command.cmd_cls(**kwargs)
 
 
 @dataclasses.dataclass

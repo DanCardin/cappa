@@ -3,9 +3,10 @@ from __future__ import annotations
 import importlib
 import inspect
 import typing
+from collections.abc import Callable
 from dataclasses import dataclass
 
-from typing_extensions import Callable, get_type_hints
+from typing_extensions import get_type_hints
 
 from cappa.command import Command, HasCommand
 from cappa.typing import find_type_annotation
@@ -20,7 +21,7 @@ class Dep(typing.Generic[T]):
     callable: Callable[..., T]
 
 
-def invoke(command: Command[T], instance: T):
+def invoke_callable(command: Command[T], instance: T):
     fn: Callable = resolve_invoke_handler(command)
     implicit_deps = resolve_implicit_deps(instance)
     return fullfill_deps(fn, implicit_deps)
@@ -31,7 +32,7 @@ def resolve_invoke_handler(command: Command) -> Callable:
 
     if not fn:
         raise ValueError(
-            f"Cannot call `invoke` for a command which does not have an invoke handler: {command.cls}."
+            f"Cannot call `invoke` for a command which does not have an invoke handler: {command.cmd_cls}."
         )
 
     if isinstance(fn, str):

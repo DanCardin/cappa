@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Annotated
 
 import cappa
 import pytest
+from typing_extensions import Annotated
 
 from tests.utils import parse
 

@@ -161,7 +161,7 @@ Then, in order to cause the function to be invoked, you would call
 
 ```python
 from dataclasses import dataclass
-from typing import Annotated
+from typing_extensions import Annotated
 
 import cappa
 

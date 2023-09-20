@@ -1,14 +1,16 @@
+from __future__ import annotations
+
 import enum
-import types
 import typing
 
-from typing_inspect import is_literal_type, is_union_type
+from typing_inspect import is_literal_type
 
-from cappa.typing import render_type
+from cappa.typing import is_none_type, is_subclass, is_union_type, render_type
 
 
 def detect_choices(origin: type, type_args: tuple[type, ...]) -> list[str] | None:
-    if isinstance(origin, type) and issubclass(origin, enum.Enum):
+    if is_subclass(origin, enum.Enum):
+        assert issubclass(origin, enum.Enum)
         return [v.value for v in origin]
 
     if is_union_type(origin):
@@ -32,7 +34,7 @@ def generate_map_result(type_: type, type_args: tuple[type, ...]) -> typing.Call
 
         return literal_mapper
 
-    if is_union_type(type_) or issubclass(type_, types.UnionType):
+    if is_union_type(type_):
         mappers: list[typing.Callable] = [
             generate_map_result(t, typing.get_args(t))
             for t in sorted(type_args, key=type_priority_key)
@@ -51,10 +53,10 @@ def generate_map_result(type_: type, type_args: tuple[type, ...]) -> typing.Call
 
         return union_mapper
 
-    if issubclass(type_, (str, bool, int, float)):
+    if is_subclass(type_, (str, bool, int, float)):
         return type_
 
-    if issubclass(type_, types.NoneType):
+    if is_none_type(type_):
 
         def map_none(value):
             if value is None:
@@ -64,7 +66,7 @@ def generate_map_result(type_: type, type_args: tuple[type, ...]) -> typing.Call
 
         return map_none
 
-    if issubclass(type_, list):
+    if is_subclass(type_, list):
         assert type_args
 
         inner_type = type_args[0]
@@ -75,7 +77,7 @@ def generate_map_result(type_: type, type_args: tuple[type, ...]) -> typing.Call
 
         return list_mapper
 
-    if issubclass(type_, tuple):
+    if is_subclass(type_, tuple):
         assert type_args
 
         if len(type_args) == 2 and type_args[1] == ...:

@@ -62,7 +62,7 @@ heirarchy.
 ```
 
 ```python
-from typing import Annotated
+from typing_extensions import Annotated
 from cappa import Dep
 
 # No more dependencies, ends the dependency chain.
