@@ -12,10 +12,58 @@ T = typing.TypeVar("T")
 
 @dataclasses.dataclass
 class Command(typing.Generic[T]):
+    """Register a cappa CLI command/subcomment.
+
+    Args:
+        cls: The class representing the command/subcommand
+        name: The name of the command. If omitted, the name of the command
+            will be the name of the `cls`, converted to dash-case.
+        help: Optional help text. If omitted, the `cls` docstring will be parsed.
+            The headline/description sections will be used to document the command
+            itself, and the arguments section will become the default help text for
+            any params/options.
+        invoke: Optional command to be called in the event parsing is successful.
+            In the case of subcommands, it will only call the parsed/selected
+            function to invoke. The value can **either** be a callable object or
+            a string. When the value is a string it will be interpreted as
+            `module.submodule.function`; the module will be dynamically imported,
+            and the referenced function invoked.
+    """
+
     cls: typing.Type[T]
     name: str | None = None
     help: str | None = None
     invoke: Callable | str | None = None
+
+    @classmethod
+    def wrap(
+        cls,
+        *,
+        name=None,
+        help=None,
+        invoke: Callable | str | None = None,
+    ):
+        """Register a cappa CLI command/subcomment.
+
+        Args:
+            cls: The class representing the command/subcommand
+            name: The name of the command. If omitted, the name of the command
+                will be the name of the `cls`, converted to dash-case.
+            help: Optional help text. If omitted, the `cls` docstring will be parsed.
+                The headline/description sections will be used to document the command
+                itself, and the arguments section will become the default help text for
+                any params/options.
+            invoke: Optional command to be called in the event parsing is successful.
+                In the case of subcommands, it will only call the parsed/selected
+                function to invoke.
+        """
+
+        def wrapper(_decorated_cls):
+            instance = cls(cls=_decorated_cls, invoke=invoke, name=name, help=help)
+            _decorated_cls.__cappa__ = instance
+            return _decorated_cls
+
+        return wrapper
 
     @classmethod
     def get(cls, obj: typing.Type[T]) -> Self:
@@ -29,24 +77,6 @@ class Command(typing.Generic[T]):
         import re
 
         return re.sub(r"(?<!^)(?=[A-Z])", "-", cls_name).lower()
-
-    @classmethod
-    def wrap(
-        cls,
-        _decorated_cls=None,
-        *,
-        name=None,
-        help=None,
-        invoke: Callable | None = None,
-    ):
-        def wrapper(_decorated_cls):
-            instance = cls(cls=_decorated_cls, invoke=invoke, name=name, help=help)
-            _decorated_cls.__cappa__ = instance
-            return _decorated_cls
-
-        if _decorated_cls is None:
-            return wrapper
-        return wrapper(_decorated_cls)
 
 
 H = typing.TypeVar("H", covariant=True)

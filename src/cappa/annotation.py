@@ -1,84 +1,21 @@
-"""Define the internal types produced by the public API types.
-
-The internal `ArgDefinition` API has a necessarily literal interface. Instead, users construct `Arg`
-instances with associated type annotations, which are rendered into `ArgDefinition`
-instances; which are ultimately routed into the argument parser.
-"""
-from __future__ import annotations
-
-import dataclasses
 import enum
 import types
 import typing
-from collections.abc import Callable
-from typing import Generic, Type, TypeVar
 
 from typing_inspect import is_literal_type, is_union_type
 
-from cappa.arg import Arg
-from cappa.class_inspect import Field
 from cappa.typing import render_type
 
-T = TypeVar("T")
 
+def detect_choices(origin: type, type_args: tuple[type, ...]) -> list[str] | None:
+    if isinstance(origin, type) and issubclass(origin, enum.Enum):
+        return [v.value for v in origin]
 
-@enum.unique
-class ArgAction(enum.Enum):
-    set = "store"
-    store_true = "store_true"
-    store_false = "store_false"
-    append = "append"
-    count = "count"
+    if is_union_type(origin):
+        if all(is_literal_type(t) for t in type_args):
+            return [str(typing.get_args(t)[0]) for t in type_args]
 
-
-@dataclasses.dataclass
-class ArgDefinition(Generic[T]):
-    name: str
-    arg: Arg[T]
-
-    type: Callable
-    action: ArgAction
-    num_args: int | None = None
-    map_result: Callable | None = None
-    help: str | None = None
-
-    @classmethod
-    def collect(
-        cls, field: Field, raw_type_hint: Type, help: str | None = None
-    ) -> ArgDefinition[T] | None:
-        maybe_arg: tuple[Arg, type] = Arg.collect(field, raw_type_hint)
-        arg, type_hint = maybe_arg
-
-        typ = typing.get_origin(type_hint) or type_hint
-        type_args = typing.get_args(type_hint)
-
-        num_args = None
-        action = ArgAction.set
-
-        if not is_union_type(typ):
-            # XXX: Enums should coerce, basically `typ`, which obviates choices.
-
-            if issubclass(typ, bool):
-                arg = dataclasses.replace(arg, long=True)
-                action = ArgAction.store_true
-
-            if issubclass(typ, list):
-                action = ArgAction.append
-
-            if issubclass(typ, tuple):
-                num_args = len(type_args)
-
-        map_result = generate_map_result(typ, type_args)
-
-        return cls(
-            name=field.name,
-            arg=arg,
-            type=type_hint,
-            action=action,
-            num_args=num_args,
-            map_result=map_result,
-            help=arg.help or help,
-        )
+    return None
 
 
 def generate_map_result(type_: type, type_args: tuple[type, ...]) -> typing.Callable:
@@ -109,7 +46,7 @@ def generate_map_result(type_: type, type_args: tuple[type, ...]) -> typing.Call
                     pass
 
             raise ValueError(
-                f"Could not map '{value}' given options: {', '.join(render_type(t) for t in type_args)}"
+                f"Could not parse '{value}' given options: {', '.join(render_type(t) for t in type_args)}"
             )
 
         return union_mapper
@@ -141,6 +78,14 @@ def generate_map_result(type_: type, type_args: tuple[type, ...]) -> typing.Call
     if issubclass(type_, tuple):
         assert type_args
 
+        if len(type_args) == 2 and type_args[1] == ...:
+            _list_mapper = generate_map_result(list, (type_args[0],))
+
+            def unbounded_tuple_mapper(value: list):
+                return tuple(_list_mapper(value))
+
+            return unbounded_tuple_mapper
+
         def tuple_mapper(value: list):
             result = []
             for inner_type, inner_value in zip(type_args, value):
@@ -152,13 +97,6 @@ def generate_map_result(type_: type, type_args: tuple[type, ...]) -> typing.Call
             return tuple(result)
 
         return tuple_mapper
-
-    if dataclasses.is_dataclass(type_):
-
-        def dataclass_mapper(value):
-            return type_(**value)
-
-        return dataclass_mapper
 
     return type_
 

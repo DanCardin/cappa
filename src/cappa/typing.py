@@ -34,9 +34,13 @@ def assert_not_missing(value: T | MISSING) -> T:
     return typing.cast(T, value)
 
 
+def assert_type(value: typing.Any, typ: type[T]) -> T:
+    assert isinstance(value, typ)
+    return typing.cast(T, value)
+
+
 def render_type(typ) -> str:
     if is_literal_type(typ):
-        inner = typing.get_args(typ)[0]
-        return str(inner)
+        return typing.get_args(typ)[0]
 
-    return str(typ)
+    return f"<{typ.__name__}>"

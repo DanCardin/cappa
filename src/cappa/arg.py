@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import dataclasses
+import enum
 import typing
 from collections.abc import Callable
 from typing import Generic
@@ -9,24 +10,68 @@ from typing import Generic
 from typing_extensions import Self
 from typing_inspect import is_optional_type, is_union_type
 
-from cappa.class_inspect import Field
+from cappa.annotation import detect_choices, generate_map_result
+from cappa.class_inspect import Field, extract_dataclass_metadata
+from cappa.subcommand import Subcommand
 from cappa.typing import MISSING, T, find_type_annotation, missing
+
+
+@enum.unique
+class ArgAction(enum.Enum):
+    set = "store"
+    store_true = "store_true"
+    store_false = "store_false"
+    append = "append"
+    count = "count"
 
 
 @dataclasses.dataclass
 class Arg(Generic[T]):
+    """Describe a CLI argument.
+
+    Arguments:
+        short: If `True`, uses first letter of the name to infer a (ex. `-s`) short
+            flag. If a string is supplied, that will be used instead.
+        long: If `True`, uses first letter of the name to infer a (ex. `--long`) long
+            flag. If a string is supplied, that will be used instead.
+        count: If `True` the resultant argmuent will count instances and accept zero
+            arguments.
+        help: By default, the help text will be inferred from the containing class'
+            arguments' section, if it exists. Alternatively, you can directly supply
+            the help text here.
+        parse: An optional function which accepts the raw string argument as input and
+            returns a parsed value type's instance. This should only be required for
+            complex types that the type system's built-in parsing cannot handle.
+
+        name: The name of the argument. Defaults to the name of the corresponding class field.
+
+        required: Defaults to automatically inferring requiredness, based on whether the
+            class's value has a default. By setting this, you can force a particular value.
+    """
+
     short: bool | str = False
     long: bool | str = False
     count: bool = False
-    required: bool | None = None
     default: T | None | MISSING = ...
     help: str | None = None
-
     parse: Callable[[str], T] | None = None
 
+    name: str | MISSING = missing
+    action: ArgAction = ArgAction.set
+    num_args: int | None = None
+    map_result: Callable | None = None
+    choices: list[str] | None = None
+
+    required: bool | None = None
+
     @classmethod
-    def collect(cls, field: Field, type_hint: type) -> tuple[Self, type]:
+    def collect(
+        cls, field: Field, type_hint: type, fallback_help: str | None = None
+    ) -> Self:
         arg, annotation = find_type_annotation(type_hint, cls)
+        origin = typing.get_origin(annotation) or annotation
+        type_args = typing.get_args(annotation)
+
         if arg is None:
             arg = cls()
 
@@ -37,69 +82,90 @@ class Arg(Generic[T]):
         if field_metadata:
             arg = field_metadata  # type: ignore
 
-        if arg.default is ...:
+        kwargs: dict[str, typing.Any] = {}
+
+        default = arg.default
+        if arg.default is missing:
             if field.default is not missing:
-                arg = dataclasses.replace(arg, default=field.default)
+                default = field.default
 
             if field.default_factory is not missing:
                 default = field.default_factory()
-                arg = dataclasses.replace(arg, default=default)
 
-        if arg.required is None and arg.default is missing:
-            arg = dataclasses.replace(arg, required=not is_optional_type(annotation))
+        if arg.required is None and default is missing:
+            kwargs["required"] = not is_optional_type(annotation)
 
-        return (arg, annotation)
-
-
-@dataclasses.dataclass
-class Subcommand:
-    name: str | MISSING = ...
-    required: bool | None = None
-    types: typing.Iterable[type] | MISSING = ...
-    help: str = ""
-
-    @classmethod
-    def collect(cls, field: Field, type_hint: type) -> Self | None:
-        subcommand, annotation = find_type_annotation(type_hint, cls)
-        field_metadata = extract_dataclass_metadata(field)
-        if field_metadata:
-            if not isinstance(field_metadata, Subcommand):
-                return None
-
-            subcommand = field_metadata  # type: ignore
-
-        if subcommand is None:
-            return None
-
-        has_none = False
-        kwargs: dict[str, typing.Any] = {}
-        if subcommand.types is ...:
-            if is_union_type(annotation):
-                types = typing.get_args(annotation)
-                if is_optional_type(annotation):
-                    has_none = True
-                    types = tuple([t for t in types if not is_optional_type(t)])
-            else:
-                types = (annotation,)
-
-            kwargs["types"] = types
-
-        if subcommand.required is None:
-            kwargs["required"] = not has_none
-
-        kwargs["name"] = field.name
-
-        return dataclasses.replace(subcommand, **kwargs)
-
-
-def extract_dataclass_metadata(field: Field) -> Arg | Subcommand | None:
-    field_metadata = field.metadata.get("cappa")
-    if not field_metadata:
-        return None
-
-    if not isinstance(field_metadata, (Arg, Subcommand)):
-        raise ValueError(
-            '`metadata={"cappa": <x>}` must be of type `Arg` or `Subcommand`'
+        name: str = (
+            field.name if isinstance(arg.name, MISSING) else typing.cast(str, arg.name)
         )
+        kwargs["default"] = default
+        kwargs["name"] = name
 
-    return field_metadata
+        if arg.short:
+            kwargs["short"] = coerce_short_name(arg, name)
+
+        long = arg.long
+
+        # Coerce raw `bool` into flags by default
+        if not is_union_type(origin):
+            if issubclass(origin, bool):
+                if not long:
+                    long = True
+
+                kwargs["action"] = ArgAction.store_true
+
+        is_positional = not arg.short and not long
+
+        if arg.parse is None and not is_union_type(origin):
+            if issubclass(origin, list):
+                if is_positional and arg.num_args is None:
+                    kwargs["num_args"] = -1
+                else:
+                    kwargs["action"] = ArgAction.append
+
+            if issubclass(origin, tuple):
+                if len(type_args) == 2 and type_args[1] == ...:
+                    if is_positional and arg.num_args is None:
+                        kwargs["num_args"] = -1
+                    else:
+                        kwargs["action"] = ArgAction.append
+                else:
+                    kwargs["num_args"] = len(type_args)
+
+        choices = arg.choices or detect_choices(origin, type_args)
+        if choices:
+            kwargs["choices"] = choices
+
+        if long:
+            kwargs["long"] = coerce_long_name(arg, name)
+
+        if arg.parse is None:
+            kwargs["parse"] = generate_map_result(origin, type_args)
+
+        if arg.help is None:
+            kwargs["help"] = fallback_help
+
+        return dataclasses.replace(arg, **kwargs)
+
+
+def coerce_short_name(arg: Arg, name: str) -> str:
+    short = arg.short
+    if isinstance(short, bool):
+        short_name = name[0]
+        return f"-{short_name}"
+
+    if not short.startswith("-"):
+        return f"-{short}"
+
+    return short
+
+
+def coerce_long_name(arg: Arg, name: str) -> str:
+    long = arg.long
+    if isinstance(long, bool):
+        long = name.replace("_", "-")
+        return f"--{long}"
+
+    if not long.startswith("--"):
+        return f"--{long}"
+    return long

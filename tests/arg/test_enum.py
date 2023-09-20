@@ -19,15 +19,14 @@ class ArgTest:
     options: Options
 
 
-@pytest.mark.xfail()
 def test_valid():
     test = parse(ArgTest, "two")
-    assert test.name == "two"
+    assert test.options is Options.two
 
 
-@pytest.mark.xfail()
 def test_invalid():
     with pytest.raises(
-        ValueError, match="Could not map 'thename' given options: one, two, three"
+        ValueError,
+        match=r"argument options: invalid choice: 'thename' \(choose from 'one', 'two', 'three'\)",
     ):
         parse(ArgTest, "thename")

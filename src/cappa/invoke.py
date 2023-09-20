@@ -15,6 +15,8 @@ T = typing.TypeVar("T", bound=HasCommand)
 
 @dataclass(frozen=True)
 class Dep(typing.Generic[T]):
+    """Describes the callable required to fullfill a given dependency."""
+
     callable: Callable[..., T]
 
 
@@ -26,9 +28,10 @@ def invoke(command: Command[T], instance: T):
 
 def resolve_invoke_handler(command: Command) -> Callable:
     fn = command.invoke
+
     if not fn:
         raise ValueError(
-            "Cannot call `invoke` for a command which does not have an invoke handler."
+            f"Cannot call `invoke` for a command which does not have an invoke handler: {command.cls}."
         )
 
     if isinstance(fn, str):
@@ -44,21 +47,15 @@ def resolve_invoke_handler(command: Command) -> Callable:
 
         if not hasattr(module, fn_name):
             raise AttributeError(
-                f"Module '{module}' does not have a function {fn_name}"
+                f"Module {module} does not have a function `{fn_name}`"
             )
 
         fn = getattr(module, fn_name)
-        if not callable(fn):
-            raise ValueError(
-                f"`{fn}` does not reference a valid callable 'invoke' handler."
-            )
 
-        return fn
+    if not callable(fn):
+        raise ValueError(f"`{fn}` does not reference a valid callable.")
 
-    if callable(fn):
-        return fn
-
-    raise ValueError(f"`{fn}` is not a valid 'invoke' handler")
+    return fn
 
 
 def resolve_implicit_deps(
@@ -76,28 +73,28 @@ def resolve_implicit_deps(
 
 
 def fullfill_deps(fn: Callable, fullfilled_deps: dict) -> typing.Any:
-    if fullfilled_deps is None:
-        fullfilled_deps = {}
-
     result = {}
 
     signature = inspect.signature(fn)
     annotations = get_type_hints(fn, include_extras=True)
 
     for name, param in signature.parameters.items():
-        if name not in annotations:
-            continue
+        annotation = annotations.get(name)
 
-        annotation = annotations[name]
-
-        dep, annotation = find_type_annotation(annotation, Dep)
+        if annotation is None:
+            dep = None
+        else:
+            dep, annotation = find_type_annotation(annotation, Dep)
 
         if dep is None:
             # Non-annotated args are either implicit dependencies (and thus already fullfilled),
             # or arguments that we cannot fullfill
             if annotation not in fullfilled_deps:
                 if param.default is param.empty:
-                    raise ValueError(f"{annotation} is not a valid dependency.")
+                    annotation_name = annotation.__name__ if annotation else "<empty>"
+                    raise RuntimeError(
+                        f"`{name}: {annotation_name}` is not a valid dependency."
+                    )
 
                 # if there's a default, we can just skip it and let the default fullfill the value.
                 continue

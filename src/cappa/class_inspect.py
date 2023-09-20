@@ -8,6 +8,9 @@ from typing_extensions import Self
 
 from cappa.typing import MISSING, missing
 
+if typing.TYPE_CHECKING:
+    from cappa import Arg, Subcommand
+
 __all__ = [
     "fields",
 ]
@@ -130,3 +133,19 @@ def fields(cls: type):
         return Field.from_attrs(cls)
 
     raise NotImplementedError()  # pragma: no cover
+
+
+def extract_dataclass_metadata(field: Field) -> Arg | Subcommand | None:
+    from cappa.arg import Arg
+    from cappa.subcommand import Subcommand
+
+    field_metadata = field.metadata.get("cappa")
+    if not field_metadata:
+        return None
+
+    if not isinstance(field_metadata, (Arg, Subcommand)):
+        raise ValueError(
+            '`metadata={"cappa": <x>}` must be of type `Arg` or `Subcommand`'
+        )
+
+    return field_metadata

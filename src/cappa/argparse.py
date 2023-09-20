@@ -4,17 +4,17 @@ import argparse
 import sys
 import typing
 
-from cappa.arg_def import ArgAction, ArgDefinition
+from typing_extensions import assert_never
+
+from cappa.arg import Arg
 from cappa.command import Command
 from cappa.command_def import CommandDefinition, Subcommands
+from cappa.typing import assert_not_missing, assert_type
 
 try:
-    from rich_argparse import ArgumentDefaultsRichHelpFormatter
-
-    help_formatter: type[argparse.HelpFormatter] = ArgumentDefaultsRichHelpFormatter
-    # help_formatter.styles["argparse.text"] = "italic"
-except ImportError:
-    help_formatter = argparse.ArgumentDefaultsHelpFormatter
+    from rich import print
+except ImportError:  # pragma: no cover
+    pass
 
 
 T = typing.TypeVar("T")
@@ -49,25 +49,26 @@ class Nestedspace(argparse.Namespace):
         else:
             self.__dict__[name] = value
 
-    def __getattr__(self, name):
-        if "." in name:
-            group, name = name.split(".", 1)
-            try:
-                ns = self.__dict__[group]
-            except KeyError:
-                raise AttributeError
-            return getattr(ns, name)
-
-        raise AttributeError
-
 
 def render(
-    command_def: CommandDefinition[T], argv: list[str], exit_with=None
+    command_def: CommandDefinition[T],
+    argv: list[str],
+    exit_with=None,
+    color: bool = True,
 ) -> tuple[Command[T], dict[str, typing.Any]]:
-    parser = create_parser(command_def, exit_with)
+    if exit_with is None:
+        exit_with = sys_exit
+
+    parser = create_parser(command_def, exit_with, color=color)
 
     ns = Nestedspace()
-    result_namespace = parser.parse_args(argv[1:], ns)
+
+    try:
+        result_namespace = parser.parse_args(argv[1:], ns)
+    except argparse.ArgumentError as e:
+        message = str(e)
+        print(str(e))
+        raise exit_with(127, message)
 
     result = to_dict(result_namespace)
     command = result.pop("__command__")
@@ -76,18 +77,15 @@ def render(
 
 
 def create_parser(
-    command_def: CommandDefinition, exit_with=None
+    command_def: CommandDefinition, exit_with: typing.Callable, color: bool = True
 ) -> argparse.ArgumentParser:
-    if exit_with is None:
-        exit_with = sys_exit
-
     parser = ArgumentParser(
         prog=command_def.command.name,
         description=join_help(command_def.title, command_def.description),
         exit_on_error=False,
         exit_with=exit_with,
         allow_abbrev=False,
-        formatter_class=help_formatter,
+        formatter_class=choose_help_formatter(color=color),
     )
     parser.set_defaults(__command__=command_def.command)
 
@@ -95,59 +93,70 @@ def create_parser(
     return parser
 
 
+def choose_help_formatter(color: bool = True):
+    help_formatter: type[
+        argparse.HelpFormatter
+    ] = argparse.ArgumentDefaultsHelpFormatter
+
+    if color is True:
+        try:
+            from rich_argparse import ArgumentDefaultsRichHelpFormatter
+
+            help_formatter = ArgumentDefaultsRichHelpFormatter
+        except ImportError:  # pragma: no cover
+            pass
+
+    return help_formatter
+
+
 def add_arguments(
     parser: argparse.ArgumentParser, command_def: CommandDefinition, dest_prefix=""
 ):
-    for arg_def in command_def.arguments:
-        if isinstance(arg_def, ArgDefinition):
-            add_argument(parser, arg_def, dest_prefix=dest_prefix)
-        elif isinstance(arg_def, Subcommands):
-            add_subcommands(parser, arg_def, dest_prefix=dest_prefix)
+    for arg in command_def.arguments:
+        if isinstance(arg, Arg):
+            add_argument(parser, arg, dest_prefix=dest_prefix)
+        elif isinstance(arg, Subcommands):
+            add_subcommands(parser, arg, dest_prefix=dest_prefix)
         else:
-            raise NotImplementedError()
+            assert_never(arg)
 
 
-def add_argument(
-    parser: argparse.ArgumentParser, arg_def: ArgDefinition, dest_prefix=""
-):
-    dash_name = arg_def.name.replace("_", "-")
+def add_argument(parser: argparse.ArgumentParser, arg: Arg, dest_prefix=""):
+    name: str = assert_not_missing(arg.name)
+
     names: list[str] = []
-    if arg_def.arg.short:
-        if isinstance(arg_def.arg.short, bool):
-            short_name = f"-{dash_name[0]}"
-        else:
-            short_name = arg_def.arg.short
+    if arg.short:
+        short = assert_type(arg.short, str)
+        names.append(short)
 
-        names.append(short_name)
+    if arg.long:
+        long = assert_type(arg.long, str)
+        names.append(long)
 
-    if arg_def.arg.long:
-        if isinstance(arg_def.arg.long, bool):
-            long_name = f"--{dash_name}"
-        else:
-            long_name = arg_def.arg.long
+    is_positional = not names
 
-        names.append(long_name)
+    num_args = render_num_args(arg.num_args)
 
-    num_args = render_num_args(arg_def.num_args)
-    action = arg_def.action.value
     kwargs: dict[str, typing.Any] = {
-        "action": action,
-        "dest": dest_prefix + arg_def.name,
-        "help": arg_def.help,
+        "action": arg.action.value,
+        "dest": dest_prefix + name,
+        "help": arg.help,
     }
 
-    if not names:
-        kwargs["metavar"] = dash_name
+    if is_positional:
+        kwargs["metavar"] = name
 
-    if arg_def.arg.required and names:
-        kwargs["required"] = arg_def.arg.required
+    if arg.required and names:
+        kwargs["required"] = arg.required
 
-    if arg_def.arg.default is not ...:
-        kwargs["default"] = arg_def.arg.default
+    if arg.default is not ...:
+        kwargs["default"] = arg.default
 
-    if arg_def.action is not arg_def.action.store_true:
+    if arg.action is not arg.action.store_true:
         kwargs["nargs"] = num_args
-        kwargs["type"] = arg_def.arg.parse
+
+    if arg.choices:
+        kwargs["choices"] = arg.choices
 
     parser.add_argument(*names, **kwargs)
 
@@ -181,15 +190,6 @@ def add_subcommands(
             subcommand,
             dest_prefix=nested_dest_prefix,
         )
-
-
-def render_action(action: ArgAction):
-    mapping: dict[ArgAction, str] = {
-        ArgAction.set: "store",
-        ArgAction.append: "append",
-        ArgAction.store_true: "store_true",
-    }
-    return mapping[action]
 
 
 def render_num_args(num_args: int | None) -> int | str | None:

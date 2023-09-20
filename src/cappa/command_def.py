@@ -6,10 +6,10 @@ import typing
 import docstring_parser
 
 from cappa import class_inspect
-from cappa.arg import Subcommand
-from cappa.arg_def import ArgDefinition
+from cappa.arg import Arg
 from cappa.command import HasCommand
 from cappa.invoke import invoke
+from cappa.subcommand import Subcommand
 from cappa.typing import assert_not_missing
 
 if typing.TYPE_CHECKING:
@@ -21,7 +21,7 @@ T = typing.TypeVar("T")
 @dataclasses.dataclass
 class CommandDefinition(typing.Generic[T]):
     command: Command[T]
-    arguments: list[ArgDefinition[T] | Subcommands]
+    arguments: list[Arg[T] | Subcommands]
 
     title: str | None = None
     description: str | None = None
@@ -38,14 +38,13 @@ class CommandDefinition(typing.Generic[T]):
         if not command.help:
             parsed_help = docstring_parser.parse(command.cls.__doc__ or "")
             title = parsed_help.short_description
-            if description is None:
-                description = parsed_help.long_description
+            description = parsed_help.long_description
 
             arg_help_map = {
                 param.arg_name: param.description for param in parsed_help.params
             }
 
-        arguments: list[ArgDefinition | Subcommands] = []
+        arguments: list[Arg | Subcommands] = []
 
         for field in fields:
             type_hint = type_hints[field.name]
@@ -73,11 +72,8 @@ class CommandDefinition(typing.Generic[T]):
 
             else:
                 arg_help = arg_help_map.get(field.name)
-                arg_def: ArgDefinition | None = ArgDefinition.collect(
-                    field, type_hint, help=arg_help
-                )
-                if arg_def:
-                    arguments.append(arg_def)
+                arg_def: Arg = Arg.collect(field, type_hint, fallback_help=arg_help)
+                arguments.append(arg_def)
 
         return cls(
             command,
@@ -94,9 +90,14 @@ class CommandDefinition(typing.Generic[T]):
         argv: list[str],
         render: typing.Callable | None = None,
         exit_with=None,
+        color: bool = True,
     ) -> T:
         _, instance = cls.parse_command(
-            command, argv=argv, render=render, exit_with=exit_with
+            command,
+            argv=argv,
+            render=render,
+            exit_with=exit_with,
+            color=color,
         )
         return instance  # type: ignore
 
@@ -108,32 +109,35 @@ class CommandDefinition(typing.Generic[T]):
         argv: list[str],
         render: typing.Callable | None = None,
         exit_with=None,
+        color: bool = True,
     ) -> tuple[Command[T], HasCommand[T]]:
         command_def = cls.collect(command)
 
-        if render is None:
+        if render is None:  # pragma: no cover
             from cappa import argparse
 
             render = argparse.render
 
-        parsed_command, parsed_args = render(command_def, argv, exit_with=exit_with)
+        parsed_command, parsed_args = render(
+            command_def, argv, exit_with=exit_with, color=color
+        )
         result = command_def.map_result(command, parsed_args)
         return parsed_command, result
 
     def map_result(self, command: Command[T], parsed_args) -> T:
         kwargs = {}
-        for arg_def in self.arguments:
-            if arg_def.name not in parsed_args:
+        for arg in self.arguments:
+            if arg.name not in parsed_args:
                 continue
 
-            value = parsed_args[arg_def.name]
-            if isinstance(arg_def, Subcommands):
-                value = arg_def.map_result(value)
+            value = parsed_args[arg.name]
+            if isinstance(arg, Subcommands):
+                value = arg.map_result(value)
             else:
-                if arg_def.map_result:
-                    value = arg_def.map_result(value)
+                assert arg.parse
+                value = arg.parse(value)
 
-            kwargs[arg_def.name] = value
+            kwargs[arg.name] = value
 
         return command.cls(**kwargs)
 
@@ -145,13 +149,15 @@ class CommandDefinition(typing.Generic[T]):
         argv: list[str],
         render: typing.Callable | None = None,
         exit_with=None,
+        color: bool = True,
     ):
         parsed_command, instance = cls.parse_command(
-            command, argv=argv, render=render, exit_with=exit_with
+            command,
+            argv=argv,
+            render=render,
+            exit_with=exit_with,
+            color=color,
         )
-
-        if not parsed_command.invoke:
-            raise ValueError("no invoke")
 
         return invoke(parsed_command, instance)  # type: ignore
 

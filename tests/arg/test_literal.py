@@ -25,6 +25,7 @@ def test_valid_int():
 
 def test_invalid():
     with pytest.raises(
-        ValueError, match="Could not map 'thename' given options: one, two, three"
+        ValueError,
+        match=r"invalid choice: 'thename' \(choose from 'one', 'two', 'three', '4'\)",
     ):
         parse(ArgTest, "thename")

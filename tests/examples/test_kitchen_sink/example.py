@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+import enum
+import logging
 import sqlite3
 from dataclasses import dataclass, field
-from pprint import pprint
 from typing import Annotated, Literal
 
 from cappa import Arg, Dep, Subcommand, command, invoke, parse
+
+log = logging.getLogger(__name__)
+
+
+class OtherOptions(enum.Enum):
+    a = "a"
+    b = "b"
+    c = "c"
 
 
 @dataclass
@@ -23,6 +32,7 @@ class Example:
     value: Annotated[int, Arg(short="-v", long="--val", default=0)]
 
     options: Annotated[Literal["one"] | Literal["two"] | Literal[3], Arg(short=True)]
+    moptions: Annotated[OtherOptions, Arg(short=True)]
 
     subcommand: Annotated[MeowCommand | BarkCommand, Subcommand]
 
@@ -42,7 +52,7 @@ def meow(
     db: Annotated[sqlite3.Connection, Dep(db)],
 ):
     result = db.execute(f"select '{command.name}', {meow.times} + 1").fetchone()
-    print(result)
+    log.info(result)
 
 
 @command(name="meow", invoke=meow)
@@ -52,7 +62,7 @@ class MeowCommand:
 
 
 def bark(bark: BarkCommand):
-    print(bark)
+    log.info(bark)
 
 
 @command(name="bark", invoke=bark)
@@ -62,11 +72,13 @@ class BarkCommand:
 
 
 # invoke cli parsing
-def main():
-    args: Example = parse(Example)
-    pprint(args)
+def main(argv=None):
+    logging.basicConfig()
 
-    invoke(Example)
+    args: Example = parse(Example, argv=argv)
+    log.info(args)
+
+    invoke(Example, argv=argv)
 
 
 if __name__ == "__main__":

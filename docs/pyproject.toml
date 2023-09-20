@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "docs"
+version = "0.1.0"
+description = ""
+authors = ["Dan Cardin <ddcardin@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+furo = "^2022.4.7"
+linkify-it-py = "*"
+myst-parser = {version = "^0.17.2", extras = ["linkify"]}
+sphinx = "^4.5.0"
+sphinx-autoapi = "^1.8.4"
+sphinx-autobuild = "^2021.3.14"
+sphinx-autodoc-typehints = "^1.18.1"
+sphinx-copybutton = "*"
+sphinx-pyproject = ">=0.3.0"
+
+[tool.poetry.dev-dependencies]
+sphinx-autobuild = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

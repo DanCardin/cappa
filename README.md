@@ -1,5 +1,11 @@
 # Cappa
 
+[![Actions Status](https://github.com/dancardin/cappa/workflows/test/badge.svg)](https://github.com/dancardin/cappa/actions)
+[![Coverage Status](https://coveralls.io/repos/github/DanCardin/cappa/badge.svg?branch=main)](https://coveralls.io/github/DanCardin/cappa?branch=main)
+[![Documentation Status](https://readthedocs.org/projects/cappa/badge/?version=latest)](https://cappa.readthedocs.io/en/latest/?badge=latest)
+
+See the full documentation [here](https://cappa.readthedocs.io/en/latest/).
+
 Cappa is a more declarative take on command line parsing library, which takes
 much of its inspiration from Rust's
 [Clap](https://docs.rs/clap/latest/clap/_derive/index.html) library('s derive
@@ -79,94 +85,28 @@ subcommand:
     bark                BarkCommand()
 ```
 
-## Annotations
+- See
+  ["annotation" documentation](https://cappa.readthedocs.io/en/latest/annotation.html)
+  for information on how type hinting affects runtime behavior.
 
-Cappa only uses the `command` decorator and `Arg` annotation for controlling
-specific input fields' CLI-parsing-specific details (help text, argument/flag
-name, etc).
-
-That is, `cappa.parse/invoke`ing a plain class (dataclass/pydantic model/attrs
-class) with plain python type annotations is a perfectly valid thing to do.
-
-Without such annotations, there is a default behavior:
-
-- A command name is inferred to be the `ClassName` converted to dash-case
-- A command help text is inferred to be its docstring description
-- An argument name is inferred to be the class attribute name
-- An argument (class attribute) is inferred to be positional, except booleans
-  (which are `--flag`s).
-- An argument help text is inferred to be the (numpy/google) docstring argument
-  description
-
-Wherein the default
-
-## Invoke
-
-Accepts either of:
-
-- `@cappa.command(invoke=function)`
-- `@cappa.command(invoke='module.submodule.function')` (which imports the given
-  module/function given as a string)
-
-Use of the `invoke` kwarg on a command allows you to get click-like invocation
-based on the command/subcommand given by argv.
-
-For example, `cli foo bar baz --flag`, might have a corresponding
-`@cappa.command(name='baz', invoke=baz)` command defined, which will cause `baz`
-to be called.
-
-You would opt into this behavior by calling `cappa.exec(Cli)`.
-
-### Invoke Dependencies
-
-In the above example, the injected `bark` argument is an example of an "implicit
-dependency", which is fullfilled automatically by the parsing of the cli input
-structures themselves.
-
-Custom "explicit dependencies" can be referenced in order to have arbitrary
-context injected into your invoked functions.
-
-```python
-import os
-from cappa import Arg, command, Dep, invoke, unpack
-from dataclasses import dataclass
-from typing import Annotated
-
-def foo(
-    foo: Foo,  # An "implicit dependency"
-    verbose: Annotated[Foo, unpack(Foo, 'verbose')],  # An "explicit dependency". In this case,
-                                                      # using a built-in function for extracting
-                                                      # fields from an "implicit" dependency.
-
-    session: Annotated[str, Dep(db_session)]  # An "explicit dependency" with an arbitrary function
-                                              # that provides the required value.
-):
-    ...
-
-
-def db_session(config: Annotated[dict, Dep(load_config)]):  # Note, dependencies can be recursively loaded.
-    return ...
-
-
-def load_config():  # And dependencies are terminated once one is reached that has no other dependencies.
-    return {
-        "username": os.getenv("DB_USER"),
-    }
-
-
-@cappa.command(invoke=foo)
-@dataclass()
-class Foo:
-    verbose: Annotated[int, Arg(count=True)]
-```
-
-- Any dependency can be referenced by any other dependency, or invoked function.
-- Dependencies are evaluated in the order they are reached, and only evaluated
-  once.
-- Dependencies are evaluated on demand, and will not be evaluated if the
-  specifically invoked function doesn't in some transitive way reference it.
+- See
+  ["invoke" documentation](https://cappa.readthedocs.io/en/latest/invoke.html)
+  for information on click-like automatic function invocation.
 
 ## Why?
+
+A fair question. The incumbants, with click/typer and argparse have been readily
+serving python for a long time, and will certainly continue to do so.
+
+Having use the "derive API" from Rust's
+[Clap](https://docs.rs/clap/latest/clap/_derive/index.html) library, it's just
+really really nice to use, because the API is so natural. It became obvious that
+python could obviously support a similar API and it was surprising that one
+didn't already exist.
+
+Hopefully with `cappa`, you get the flexibility to utilized either the
+command-forward design given by `click`/`typer` or the manual handling given by
+`argparse` (and even `clap`).
 
 > Why not click?
 
@@ -250,15 +190,22 @@ results for arguments end up looking a lot like typer's args!
 Unfortunately, Typer is **basically** Click (with type-inferred arguments), and
 has all of the same drawbacks.
 
+If `tiangolo` hadn't based typer on click, it's not crazy to imagine that
+`cappa` look something like what he might have come up with. In particular the
+`Dep` feature of `cappa` looks and feels a lot like the `Depends` feature of
+FastAPI.
+
+> Why not argparse?
+
+The imperitive style of argparse can just be tedious to read/write, and hard to
+intuit what the shape of the resultant CLI will look like. `Cappa` currently
+uses argparse as the underlying argument parsing library, because it is the most
+straightforward, maintained, python library for building this sort of
+declarative system upon.
+
 ## Internals
 
 Internally, cappa is (currently) implemented on top of the built-in `argparse`
 library. However, all of the commandline parsing logic is centrally factored,
 and the **actual** library/code underlying the parsing should be considered an
 implementation detail.
-
-## Todo
-
-- Enum should coerce to choices
-- Wrap argparse's FileType thingy to produce an already opened file buffer with
-  the indicated options

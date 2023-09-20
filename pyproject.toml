@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "cappa", from = "src"}]
 
 [tool.poetry.extras]
-rich = ["rich", "rich-argparse"]
+color = ["rich", "rich-argparse"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -41,11 +41,7 @@ ignore = [
     "S101",
     "D1",
     "D203",
-    "D204",
     "D213",
-    "D215",
-    "D400",
-    "D404",
     "D406",
     "D407",
     "D408",
@@ -62,7 +58,9 @@ skip_covered = true
 exclude_lines = [
   "pragma: no cover",
   "if TYPE_CHECKING:",
+  "if typing.TYPE_CHECKING:",
   "if __name__ == .__main__.:",
+  "assert_never",
 ]
 
 [tool.coverage.run]
@@ -81,3 +79,4 @@ check_untyped_defs = true
 doctest_optionflags = "NORMALIZE_WHITESPACE IGNORE_EXCEPTION_DETAIL ELLIPSIS"
 addopts = "--doctest-modules -vv --ff --strict-markers"
 norecursedirs = ".* build dist *.egg bin"
+pytester_example_dir = "tests/examples"
