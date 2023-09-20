@@ -5,7 +5,7 @@ import inspect
 import typing
 from dataclasses import dataclass
 
-from typing_extensions import Callable, get_type_hints  # type: ignore
+from typing_extensions import Callable, get_type_hints
 
 from cappa.command import Command, HasCommand
 from cappa.typing import find_type_annotation
