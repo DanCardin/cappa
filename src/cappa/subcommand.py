@@ -7,7 +7,10 @@ from typing_extensions import Self
 from typing_inspect import is_optional_type, is_union_type
 
 from cappa.class_inspect import Field, extract_dataclass_metadata
-from cappa.typing import MISSING, find_type_annotation
+from cappa.typing import MISSING, T, find_type_annotation
+
+if typing.TYPE_CHECKING:
+    from cappa.command import Command
 
 
 @dataclasses.dataclass
@@ -62,3 +65,16 @@ class Subcommand:
         kwargs["name"] = field.name
 
         return dataclasses.replace(subcommand, **kwargs)
+
+
+@dataclasses.dataclass
+class Subcommands(typing.Generic[T]):
+    name: str
+    options: dict[str, Command]
+    required: bool
+    help: str
+
+    def map_result(self, parsed_args):
+        option_name = parsed_args.pop("__name__")
+        option = self.options[option_name]
+        return option.map_result(option, parsed_args)

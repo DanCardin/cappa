@@ -5,7 +5,6 @@ import typing
 
 from cappa.arg import Arg
 from cappa.command import Command
-from cappa.command_def import CommandDefinition
 from cappa.invoke import invoke_callable
 
 T = typing.TypeVar("T")
@@ -45,7 +44,7 @@ def parse(
         argv = sys.argv
 
     command = Command.get(obj)
-    _, instance = CommandDefinition.parse_command(
+    _, instance = Command.parse_command(
         command,
         argv=argv,
         render=render,
@@ -54,7 +53,7 @@ def parse(
         version=version,
         help=help,
     )
-    return instance  # type: ignore
+    return instance
 
 
 def invoke(
@@ -92,7 +91,7 @@ def invoke(
 
     command: Command = Command.get(obj)
 
-    parsed_command, instance = CommandDefinition.parse_command(
+    parsed_command, instance = Command.parse_command(
         command,
         argv=argv,
         render=render,

@@ -7,8 +7,7 @@ import typing
 from typing_extensions import assert_never
 
 from cappa.arg import Arg, ArgAction
-from cappa.command import Command
-from cappa.command_def import CommandDefinition, Subcommands
+from cappa.command import Command, Subcommands
 from cappa.typing import assert_not_missing, assert_type
 
 try:
@@ -68,7 +67,7 @@ class Nestedspace(argparse.Namespace):
 
 
 def render(
-    command_def: CommandDefinition[T],
+    command: Command[T],
     argv: list[str],
     exit_with=None,
     color: bool = True,
@@ -78,7 +77,7 @@ def render(
     if exit_with is None:
         exit_with = sys_exit
 
-    parser = create_parser(command_def, exit_with, color=color)
+    parser = create_parser(command, exit_with, color=color)
     add_help_group(parser, version=version, help=help)
 
     ns = Nestedspace()
@@ -97,7 +96,7 @@ def render(
 
 
 def create_parser(
-    command_def: CommandDefinition,
+    command: Command,
     exit_with: typing.Callable,
     color: bool = True,
 ) -> argparse.ArgumentParser:
@@ -106,17 +105,17 @@ def create_parser(
         kwargs["exit_on_error"] = False
 
     parser = ArgumentParser(
-        prog=command_def.command.name,
-        description=join_help(command_def.title, command_def.description),
+        prog=command.name,
+        description=join_help(command.help, command.description),
         exit_with=exit_with,
         allow_abbrev=False,
         add_help=False,
         formatter_class=choose_help_formatter(color=color),
         **kwargs,
     )
-    parser.set_defaults(__command__=command_def.command)
+    parser.set_defaults(__command__=command)
 
-    add_arguments(parser, command_def)
+    add_arguments(parser, command)
 
     return parser
 
@@ -171,10 +170,8 @@ def choose_help_formatter(color: bool = True):
     return help_formatter
 
 
-def add_arguments(
-    parser: argparse.ArgumentParser, command_def: CommandDefinition, dest_prefix=""
-):
-    for arg in command_def.arguments:
+def add_arguments(parser: argparse.ArgumentParser, command: Command, dest_prefix=""):
+    for arg in command.arguments:
         if isinstance(arg, Arg):
             add_argument(parser, arg, dest_prefix=dest_prefix)
         elif isinstance(arg, Subcommands):
@@ -249,13 +246,13 @@ def add_subcommands(
     for name, subcommand in subcommands.options.items():
         nested_dest_prefix = f"{dest_prefix}{subcommand_dest}."
         subparser = subparsers.add_parser(
-            name=subcommand.command.real_name(),
-            help=subcommand.title,
+            name=subcommand.real_name(),
+            help=subcommand.help,
             description=subcommand.description,
             formatter_class=parser.formatter_class,
         )
         subparser.set_defaults(
-            __command__=subcommand.command, **{nested_dest_prefix + "__name__": name}
+            __command__=subcommand, **{nested_dest_prefix + "__name__": name}
         )
 
         add_arguments(

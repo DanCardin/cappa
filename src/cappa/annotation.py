@@ -5,7 +5,7 @@ import typing
 
 from typing_inspect import is_literal_type
 
-from cappa.typing import is_none_type, is_subclass, is_union_type, render_type
+from cappa.typing import T, is_none_type, is_subclass, is_union_type, render_type
 
 
 def detect_choices(origin: type, type_args: tuple[type, ...]) -> list[str] | None:
@@ -68,14 +68,9 @@ def generate_map_result(type_: type, type_args: tuple[type, ...]) -> typing.Call
 
     if is_subclass(type_, list):
         assert type_args
-
         inner_type = type_args[0]
-        inner_mapper = generate_map_result(inner_type, typing.get_args(inner_type))
 
-        def list_mapper(value: list):
-            return [inner_mapper(v) for v in value]
-
-        return list_mapper
+        return parse_list(inner_type)
 
     if is_subclass(type_, tuple):
         assert type_args
@@ -101,6 +96,16 @@ def generate_map_result(type_: type, type_args: tuple[type, ...]) -> typing.Call
         return tuple_mapper
 
     return type_
+
+
+def parse_list(of_type: type[T]) -> typing.Callable[[typing.Any], list[T]]:
+    type_args = typing.get_args(of_type)
+    inner_mapper = generate_map_result(of_type, type_args)
+
+    def list_mapper(value: list):
+        return [inner_mapper(v) for v in value]
+
+    return list_mapper
 
 
 type_priority: typing.Final = {

@@ -50,3 +50,16 @@ def test_unannotated_argument(capsys):
 
     stdout = capsys.readouterr().out
     assert "\nAll the help.\n" in stdout
+
+
+def test_description_without_help(capsys):
+    @cappa.command(description="All the help.")
+    @dataclass
+    class Command:
+        pass
+
+    with pytest.raises(ValueError):
+        parse(Command, "--help")
+
+    stdout = capsys.readouterr().out
+    assert "All the help.\n" in stdout
