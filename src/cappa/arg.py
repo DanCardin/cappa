@@ -30,12 +30,15 @@ class Arg(Generic[T]):
     """Describe a CLI argument.
 
     Arguments:
+        name: The name of the argument. Defaults to the name of the corresponding class field.
         short: If `True`, uses first letter of the name to infer a (ex. `-s`) short
             flag. If a string is supplied, that will be used instead.
         long: If `True`, uses first letter of the name to infer a (ex. `--long`) long
             flag. If a string is supplied, that will be used instead.
         count: If `True` the resultant argmuent will count instances and accept zero
             arguments.
+        default: An explicit default CLI value. When left unspecified, the default is
+            inferred from the class' default or the adapter default/default_factory.
         help: By default, the help text will be inferred from the containing class'
             arguments' section, if it exists. Alternatively, you can directly supply
             the help text here.
@@ -43,7 +46,12 @@ class Arg(Generic[T]):
             returns a parsed value type's instance. This should only be required for
             complex types that the type system's built-in parsing cannot handle.
 
-        name: The name of the argument. Defaults to the name of the corresponding class field.
+        action: Generally automatically inferred from the data type. This allows to
+            override the default.
+        num_args: Generally automatically inferred from the data type. This allows to
+            override the default.
+        choices: Generally automatically inferred from the data type. This allows to
+            override the default.
 
         required: Defaults to automatically inferring requiredness, based on whether the
             class's value has a default. By setting this, you can force a particular value.
@@ -59,7 +67,6 @@ class Arg(Generic[T]):
 
     action: ArgAction = ArgAction.set
     num_args: int | None = None
-    map_result: Callable | None = None
     choices: list[str] | None = None
 
     required: bool | None = None

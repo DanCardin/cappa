@@ -42,6 +42,6 @@ can be used and are interpreted to handle different kinds of CLI input.
 
 ```{eval-rst}
 .. autoapimodule:: cappa
-   :members: command
+   :members: Arg
    :noindex:
 ```

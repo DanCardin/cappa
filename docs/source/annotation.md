@@ -8,7 +8,15 @@ does not produce the obvious result, feel free to submit a bug report. The
 intent is that it should feel natural for all supportable cases. For any cases
 where it does not make sense to build in specific behavior for a type (for
 example, third-party library types), you can instead use the correct annotation
-while providing the `parse` [Argument](./arguments.md) argument.
+while providing the `parse` [Argument](./arg.md) argument.
+
+```{note}
+Use of `Annotated` throughout the examples and docs is fairly pervasive. When using
+versions of python below 3.9, `Annotated` is not included in the `typing` module.
+
+Instead, you can install [typing_extensions](https://pypi.org/project/typing_extensions/),
+which backports typing objects to earlier versions of python.
+```
 
 ## Basic Data Types
 

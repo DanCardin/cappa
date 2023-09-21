@@ -16,8 +16,18 @@ API <api>
 Commands <command>
 Args <arg>
 Subcommands <subcommand>
+Invoke <invoke>
 Annotations <annotation>
+```
+
+```{toctree}
+:caption: Details
+:hidden:
+
+Parse Vs Invoke <parse_vs_invoke>
+Dataclasses/Pydantic/Attrs <class_compatibility>
 Rich Integration <rich>
+Manual Construction <manual_construction>
 ```
 
 ```{toctree}
