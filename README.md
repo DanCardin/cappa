@@ -1,6 +1,6 @@
 # Cappa
 
-[![Actions Status](https://github.com/dancardin/cappa/workflows/test/badge.svg)](https://github.com/dancardin/cappa/actions)
+[![Actions Status](https://github.com/DanCardin/cappa/actions/workflows/test.yml/badge.svg)](https://github.com/dancardin/cappa/actions)
 [![Coverage Status](https://coveralls.io/repos/github/DanCardin/cappa/badge.svg?branch=main)](https://coveralls.io/github/DanCardin/cappa?branch=main)
 [![Documentation Status](https://readthedocs.org/projects/cappa/badge/?version=latest)](https://cappa.readthedocs.io/en/latest/?badge=latest)
 
