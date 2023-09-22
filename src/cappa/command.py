@@ -200,6 +200,7 @@ class Command(typing.Generic[T]):
                 continue
 
             value = parsed_args[arg.name]
+
             if isinstance(arg, Subcommands):
                 value = arg.map_result(value)
             else:

@@ -10,7 +10,7 @@ from typing import Generic
 from typing_extensions import Self
 from typing_inspect import is_optional_type, is_union_type
 
-from cappa.annotation import detect_choices, generate_map_result
+from cappa.annotation import detect_choices, parse_value
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.subcommand import Subcommand
 from cappa.typing import MISSING, T, find_type_annotation, is_subclass, missing
@@ -63,7 +63,7 @@ class Arg(Generic[T]):
     count: bool = False
     default: T | None | MISSING = ...
     help: str | None = None
-    parse: Callable[[str], T] | None = None
+    parse: Callable[[typing.Any], T] | None = None
 
     action: ArgAction = ArgAction.set
     num_args: int | None = None
@@ -124,7 +124,7 @@ class Arg(Generic[T]):
         is_positional = not arg.short and not long
 
         if arg.parse is None and not is_union_type(origin):
-            if is_subclass(origin, list):
+            if is_subclass(origin, (list, set)):
                 if is_positional and arg.num_args is None:
                     kwargs["num_args"] = -1
                 else:
@@ -147,7 +147,7 @@ class Arg(Generic[T]):
             kwargs["long"] = coerce_long_name(arg, name)
 
         if arg.parse is None:
-            kwargs["parse"] = generate_map_result(origin, type_args)
+            kwargs["parse"] = parse_value(annotation)
 
         if arg.help is None:
             kwargs["help"] = fallback_help

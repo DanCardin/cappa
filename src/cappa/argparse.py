@@ -8,7 +8,7 @@ from typing_extensions import assert_never
 
 from cappa.arg import Arg, ArgAction
 from cappa.command import Command, Subcommands
-from cappa.typing import assert_not_missing, assert_type
+from cappa.typing import assert_not_missing, assert_type, missing
 
 try:
     from rich import print
@@ -213,8 +213,11 @@ def add_argument(
     if not is_positional and arg.required:
         kwargs["required"] = arg.required
 
-    if arg.default is not ...:
-        kwargs["default"] = arg.default
+    if arg.default is not missing:
+        if arg.action is arg.action.append:
+            kwargs["default"] = list(arg.default)  # type: ignore
+        else:
+            kwargs["default"] = arg.default
 
     if (
         isinstance(arg.action, ArgAction)
