@@ -119,7 +119,11 @@ class Arg(Generic[T]):
                 if not long:
                     long = True
 
-                kwargs["action"] = ArgAction.store_true
+                kwargs["action"] = (
+                    ArgAction.store_false
+                    if default is not missing and bool(default)
+                    else ArgAction.store_true
+                )
 
         is_positional = not arg.short and not long
 
@@ -140,6 +144,7 @@ class Arg(Generic[T]):
                     kwargs["num_args"] = len(type_args)
 
         choices = arg.choices or detect_choices(origin, type_args)
+
         if choices:
             kwargs["choices"] = choices
 
