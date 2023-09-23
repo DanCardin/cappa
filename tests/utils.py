@@ -6,5 +6,5 @@ def parse(cls, *args):
     return cappa.parse(cls, argv=["test.py", *args], exit_with=value_error)
 
 
-def invoke(cls, *args):
-    return cappa.invoke(cls, argv=["test.py", *args], exit_with=value_error)
+def invoke(cls, *args, **kwargs):
+    return cappa.invoke(cls, argv=["test.py", *args], exit_with=value_error, **kwargs)

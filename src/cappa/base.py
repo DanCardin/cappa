@@ -44,7 +44,7 @@ def parse(
         argv = sys.argv
 
     command = Command.get(obj)
-    _, instance = Command.parse_command(
+    _, _, instance = Command.parse_command(
         command,
         argv=argv,
         render=render,
@@ -59,6 +59,7 @@ def parse(
 def invoke(
     obj: type,
     *,
+    deps: typing.Sequence[typing.Callable] | None = None,
     argv: list[str] | None = None,
     render: typing.Callable | None = None,
     exit_with=None,
@@ -73,6 +74,8 @@ def invoke(
 
     Arguments:
         obj: A class which can represent a CLI command chain.
+        deps: Optional extra depdnencies to load ahead of invoke processing. These
+            deps are evaulated in order and unconditionally.
         argv: Defaults to the process argv. This command is generally only
             necessary when testing.
         render: A function used to perform the underlying parsing and return a raw
@@ -91,7 +94,7 @@ def invoke(
 
     command: Command = Command.get(obj)
 
-    parsed_command, instance = Command.parse_command(
+    command, parsed_command, instance = Command.parse_command(
         command,
         argv=argv,
         render=render,
@@ -101,4 +104,9 @@ def invoke(
         help=help,
     )
 
-    return invoke_callable(parsed_command, instance)
+    try:
+        return invoke_callable(command, parsed_command, instance, deps=deps)
+    except (AttributeError, ValueError, NameError, RuntimeError) as e:
+        raise RuntimeError(
+            f"Failed to invoke {parsed_command.cmd_cls} due to resolution failure."
+        ) from e

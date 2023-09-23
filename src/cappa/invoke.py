@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing_extensions import get_type_hints
 
 from cappa.command import Command, HasCommand
+from cappa.subcommand import Subcommands
 from cappa.typing import find_type_annotation
 
 T = typing.TypeVar("T", bound=HasCommand)
@@ -18,12 +19,23 @@ T = typing.TypeVar("T", bound=HasCommand)
 class Dep(typing.Generic[T]):
     """Describes the callable required to fullfill a given dependency."""
 
-    callable: Callable[..., T]
+    callable: Callable
 
 
-def invoke_callable(command: Command[T], instance: T):
-    fn: Callable = resolve_invoke_handler(command)
-    implicit_deps = resolve_implicit_deps(instance)
+def invoke_callable(
+    command: Command,
+    parsed_command: Command[T],
+    instance: T,
+    deps: typing.Sequence[Callable] | None = None,
+):
+    fn: Callable = resolve_invoke_handler(parsed_command)
+    implicit_deps = resolve_implicit_deps(command, instance)
+
+    if deps:
+        for raw_dep in deps:
+            dep: Dep = Dep(raw_dep)
+            implicit_deps[dep] = fullfill_deps(raw_dep, implicit_deps)
+
     return fullfill_deps(fn, implicit_deps)
 
 
@@ -44,11 +56,14 @@ def resolve_invoke_handler(command: Command) -> Callable:
             )
 
         # Let this bubble upwards if the modules doesn't exist.
-        module = importlib.import_module(module_name)
+        try:
+            module = importlib.import_module(module_name)
+        except ModuleNotFoundError as e:
+            raise ValueError(f"No module '{e.name}' when attempting to load '{fn}'.")
 
         if not hasattr(module, fn_name):
             raise AttributeError(
-                f"Module {module} does not have a function `{fn_name}`"
+                f"Module {module} does not have a function `{fn_name}`."
             )
 
         fn = getattr(module, fn_name)
@@ -59,16 +74,26 @@ def resolve_invoke_handler(command: Command) -> Callable:
     return fn
 
 
-def resolve_implicit_deps(
-    instance: HasCommand,
-) -> dict[typing.Type[HasCommand], HasCommand]:
+def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
     deps = {instance.__class__: instance}
-    for attr in instance.__dict__.values():
-        if hasattr(attr, "__cappa__"):
-            cls = attr.__class__
-            deps[cls] = attr
 
-            deps.update(resolve_implicit_deps(attr))
+    for arg in command.arguments:
+        if not isinstance(arg, Subcommands):
+            # Args do not produce dependencies themselves.
+            continue
+
+        option_instance = getattr(instance, arg.name)
+        if option_instance is None:
+            # None is a valid subcommand instance value, but it wont exist as a dependency
+            # where an actual command has been selected.
+            continue
+
+        # This **should** always end up producing a value (type). In order to have produced
+        # a subcommand instance value of a given type, it would need to exist in the options.
+        option = next(  # pragma: no branch
+            o for o in arg.options.values() if isinstance(option_instance, o.cmd_cls)
+        )
+        deps.update(resolve_implicit_deps(option, option_instance))
 
     return deps
 
@@ -77,7 +102,12 @@ def fullfill_deps(fn: Callable, fullfilled_deps: dict) -> typing.Any:
     result = {}
 
     signature = inspect.signature(fn)
-    annotations = get_type_hints(fn, include_extras=True)
+    try:
+        annotations = get_type_hints(fn, include_extras=True)
+    except NameError as e:  # pragma: no cover
+        raise NameError(
+            f"Could not collect resolve reference to {e.name} for Dep({fn.__name__})"
+        )
 
     for name, param in signature.parameters.items():
         annotation = annotations.get(name)
@@ -94,7 +124,7 @@ def fullfill_deps(fn: Callable, fullfilled_deps: dict) -> typing.Any:
                 if param.default is param.empty:
                     annotation_name = annotation.__name__ if annotation else "<empty>"
                     raise RuntimeError(
-                        f"`{name}: {annotation_name}` is not a valid dependency."
+                        f"`{name}: {annotation_name}` is not a valid dependency for Dep({fn.__name__})."
                     )
 
                 # if there's a default, we can just skip it and let the default fullfill the value.

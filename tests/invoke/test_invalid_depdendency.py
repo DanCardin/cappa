@@ -17,8 +17,13 @@ def test_invalid_dependency():
     class Command:
         ...
 
-    with pytest.raises(RuntimeError, match=r"`levels: int` is not a valid dependency"):
+    with pytest.raises(RuntimeError) as e:
         invoke(Command)
+
+    exc = e.value
+    cause = exc.__cause__
+    assert "due to resolution failure" in str(exc)
+    assert "`levels: int` is not a valid dependency for Dep(command)." == str(cause)
 
 
 def test_unannotated_argument():
@@ -30,7 +35,10 @@ def test_unannotated_argument():
     class Command:
         ...
 
-    with pytest.raises(
-        RuntimeError, match=r"`levels: <empty>` is not a valid dependency"
-    ):
+    with pytest.raises(RuntimeError) as e:
         invoke(Command)
+
+    exc = e.value
+    cause = exc.__cause__
+    assert "due to resolution failure" in str(exc)
+    assert "`levels: <empty>` is not a valid dependency for Dep(command)." == str(cause)

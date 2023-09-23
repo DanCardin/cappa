@@ -174,7 +174,7 @@ class Command(typing.Generic[T]):
         color: bool = True,
         version: str | Arg | None = None,
         help: bool | Arg = True,
-    ) -> tuple[Command[T], T]:
+    ) -> tuple[Command, Command[T], T]:
         command = cls.collect(command)
 
         if render is None:  # pragma: no cover
@@ -191,7 +191,7 @@ class Command(typing.Generic[T]):
             help=help,
         )
         result = command.map_result(command, parsed_args)
-        return parsed_command, result
+        return command, parsed_command, result
 
     def map_result(self, command: Command[T], parsed_args) -> T:
         kwargs = {}

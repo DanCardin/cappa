@@ -193,6 +193,34 @@ def invoke(
   will not be evaluated if the specifically invoked function doesn't reference
   it.
 
+### Global Dependencies
+
+The top-level [cappa.invoke](cappa.invoke) command accepts a `deps` argument
+which denotes dependency functions which are called unconditionally.
+
+These functions will be invoked before any explicit deps have been evaluated.
+And given that they're executed unconditionally, it's impractical to define one
+which depends on conditional dependencies like subcommands.
+
+Thus it's generally only practical to use this to execute code which depends on
+the top-level command's implicit dependency. Although it can certainly have
+**no** dependencies, you could also just call that function before calling
+`invoke` in the first place.
+
+```python
+@dataclass
+class Command:
+    a: int
+
+
+def dep(command: Command):
+    ...
+
+
+def main():
+    cappa.invoke(Command, deps=[dep])
+```
+
 ### Unfulfilled Dependencies
 
 Should an argument be neither an explicitly annotated `Dep`, nor typed as one of
