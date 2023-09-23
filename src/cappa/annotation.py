@@ -163,6 +163,10 @@ def detect_choices(origin: type, type_args: tuple[type, ...]) -> list[str] | Non
         assert issubclass(origin, enum.Enum)
         return [v.value for v in origin]
 
+    if is_subclass(origin, (tuple, list, set)):
+        origin = typing.cast(type, type_args[0])
+        type_args = typing.get_args(type_args[0])
+
     if is_union_type(origin):
         if all(is_literal_type(t) for t in type_args):
             return [str(typing.get_args(t)[0]) for t in type_args]
