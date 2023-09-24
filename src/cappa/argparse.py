@@ -6,7 +6,7 @@ import typing
 
 from typing_extensions import assert_never
 
-from cappa.arg import Arg, ArgAction
+from cappa.arg import Arg
 from cappa.command import Command, Subcommands
 from cappa.typing import assert_not_missing, assert_type, missing
 
@@ -44,10 +44,46 @@ def value_error(_, message):
     raise ValueError(message)
 
 
+class _HelpAction(argparse._HelpAction):
+    def __init__(self, metavar=None, **kwargs):
+        self.metavar = metavar
+        super().__init__(**kwargs)
+
+
+class _VersionAction(argparse._VersionAction):
+    def __init__(self, metavar=None, **kwargs):
+        self.metavar = metavar
+        super().__init__(**kwargs)
+
+
+class _StoreTrueAction(argparse._StoreTrueAction):
+    def __init__(self, metavar=None, **kwargs):
+        self.metavar = metavar
+        super().__init__(**kwargs)
+
+
+class _StoreFalseAction(argparse._StoreFalseAction):
+    def __init__(self, metavar=None, **kwargs):
+        self.metavar = metavar
+        super().__init__(**kwargs)
+
+
+class _CountAction(argparse._CountAction):
+    def __init__(self, metavar=None, **kwargs):
+        self.metavar = metavar
+        super().__init__(**kwargs)
+
+
 class ArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, exit_with=sys_exit, **kwargs):
         self.exit_with = exit_with
         super().__init__(*args, **kwargs)
+
+        self.register("action", "store_true", _StoreTrueAction)
+        self.register("action", "store_false", _StoreFalseAction)
+        self.register("action", "help", _HelpAction)
+        self.register("action", "version", _VersionAction)
+        self.register("action", "count", _CountAction)
 
     def exit(self, status=0, message=None):
         if message:
@@ -137,7 +173,7 @@ def add_help_group(
         else:
             arg = version
 
-        add_argument(help_group, arg, version=arg.name, action=argparse._VersionAction)
+        add_argument(help_group, arg, version=arg.name, action=_VersionAction)
 
     if help:
         if isinstance(help, bool):
@@ -151,7 +187,7 @@ def add_help_group(
             arg = help
             arg.name = "help"
 
-        add_argument(help_group, arg, action=argparse._HelpAction)
+        add_argument(help_group, arg, action=_HelpAction)
 
 
 def choose_help_formatter(color: bool = True):
@@ -202,27 +238,25 @@ def add_argument(
     num_args = render_num_args(arg.num_args)
 
     kwargs: dict[str, typing.Any] = {
-        "action": arg.action.value,
         "dest": dest_prefix + name,
         "help": arg.help,
+        "metavar": name,
     }
 
-    if is_positional:
-        kwargs["metavar"] = name
+    if arg.action:
+        kwargs["action"] = arg.action.value
 
     if not is_positional and arg.required:
         kwargs["required"] = arg.required
 
     if arg.default is not missing:
-        if arg.action is arg.action.append:
+        if arg.action and arg.action is arg.action.append:
             kwargs["default"] = list(arg.default)  # type: ignore
         else:
             kwargs["default"] = arg.default
 
-    if (
-        isinstance(arg.action, ArgAction)
-        and arg.action is not arg.action.store_true
-        and num_args is not None
+    if num_args is not None and (
+        arg.action is None or arg.action is not arg.action.store_true
     ):
         kwargs["nargs"] = num_args
 

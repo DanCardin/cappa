@@ -59,7 +59,8 @@ def resolve_invoke_handler(command: Command) -> Callable:
         try:
             module = importlib.import_module(module_name)
         except ModuleNotFoundError as e:
-            raise ValueError(f"No module '{e.name}' when attempting to load '{fn}'.")
+            name = getattr(e, "name") or str(e)
+            raise ValueError(f"No module '{name}' when attempting to load '{fn}'.")
 
         if not hasattr(module, fn_name):
             raise AttributeError(
@@ -105,8 +106,9 @@ def fullfill_deps(fn: Callable, fullfilled_deps: dict) -> typing.Any:
     try:
         annotations = get_type_hints(fn, include_extras=True)
     except NameError as e:  # pragma: no cover
+        name = getattr(e, "name") or str(e)
         raise NameError(
-            f"Could not collect resolve reference to {e.name} for Dep({fn.__name__})"
+            f"Could not collect resolve reference to {name} for Dep({fn.__name__})"
         )
 
     for name, param in signature.parameters.items():
