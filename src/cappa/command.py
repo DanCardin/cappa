@@ -123,12 +123,16 @@ class Command(typing.Generic[T]):
             if not command.description:
                 kwargs["description"] = parsed_help.long_description
 
-        if not command.arguments:
+        if command.arguments:
+            arguments: list[Arg | Subcommands] = [
+                a.normalize() for a in command.arguments
+            ]
+        else:
             command_cls = type(command)
             fields = class_inspect.fields(command.cmd_cls)
             type_hints = get_type_hints(command.cmd_cls, include_extras=True)
 
-            arguments: list[Arg | Subcommands] = []
+            arguments = []
 
             for field in fields:
                 type_hint = type_hints[field.name]
@@ -137,7 +141,6 @@ class Command(typing.Generic[T]):
                 if maybe_subcommand:
                     subcommand = maybe_subcommand
 
-                    name: str = assert_not_missing(subcommand.name)
                     types: typing.Iterable[type] = assert_not_missing(subcommand.types)
 
                     options = {}
@@ -147,7 +150,7 @@ class Command(typing.Generic[T]):
                         options[type_name] = cls.collect(type_command)
 
                     subcommands: Subcommands = Subcommands(
-                        name=name,
+                        name=assert_not_missing(subcommand.name),
                         required=subcommand.required or False,
                         help=subcommand.help,
                         options=options,
@@ -159,7 +162,7 @@ class Command(typing.Generic[T]):
                     arg_def: Arg = Arg.collect(field, type_hint, fallback_help=arg_help)
                     arguments.append(arg_def)
 
-            kwargs["arguments"] = arguments
+        kwargs["arguments"] = arguments
 
         return dataclasses.replace(command, **kwargs)
 

@@ -6,7 +6,7 @@ import typing
 
 from typing_extensions import assert_never
 
-from cappa.arg import Arg
+from cappa.arg import Arg, ArgAction
 from cappa.command import Command, Subcommands
 from cappa.typing import assert_not_missing, assert_type, missing
 
@@ -44,6 +44,7 @@ def value_error(_, message):
     raise ValueError(message)
 
 
+# Work around argparse's lack of `metavar` support on various built-in actions.
 class _HelpAction(argparse._HelpAction):
     def __init__(self, metavar=None, **kwargs):
         self.metavar = metavar
@@ -91,7 +92,33 @@ class ArgumentParser(argparse.ArgumentParser):
         self.exit_with(status, message)
 
 
+class BooleanOptionalAction(argparse.Action):
+    """Simplified backport of same-named class from 3.9 onward.
+
+    We know more about the called context here, and thus need much less of the
+    logic. Also, we support 3.8, which does not have the original class, so we
+    couldn't use it anyway.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(nargs=0, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        assert isinstance(option_string, str)
+        setattr(namespace, self.dest, not option_string.startswith("--no-"))
+
+    def format_usage(self):
+        return " | ".join(self.option_strings)
+
+
 class Nestedspace(argparse.Namespace):
+    """Write each . separated section as a nested `Nestedspace` instance.
+
+    By default, argparse write everything to a flat namespace so there's no
+    obvious way to distinguish between mulitple unrelated subcommands once
+    once has been chosen.
+    """
+
     def __setattr__(self, name, value):
         if "." in name:
             group, name = name.split(".", 1)
@@ -168,10 +195,13 @@ def add_help_group(
     if version:
         if isinstance(version, str):
             arg: Arg = Arg(
-                version, short="-v", long="--version", help="Show the version and exit."
+                version,
+                short=["-v"],
+                long=["--version"],
+                help="Show the version and exit.",
             )
         else:
-            arg = version
+            arg = version.normalize()
 
         add_argument(help_group, arg, version=arg.name, action=_VersionAction)
 
@@ -179,12 +209,12 @@ def add_help_group(
         if isinstance(help, bool):
             arg = Arg(
                 name="help",
-                short="-h",
-                long="--help",
+                short=["-h"],
+                long=["--help"],
                 help="Show this message and exit.",
             )
         else:
-            arg = help
+            arg = help.normalize()
             arg.name = "help"
 
         add_argument(help_group, arg, action=_HelpAction)
@@ -226,12 +256,12 @@ def add_argument(
 
     names: list[str] = []
     if arg.short:
-        short = assert_type(arg.short, str)
-        names.append(short)
+        short = assert_type(arg.short, list)
+        names.extend(short)
 
     if arg.long:
-        long = assert_type(arg.long, str)
-        names.append(long)
+        long = assert_type(arg.long, list)
+        names.extend(long)
 
     is_positional = not names
 
@@ -243,8 +273,9 @@ def add_argument(
         "metavar": name,
     }
 
-    if arg.action:
-        kwargs["action"] = arg.action.value
+    action = get_action(arg)
+    if action:
+        kwargs["action"] = action
 
     if not is_positional and arg.required:
         kwargs["required"] = arg.required
@@ -321,3 +352,16 @@ def to_dict(value: argparse.Namespace):
 
 def join_help(*segments):
     return " ".join([s for s in segments if s])
+
+
+def get_action(arg: Arg) -> type[argparse.Action] | str | None:
+    if not arg.action:
+        return None
+
+    if arg.action in {ArgAction.store_true, ArgAction.store_false}:
+        long = assert_type(arg.long, list)
+        has_no_option = any("--no-" in i for i in long)
+        if has_no_option:
+            return BooleanOptionalAction
+
+    return arg.action.value

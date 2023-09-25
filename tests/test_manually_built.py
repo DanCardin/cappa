@@ -3,7 +3,7 @@ from typing import List
 
 import cappa
 import pytest
-from cappa.annotation import parse_list
+from cappa.annotation import parse_list, parse_value
 
 from tests.utils import parse
 
@@ -37,3 +37,35 @@ def test_help(capsys):
     out = capsys.readouterr().out
     assert "Short help." in out
     assert "Long description." in out
+
+
+def test_subcommand():
+    @dataclass
+    class Bar:
+        bar: str
+
+    @dataclass
+    class Foo:
+        sub: Bar
+
+    command = cappa.Command(
+        Foo,
+        arguments=[
+            cappa.Subcommands(
+                name="sub",
+                options={
+                    "bar": cappa.Command(
+                        Bar,
+                        arguments=[
+                            cappa.Arg(name="bar", parse=parse_value),
+                        ],
+                    )
+                },
+            ),
+        ],
+        help="Short help.",
+        description="Long description.",
+    )
+
+    result = parse(command, "bar", "one")
+    assert result == Foo(sub=Bar("one"))

@@ -2,7 +2,7 @@ from cappa.arg import Arg, ArgAction
 from cappa.base import invoke, parse
 from cappa.command import Command
 from cappa.invoke import Dep
-from cappa.subcommand import Subcommand
+from cappa.subcommand import Subcommand, Subcommands
 
 command = Command.wrap
 
@@ -12,6 +12,7 @@ __all__ = [
     "Command",
     "Dep",
     "Subcommand",
+    "Subcommands",
     "command",
     "invoke",
     "parse",

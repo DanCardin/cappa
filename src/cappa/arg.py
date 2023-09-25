@@ -11,7 +11,14 @@ from typing_inspect import is_optional_type
 from cappa.annotation import detect_choices, parse_value
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.subcommand import Subcommand
-from cappa.typing import MISSING, T, find_type_annotation, is_subclass, missing
+from cappa.typing import (
+    MISSING,
+    NoneType,
+    T,
+    find_type_annotation,
+    is_subclass,
+    missing,
+)
 
 
 @enum.unique
@@ -30,9 +37,13 @@ class Arg(typing.Generic[T]):
     Arguments:
         name: The name of the argument. Defaults to the name of the corresponding class field.
         short: If `True`, uses first letter of the name to infer a (ex. `-s`) short
-            flag. If a string is supplied, that will be used instead.
+            flag. If a string is supplied, that will be used instead. If a string is supplied,
+            it is split on '/' (forward slash), to support multiple options. Additionally
+            accepts a list of strings.
         long: If `True`, uses first letter of the name to infer a (ex. `--long`) long
-            flag. If a string is supplied, that will be used instead.
+            flag. If a string is supplied, that will be used instead. If a string is supplied,
+            it is split on '/' (forward slash), to support multiple options. Additionally
+            accepts a list of strings.
         count: If `True` the resultant argmuent will count instances and accept zero
             arguments.
         default: An explicit default CLI value. When left unspecified, the default is
@@ -43,7 +54,6 @@ class Arg(typing.Generic[T]):
         parse: An optional function which accepts the raw string argument as input and
             returns a parsed value type's instance. This should only be required for
             complex types that the type system's built-in parsing cannot handle.
-
         action: Generally automatically inferred from the data type. This allows to
             override the default.
         num_args: Generally automatically inferred from the data type. This allows to
@@ -56,8 +66,8 @@ class Arg(typing.Generic[T]):
     """
 
     name: str | MISSING = missing
-    short: bool | str = False
-    long: bool | str = False
+    short: bool | str | list[str] = False
+    long: bool | str | list[str] = False
     count: bool = False
     default: T | None | MISSING = missing
     help: str | None = None
@@ -75,9 +85,6 @@ class Arg(typing.Generic[T]):
     ) -> Arg:
         maybe_arg, annotation = find_type_annotation(type_hint, cls)
 
-        origin = typing.get_origin(annotation) or annotation
-        type_args = typing.get_args(annotation)
-
         if maybe_arg is None:
             maybe_arg = cls()
 
@@ -92,21 +99,31 @@ class Arg(typing.Generic[T]):
 
         name = infer_name(arg, field)
         default = infer_default(arg, field)
-        required = infer_required(arg, annotation, default)
 
-        short = infer_short(arg, name)
-        long = infer_long(arg, origin, name)
-        choices = infer_choices(arg, origin, type_args)
-        action = infer_action(arg, origin, type_args, long, default)
-        num_args = infer_num_args(arg, origin, type_args, long)
+        arg = dataclasses.replace(arg, name=name, default=default)
+        return arg.normalize(annotation, fallback_help)
 
-        parse = infer_parse(arg, annotation)
-        help = infer_help(arg, choices, fallback_help)
+    def normalize(
+        self,
+        annotation=NoneType,
+        fallback_help: str | None = None,
+    ) -> Arg:
+        origin = typing.get_origin(annotation) or annotation
+        type_args = typing.get_args(annotation)
+        required = infer_required(self, annotation, self.default)
+
+        name = typing.cast(str, self.name)
+        short = infer_short(self, name)
+        long = infer_long(self, origin, name)
+        choices = infer_choices(self, origin, type_args)
+        action = infer_action(self, origin, type_args, long, self.default)
+        num_args = infer_num_args(self, origin, type_args, long)
+
+        parse = infer_parse(self, annotation)
+        help = infer_help(self, choices, fallback_help)
 
         return dataclasses.replace(
-            arg,
-            name=name,
-            default=default,
+            self,
             required=required,
             short=short,
             long=long,
@@ -148,21 +165,23 @@ def infer_required(arg: Arg, annotation: type, default: typing.Any | MISSING):
     return False
 
 
-def infer_short(arg: Arg, name: str) -> str | bool:
+def infer_short(arg: Arg, name: str) -> list[str] | typing.Literal[False]:
     if not arg.short:
         return False
 
     if isinstance(arg.short, bool):
         short_name = name[0]
-        return f"-{short_name}"
+        return [f"-{short_name}"]
 
-    if arg.short.startswith("-"):
-        return arg.short
+    if isinstance(arg.short, str):
+        short = arg.short.split("/")
+    else:
+        short = arg.short
 
-    return f"-{arg.short}"
+    return [item if item.startswith("-") else f"-{item}" for item in short]
 
 
-def infer_long(arg: Arg, origin: type, name: str) -> str | bool:
+def infer_long(arg: Arg, origin: type, name: str) -> list[str] | typing.Literal[False]:
     long = arg.long
 
     if not long:
@@ -174,12 +193,12 @@ def infer_long(arg: Arg, origin: type, name: str) -> str | bool:
 
     if isinstance(long, bool):
         long = name.replace("_", "-")
-        return f"--{long}"
+        return [f"--{long}"]
 
-    if long.startswith("--"):
-        return long
+    if isinstance(long, str):
+        long = long.split("/")
 
-    return f"--{long}"
+    return [item if item.startswith("--") else f"--{item}" for item in long]
 
 
 def infer_choices(
@@ -204,11 +223,10 @@ def infer_action(
 
     # Coerce raw `bool` into flags by default
     if is_subclass(origin, bool):
-        return (
-            ArgAction.store_false
-            if default is not missing and bool(default)
-            else ArgAction.store_true
-        )
+        if default is not missing and bool(default):
+            return ArgAction.store_false
+
+        return ArgAction.store_true
 
     is_positional = not arg.short and not long
     has_specific_num_args = arg.num_args is not None

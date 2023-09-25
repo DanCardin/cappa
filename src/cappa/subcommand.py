@@ -71,8 +71,11 @@ class Subcommand:
 class Subcommands(typing.Generic[T]):
     name: str
     options: dict[str, Command]
-    required: bool
-    help: str
+    required: bool = False
+    help: str | None = None
+
+    def normalize(self):
+        return self
 
     def map_result(self, parsed_args):
         option_name = parsed_args.pop("__name__")

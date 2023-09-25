@@ -92,8 +92,17 @@ can be explicitly set, if you dont want the default name.
 - `bool` changes the "action" to "store_true", which results in the argument
   accepting no additional "value" field.
 
-- If the default value for the field is `True`, then the arg will be inferred as
-  `store_false`. Otherwise there would be no way for the value to become false.
+- If the `long` options for the flag include a `--no-*` version (such as
+  `Arg(long="--foo/--no-foo")`, i.e. `Arg(long=["--foo", "--no-foo"])`), then
+  the "no" variant will invert the given "action" for that variant of the flag.
+
+  By default that translates to the obvious behavior of `--foo` storing `True`,
+  and `--no-foo` storing `False`.
+
+- If the flag does not have an inverted variant like above, and the default
+  value for the field is `True`, then the arg will be inferred as `store_false`.
+
+  Without this behavior, the flag would have no way to store anything but `True`
 
 ## Literal
 
