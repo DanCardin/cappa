@@ -218,6 +218,9 @@ def infer_choices(
 def infer_action(
     arg: Arg, origin: type, type_args: tuple[type, ...], long, default: typing.Any
 ) -> ArgAction:
+    if arg.count:
+        return ArgAction.count
+
     if arg.action is not None:
         return arg.action
 

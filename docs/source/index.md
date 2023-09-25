@@ -27,6 +27,7 @@ Annotations <annotation>
 Parse Vs Invoke <parse_vs_invoke>
 Dataclasses/Pydantic/Attrs <class_compatibility>
 Rich Integration <rich>
+Testing <testing>
 Manual Construction <manual_construction>
 ```
 

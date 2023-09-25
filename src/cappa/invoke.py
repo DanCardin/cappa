@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 import inspect
 import typing
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 from typing_extensions import get_type_hints
@@ -26,17 +26,42 @@ def invoke_callable(
     command: Command,
     parsed_command: Command[T],
     instance: T,
-    deps: typing.Sequence[Callable] | None = None,
+    deps: typing.Sequence[Callable]
+    | typing.Mapping[Callable, Dep | typing.Any]
+    | None = None,
 ):
     fn: Callable = resolve_invoke_handler(parsed_command)
     implicit_deps = resolve_implicit_deps(command, instance)
+    fullfilled_deps = resolve_global_deps(deps, implicit_deps)
 
-    if deps:
-        for raw_dep in deps:
-            dep: Dep = Dep(raw_dep)
-            implicit_deps[dep] = fullfill_deps(raw_dep, implicit_deps)
+    return fullfill_deps(fn, fullfilled_deps)
 
-    return fullfill_deps(fn, implicit_deps)
+
+def resolve_global_deps(
+    deps: typing.Sequence[Callable] | typing.Mapping[Callable, Dep | typing.Any] | None,
+    implicit_deps: dict,
+) -> dict:
+    if not deps:
+        return implicit_deps
+
+    # Coerce the sequence variant of input into the mapping equivalent.
+    if isinstance(deps, Sequence):
+        deps = typing.cast(typing.Mapping, {d: Dep(d) for d in deps})
+
+    for source_function, dep in deps.items():
+        # Deps need to be fullfilled, whereas raw values are taken directly.
+        if isinstance(dep, Dep):
+            value = fullfill_deps(dep.callable, implicit_deps)
+        else:
+            value = dep
+
+        # We map back to the source dep, i.e. the key in the input mapping. This
+        # translates to the raw function in the sequence input, or the source
+        # dep being overridden in the dict input.
+        source_dep: Dep = Dep(source_function)
+        implicit_deps[source_dep] = value
+
+    return implicit_deps
 
 
 def resolve_invoke_handler(command: Command) -> Callable:

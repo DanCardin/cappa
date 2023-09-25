@@ -290,6 +290,8 @@ def add_argument(
         arg.action is None or arg.action is not arg.action.store_true
     ):
         kwargs["nargs"] = num_args
+    elif is_positional and not arg.required:
+        kwargs["nargs"] = "?"
 
     if arg.choices:
         kwargs["choices"] = arg.choices

@@ -221,6 +221,51 @@ def main():
     cappa.invoke(Command, deps=[dep])
 ```
 
+Note, given as a Sequence (i.e. list, tuple), you can just provide the source
+function which should act as a `Dep`, and it will be automatically coerced into
+a proper `Dep`.
+
+### Overriding Dependencies
+
+```{note}
+See [Testing](./testing.md) for additional details. This option is primarily
+motivated to aid stubbing dependencies for testing.
+```
+
+An alternative to the above sequence input for `deps`, you can instead supply a
+Mapping, where the key is the "source" dependency function (i.e. the function a
+dependent invoke function would reference) and the value is the actual
+dependency which should be used in its place.
+
+For example,
+
+```python
+# We've decided we want to override "foo"
+def foo():
+    ...
+
+# and here is a function which depends upon it.
+def invokable_function(foo: Annotated[int, Dep(foo)]):
+    ...
+```
+
+You can either override the dep with another, "stub" dep by explicitly wrapping
+the value with a `Dep`
+
+```python
+def stub_dep():
+    return 4
+
+cappa.invoke(Command, deps={foo: Dep(stub_dep)})
+```
+
+Or you can directly provide a literal stub value for the dep, by providing the
+value without a wrapping `Dep`.
+
+```python
+cappa.invoke(Command, deps={foo: 4})
+```
+
 ### Unfulfilled Dependencies
 
 Should an argument be neither an explicitly annotated `Dep`, nor typed as one of
