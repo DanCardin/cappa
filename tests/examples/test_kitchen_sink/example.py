@@ -8,7 +8,7 @@ import sqlite3
 from dataclasses import dataclass, field
 from typing import List, Literal, Union
 
-from cappa import Arg, Dep, Subcommand, command, invoke, parse
+import cappa
 from typing_extensions import Annotated
 
 log = logging.getLogger(__name__)
@@ -30,16 +30,16 @@ class Example:
     """
 
     name: str
-    value: Annotated[int, Arg(short="-V", long="--val", default=0)]
+    value: Annotated[int, cappa.Arg(short="-V", long="--val", default=0)]
 
     options: Annotated[
-        Union[Literal["one"], Literal["two"], Literal[3]], Arg(short=True)
+        Union[Literal["one"], Literal["two"], Literal[3]], cappa.Arg(short=True)
     ]
-    moptions: Annotated[OtherOptions, Arg(short=True)]
+    moptions: Annotated[OtherOptions, cappa.Arg(short=True)]
 
-    subcommand: Annotated[Union[MeowCommand, BarkCommand], Subcommand]
+    subcommand: Annotated[Union[MeowCommand, BarkCommand], cappa.Subcommand]
 
-    flags: Annotated[List[str], Arg(short=True, long=True)] = field(
+    flags: Annotated[List[str], cappa.Arg(short=True, long=True)] = field(
         default_factory=list
     )
     flag: bool = False  # --flag
@@ -52,13 +52,13 @@ def db() -> sqlite3.Connection:
 def meow(
     command: Example,
     meow: MeowCommand,
-    db: Annotated[sqlite3.Connection, Dep(db)],
+    db: Annotated[sqlite3.Connection, cappa.Dep(db)],
 ):
     result = db.execute(f"select '{command.name}', {meow.times} + 1").fetchone()
     log.info(result)
 
 
-@command(name="meow", invoke=meow)
+@cappa.command(name="meow", invoke=meow)
 @dataclass
 class MeowCommand:
     times: int
@@ -68,7 +68,7 @@ def bark(bark: BarkCommand):
     log.info(bark)
 
 
-@command(name="bark", invoke=bark)
+@cappa.command(name="bark", invoke=bark)
 @dataclass
 class BarkCommand:
     ...
@@ -78,10 +78,10 @@ class BarkCommand:
 def main(argv=None):
     logging.basicConfig()
 
-    args: Example = parse(Example, argv=argv, version="1.2.3")
+    args: Example = cappa.parse(Example, argv=argv, version="1.2.3")
     log.info(args)
 
-    invoke(Example, argv=argv, version="1.2.3")
+    cappa.invoke(Example, argv=argv, version="1.2.3")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,9 @@
-from cappa.argparse import value_error
 from cappa.testing import CommandRunner
+
+
+def value_error(message, code=127):
+    raise ValueError(message)
+
 
 runner = CommandRunner(base_args=["test.py"], exit_with=value_error)
 

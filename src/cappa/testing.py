@@ -43,7 +43,6 @@ class CommandRunner:
         >>> from dataclasses import dataclass
         >>>
         >>> import cappa
-        >>> from cappa.argparse import value_error
         >>>
         >>> @dataclass
         ... class Obj:
@@ -53,12 +52,12 @@ class CommandRunner:
         Create an instance with no arguments means there is no default state
 
         >>> runner = CommandRunner()
-        >>> runner.parse('one', obj=Obj, exit_with=value_error)
+        >>> runner.parse('one', obj=Obj)
         Obj(first='one', second='2')
 
         Or create a runner that always uses the same base CLI object, and default base command
 
-        >>> runner = CommandRunner(Obj, base_args=['command', 'first'], exit_with=value_error)
+        >>> runner = CommandRunner(Obj, base_args=['command', 'first'])
 
         Now each test, can customize the behavior to suit the test in question.
 

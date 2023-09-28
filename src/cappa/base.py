@@ -44,6 +44,7 @@ def parse(
         argv = sys.argv
 
     command = Command.get(obj)
+
     _, _, instance = Command.parse_command(
         command,
         argv=argv,
@@ -53,6 +54,7 @@ def parse(
         version=version,
         help=help,
     )
+
     return instance
 
 
@@ -104,9 +106,4 @@ def invoke(
         help=help,
     )
 
-    try:
-        return invoke_callable(command, parsed_command, instance, deps=deps)
-    except (AttributeError, ValueError, NameError, RuntimeError) as e:
-        raise RuntimeError(
-            f"Failed to invoke {parsed_command.cmd_cls} due to resolution failure."
-        ) from e
+    return invoke_callable(command, parsed_command, instance, deps=deps)

@@ -8,12 +8,8 @@ from typing_extensions import assert_never
 
 from cappa.arg import Arg, ArgAction
 from cappa.command import Command, Subcommands
+from cappa.output import Exit
 from cappa.typing import assert_not_missing, assert_type, missing
-
-try:
-    from rich import print
-except ImportError:  # pragma: no cover
-    pass
 
 if sys.version_info < (3, 9):  # pragma: no cover
     # Backport https://github.com/python/cpython/pull/3680
@@ -34,14 +30,6 @@ if sys.version_info < (3, 9):  # pragma: no cover
 
 
 T = typing.TypeVar("T")
-
-
-def sys_exit(status, _):
-    sys.exit(status)
-
-
-def value_error(_, message):
-    raise ValueError(message)
 
 
 # Work around argparse's lack of `metavar` support on various built-in actions.
@@ -76,7 +64,7 @@ class _CountAction(argparse._CountAction):
 
 
 class ArgumentParser(argparse.ArgumentParser):
-    def __init__(self, *args, exit_with=sys_exit, **kwargs):
+    def __init__(self, *args, exit_with, **kwargs):
         self.exit_with = exit_with
         super().__init__(*args, **kwargs)
 
@@ -87,9 +75,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.register("action", "count", _CountAction)
 
     def exit(self, status=0, message=None):
-        if message:
-            self._print_message(message, sys.stderr)
-        self.exit_with(status, message)
+        raise self.exit_with(message, code=status)
 
 
 class BooleanOptionalAction(argparse.Action):
@@ -138,7 +124,7 @@ def render(
     help: bool | Arg = True,
 ) -> tuple[Command[T], dict[str, typing.Any]]:
     if exit_with is None:
-        exit_with = sys_exit
+        exit_with = Exit
 
     parser = create_parser(command, exit_with, color=color)
     add_help_group(parser, version=version, help=help)
@@ -148,9 +134,9 @@ def render(
     try:
         result_namespace = parser.parse_args(argv[1:], ns)
     except argparse.ArgumentError as e:
-        message = str(e)
-        print(str(e))
-        raise exit_with(127, message)
+        raise exit_with(str(e), code=127)
+    except Exit as e:
+        raise exit_with(e.message, code=e.code)
 
     result = to_dict(result_namespace)
     command = result.pop("__command__")
@@ -236,12 +222,14 @@ def choose_help_formatter(color: bool = True):
     return help_formatter
 
 
-def add_arguments(parser: argparse.ArgumentParser, command: Command, dest_prefix=""):
+def add_arguments(
+    parser: argparse.ArgumentParser, command: Command, dest_prefix="", exit_with=Exit
+):
     for arg in command.arguments:
         if isinstance(arg, Arg):
             add_argument(parser, arg, dest_prefix=dest_prefix)
         elif isinstance(arg, Subcommands):
-            add_subcommands(parser, arg, dest_prefix=dest_prefix)
+            add_subcommands(parser, arg, dest_prefix=dest_prefix, exit_with=exit_with)
         else:
             assert_never(arg)
 
@@ -305,12 +293,14 @@ def add_subcommands(
     parser: argparse.ArgumentParser,
     subcommands: Subcommands,
     dest_prefix="",
+    exit_with=Exit,
 ):
     subcommand_dest = subcommands.name
     subparsers = parser.add_subparsers(
         title=subcommand_dest,
         required=subcommands.required,
         description=subcommands.help,
+        parser_class=ArgumentParser,
     )
 
     for name, subcommand in subcommands.options.items():
@@ -320,6 +310,7 @@ def add_subcommands(
             help=subcommand.help,
             description=subcommand.description,
             formatter_class=parser.formatter_class,
+            exit_with=exit_with,  # type: ignore
         )
         subparser.set_defaults(
             __command__=subcommand, **{nested_dest_prefix + "__name__": name}

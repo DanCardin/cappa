@@ -9,6 +9,7 @@ from typing_extensions import Self, get_type_hints
 
 from cappa import class_inspect
 from cappa.arg import Arg
+from cappa.output import Exit
 from cappa.subcommand import Subcommand, Subcommands
 from cappa.typing import assert_not_missing
 
@@ -185,14 +186,19 @@ class Command(typing.Generic[T]):
 
             render = argparse.render
 
-        parsed_command, parsed_args = render(
-            command,
-            argv,
-            exit_with=exit_with,
-            color=color,
-            version=version,
-            help=help,
-        )
+        try:
+            parsed_command, parsed_args = render(
+                command,
+                argv,
+                exit_with=exit_with,
+                color=color,
+                version=version,
+                help=help,
+            )
+        except Exit as e:
+            e.print()
+            raise
+
         result = command.map_result(command, parsed_args)
         return command, parsed_command, result
 

@@ -8,11 +8,16 @@ from dataclasses import dataclass
 
 from typing_extensions import get_type_hints
 
+from cappa import output
 from cappa.command import Command, HasCommand
 from cappa.subcommand import Subcommands
 from cappa.typing import find_type_annotation
 
 T = typing.TypeVar("T", bound=HasCommand)
+
+
+class InvokeResolutionError(RuntimeError):
+    """Raised for errors encountered during evaluation of invoke depdendencies."""
 
 
 @dataclass(frozen=True)
@@ -30,11 +35,22 @@ def invoke_callable(
     | typing.Mapping[Callable, Dep | typing.Any]
     | None = None,
 ):
-    fn: Callable = resolve_invoke_handler(parsed_command)
-    implicit_deps = resolve_implicit_deps(command, instance)
-    fullfilled_deps = resolve_global_deps(deps, implicit_deps)
+    try:
+        fn: Callable = resolve_invoke_handler(parsed_command)
+        implicit_deps = resolve_implicit_deps(command, instance)
+        fullfilled_deps = resolve_global_deps(deps, implicit_deps)
 
-    return fullfill_deps(fn, fullfilled_deps)
+        kwargs = fullfill_deps(fn, fullfilled_deps)
+    except InvokeResolutionError as e:
+        raise InvokeResolutionError(
+            f"Failed to invoke {parsed_command.cmd_cls} due to resolution failure."
+        ) from e
+
+    try:
+        return fn(**kwargs)
+    except output.Exit as e:
+        e.print()
+        raise e
 
 
 def resolve_global_deps(
@@ -51,7 +67,7 @@ def resolve_global_deps(
     for source_function, dep in deps.items():
         # Deps need to be fullfilled, whereas raw values are taken directly.
         if isinstance(dep, Dep):
-            value = fullfill_deps(dep.callable, implicit_deps)
+            value = dep.callable(**fullfill_deps(dep.callable, implicit_deps))
         else:
             value = dep
 
@@ -68,7 +84,7 @@ def resolve_invoke_handler(command: Command) -> Callable:
     fn = command.invoke
 
     if not fn:
-        raise ValueError(
+        raise InvokeResolutionError(
             f"Cannot call `invoke` for a command which does not have an invoke handler: {command.cmd_cls}."
         )
 
@@ -76,7 +92,7 @@ def resolve_invoke_handler(command: Command) -> Callable:
         try:
             module_name, fn_name = fn.rsplit(".", 1)
         except ValueError:
-            raise ValueError(
+            raise InvokeResolutionError(
                 f"Invoke `{fn}` must be a fully qualified reference to a function in a module."
             )
 
@@ -85,17 +101,19 @@ def resolve_invoke_handler(command: Command) -> Callable:
             module = importlib.import_module(module_name)
         except ModuleNotFoundError as e:
             name = getattr(e, "name") or str(e)
-            raise ValueError(f"No module '{name}' when attempting to load '{fn}'.")
+            raise InvokeResolutionError(
+                f"No module '{name}' when attempting to load '{fn}'."
+            )
 
         if not hasattr(module, fn_name):
-            raise AttributeError(
+            raise InvokeResolutionError(
                 f"Module {module} does not have a function `{fn_name}`."
             )
 
         fn = getattr(module, fn_name)
 
     if not callable(fn):
-        raise ValueError(f"`{fn}` does not reference a valid callable.")
+        raise InvokeResolutionError(f"`{fn}` does not reference a valid callable.")
 
     return fn
 
@@ -124,7 +142,7 @@ def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
     return deps
 
 
-def fullfill_deps(fn: Callable, fullfilled_deps: dict) -> typing.Any:
+def fullfill_deps(fn: Callable, fullfilled_deps: dict, call: bool = True) -> typing.Any:
     result = {}
 
     signature = inspect.signature(fn)
@@ -132,7 +150,7 @@ def fullfill_deps(fn: Callable, fullfilled_deps: dict) -> typing.Any:
         annotations = get_type_hints(fn, include_extras=True)
     except NameError as e:  # pragma: no cover
         name = getattr(e, "name") or str(e)
-        raise NameError(
+        raise InvokeResolutionError(
             f"Could not collect resolve reference to {name} for Dep({fn.__name__})"
         )
 
@@ -150,7 +168,7 @@ def fullfill_deps(fn: Callable, fullfilled_deps: dict) -> typing.Any:
             if annotation not in fullfilled_deps:
                 if param.default is param.empty:
                     annotation_name = annotation.__name__ if annotation else "<empty>"
-                    raise RuntimeError(
+                    raise InvokeResolutionError(
                         f"`{name}: {annotation_name}` is not a valid dependency for Dep({fn.__name__})."
                     )
 
@@ -165,9 +183,9 @@ def fullfill_deps(fn: Callable, fullfilled_deps: dict) -> typing.Any:
             if dep in fullfilled_deps:
                 value = fullfilled_deps[dep]
             else:
-                value = fullfill_deps(dep.callable, fullfilled_deps)
+                value = dep.callable(**fullfill_deps(dep.callable, fullfilled_deps))
                 fullfilled_deps[dep] = value
 
         result[name] = value
 
-    return fn(**result)
+    return result
