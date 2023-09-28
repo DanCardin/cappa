@@ -45,3 +45,11 @@ can be used and are interpreted to handle different kinds of CLI input.
    :members: Arg
    :noindex:
 ```
+
+## Environment Variable Fallback
+
+```{eval-rst}
+.. autoapimodule:: cappa
+   :members: Env
+   :noindex:
+```

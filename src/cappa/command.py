@@ -9,6 +9,7 @@ from typing_extensions import Self, get_type_hints
 
 from cappa import class_inspect
 from cappa.arg import Arg
+from cappa.env import Env
 from cappa.output import Exit
 from cappa.subcommand import Subcommand, Subcommands
 from cappa.typing import assert_not_missing
@@ -209,6 +210,8 @@ class Command(typing.Generic[T]):
                 continue
 
             value = parsed_args[arg.name]
+            if isinstance(value, Env):
+                value = value.evaluate()
 
             if isinstance(arg, Subcommands):
                 value = arg.map_result(value)
