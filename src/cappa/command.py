@@ -11,6 +11,7 @@ from cappa import class_inspect
 from cappa.arg import Arg
 from cappa.env import Env
 from cappa.output import Exit
+from cappa.rich import prompt_types
 from cappa.subcommand import Subcommand, Subcommands
 from cappa.typing import assert_not_missing
 
@@ -212,6 +213,8 @@ class Command(typing.Generic[T]):
             value = parsed_args[arg.name]
             if isinstance(value, Env):
                 value = value.evaluate()
+            if isinstance(value, prompt_types):
+                value = value()
 
             if isinstance(arg, Subcommands):
                 value = arg.map_result(value)
