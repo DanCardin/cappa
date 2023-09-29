@@ -34,7 +34,6 @@ be invoked for your command.
        print(example.foo)
 
    @cappa.command(invoke=function)
-   @dataclass
    class Example:
        foo: int
    ```
@@ -49,7 +48,6 @@ be invoked for your command.
    ```python
    # example.py
    @cappa.command(invoke='foo.bar.function')
-   @dataclass
    class Example:
        foo: int
 
@@ -96,7 +94,6 @@ the string `package.module.submodule.foo`.
 
 ```python
 @cappa.command(invoke='package.module.submodule.foo')
-@dataclass
 class Example:
     ...
 ```

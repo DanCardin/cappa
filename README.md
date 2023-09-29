@@ -73,7 +73,6 @@ def function(example: Example):
     print(example)
 
 @cappa.command(invoke=function)
-@dataclass
 class Example:  # identical to original class
     positional_arg: str
     boolean_flag: bool
@@ -83,6 +82,9 @@ class Example:  # identical to original class
 
 cappa.invoke(Example)
 ```
+
+(Note the lack of the dataclass decorator. You can optionally omit or include
+it, and it will be automatically inferred).
 
 Alternatively you can make your dataclass callable, as a shorthand for an
 explcit invoke function:
@@ -157,7 +159,6 @@ def print_cmd(print: Print):
         print("printing!")
 
 @cappa.invoke(invoke=print_cmd)
-@dataclass
 class Print:
     loudly: bool
 

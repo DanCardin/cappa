@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 import typing
 
-from typing_extensions import Self
+from typing_extensions import Annotated, Self, TypeAlias
 from typing_inspect import is_optional_type, is_union_type
 
 from cappa.class_inspect import Field, extract_dataclass_metadata
@@ -83,4 +83,4 @@ class Subcommands(typing.Generic[T]):
         return option.map_result(option, parsed_args)
 
 
-Subcmd: typing.TypeAlias = typing.Annotated[T, Subcommand]
+Subcmd: TypeAlias = Annotated[T, Subcommand]

@@ -57,7 +57,6 @@ def fn(config: Annotated[dict, cappa.Dep(config)]):
     print(config)
 
 @cappa.command(invoke=fn)
-@dataclass
 class CLI:
     name: str
 ```

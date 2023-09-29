@@ -42,7 +42,6 @@ def example(ex: Example):
 
 
 @cappa.command(invoke=example)
-@dataclass
 class Example
     ... # your original example body
 

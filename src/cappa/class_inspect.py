@@ -13,7 +13,15 @@ if typing.TYPE_CHECKING:
 
 __all__ = [
     "fields",
+    "detect",
 ]
+
+
+def detect(cls: type) -> bool:
+    try:
+        return bool(ClassTypes.from_cls(cls))
+    except ValueError:
+        return False
 
 
 class ClassTypes(Enum):

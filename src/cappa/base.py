@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import dataclasses
 import sys
 import typing
 
+from typing_extensions import dataclass_transform
+
 from cappa.arg import Arg
+from cappa.class_inspect import detect
 from cappa.command import Command
 from cappa.invoke import invoke_callable
 
@@ -107,3 +111,44 @@ def invoke(
     )
 
     return invoke_callable(command, parsed_command, instance, deps=deps)
+
+
+@dataclass_transform()
+def command(
+    *,
+    name: str | None = None,
+    help: str | None = None,
+    description: str | None = None,
+    invoke: typing.Callable | str | None = None,
+):
+    """Register a cappa CLI command/subcomment.
+
+    Args:
+        name: The name of the command. If omitted, the name of the command
+            will be the name of the `cls`, converted to dash-case.
+        help: Optional help text. If omitted, the `cls` docstring will be parsed,
+            and the headline section will be used to document the command
+            itself, and the arguments section will become the default help text for
+            any params/options.
+        description: Optional extended help text. If omitted, the `cls` docstring will
+            be parsed, and the extended long description section will be used.
+        invoke: Optional command to be called in the event parsing is successful.
+            In the case of subcommands, it will only call the parsed/selected
+            function to invoke.
+    """
+
+    def wrapper(_decorated_cls):
+        if not detect(_decorated_cls):
+            _decorated_cls = dataclasses.dataclass(_decorated_cls)
+
+        instance = Command(
+            cmd_cls=_decorated_cls,
+            invoke=invoke,
+            name=name,
+            help=help,
+            description=description,
+        )
+        _decorated_cls.__cappa__ = instance
+        return _decorated_cls
+
+    return wrapper

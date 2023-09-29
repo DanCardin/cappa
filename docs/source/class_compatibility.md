@@ -12,6 +12,23 @@ be supported with relatively little effort. Today Cappa ships with adapters for
 Additionally the `default` and/or `default_factory` options defined by each of
 the above libraries is used to infer CLI defaults.
 
+## PEP681
+
+You can opt to `@cappa.command(...)` with or without the double-decorator.
+
+```python
+@cappa.command(...)
+@dataclass
+```
+
+`@cappa.command(...)` works without the `@dataclass` decorator at runtime,
+because it detects whether the class is one of the supported types (dataclasses,
+pydantic, attrs), and adds `@dataclass` to the declared class automatically, if
+one is not detected.
+
+So long as you use a a [PEP681 compliant](https://peps.python.org/pep-0681/)
+type checker (e.g. pyright, Mypy>=1.2).
+
 ## Metadata
 
 Finally, `dataclasses` and `attrs` both allow a `metadata`. You can optionally
