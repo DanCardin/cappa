@@ -24,12 +24,14 @@ Annotations <annotation>
 :caption: Details
 :hidden:
 
+vs Click / Typer / Argparse <comparison>
 Parse Vs Invoke <parse_vs_invoke>
 Dataclasses/Pydantic/Attrs <class_compatibility>
 Rich Integration <rich>
 Testing <testing>
 Exiting and Exit Codes <exiting>
 Manual Construction <manual_construction>
+Internals <internals>
 ```
 
 ```{toctree}
