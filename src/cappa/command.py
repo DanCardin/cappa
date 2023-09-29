@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import inspect
 import typing
 from collections.abc import Callable
 
@@ -116,7 +117,8 @@ class Command(typing.Generic[T]):
         arg_help_map = {}
 
         if not (command.help and command.description):
-            parsed_help = docstring_parser.parse(command.cmd_cls.__doc__ or "")
+            doc = get_doc(command.cmd_cls)
+            parsed_help = docstring_parser.parse(doc)
             for param in parsed_help.params:
                 arg_help_map[param.arg_name] = param.description
 
@@ -232,3 +234,24 @@ H = typing.TypeVar("H", covariant=True)
 
 class HasCommand(typing.Generic[H], typing.Protocol):
     __cappa__: typing.ClassVar[Command]
+
+
+def get_doc(cls):
+    """Lifted from dataclasses source."""
+    doc = cls.__doc__ or ""
+
+    # Dataclasses will set the doc attribute to the below value if there was no
+    # explicit docstring. This is just annoying for us, so we treat that as though
+    # there wasn't one.
+    try:
+        # In some cases fetching a signature is not possible.
+        # But, we surely should not fail in this case.
+        text_sig = str(inspect.signature(cls)).replace(" -> None", "")
+    except (TypeError, ValueError):  # pragma: no cover
+        text_sig = ""
+
+    dataclasses_docstring = cls.__name__ + text_sig
+
+    if doc == dataclasses_docstring:
+        return ""
+    return doc
