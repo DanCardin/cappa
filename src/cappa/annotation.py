@@ -16,6 +16,7 @@ __all__ = [
     "parse_union",
     "parse_tuple",
     "parse_none",
+    "detect_choices",
 ]
 
 

@@ -7,6 +7,8 @@ authors = ["Dan Cardin <ddcardin@gmail.com>"]
 [tool.poetry.dependencies]
 python = "^3.9"
 
+astroid = "<3"
+
 furo = "^2022.4.7"
 linkify-it-py = "*"
 myst-parser = {version = "^0.17.2", extras = ["linkify"]}
