@@ -81,3 +81,6 @@ class Subcommands(typing.Generic[T]):
         option_name = parsed_args.pop("__name__")
         option = self.options[option_name]
         return option.map_result(option, parsed_args)
+
+
+Subcmd: typing.TypeAlias = typing.Annotated[T, Subcommand]

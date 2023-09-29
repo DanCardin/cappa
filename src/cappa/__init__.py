@@ -4,7 +4,7 @@ from cappa.command import Command
 from cappa.env import Env
 from cappa.invoke import Dep
 from cappa.output import Exit, print
-from cappa.subcommand import Subcommand, Subcommands
+from cappa.subcommand import Subcmd, Subcommand, Subcommands
 
 command = Command.wrap
 
@@ -15,6 +15,7 @@ __all__ = [
     "Dep",
     "Env",
     "Exit",
+    "Subcmd",
     "Subcommand",
     "Subcommands",
     "command",
