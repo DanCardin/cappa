@@ -36,7 +36,7 @@ def invoke_callable(
     | None = None,
 ):
     try:
-        fn: Callable = resolve_invoke_handler(parsed_command)
+        fn: Callable = resolve_invoke_handler(parsed_command, instance)
         implicit_deps = resolve_implicit_deps(command, instance)
         fullfilled_deps = resolve_global_deps(deps, implicit_deps)
 
@@ -80,10 +80,13 @@ def resolve_global_deps(
     return implicit_deps
 
 
-def resolve_invoke_handler(command: Command) -> Callable:
+def resolve_invoke_handler(command: Command, instance: T) -> Callable[..., T]:
     fn = command.invoke
 
     if not fn:
+        if callable(instance):
+            return instance.__call__
+
         raise InvokeResolutionError(
             f"Cannot call `invoke` for a command which does not have an invoke handler: {command.cmd_cls}."
         )

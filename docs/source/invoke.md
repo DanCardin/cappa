@@ -4,60 +4,79 @@ If you're coming from `click` or `typer`, then `invoke` may likely be how you'll
 want to describe your commands.
 
 ```{note}
-See [Invoke Dependencies](./invoke.md) for more information about providing
-context/dependencies to your invoked functions.
+See [Invoke Dependencies](./invoke.md#invoke-dependencies) for more information
+about providing context/dependencies to your invoked functions.
 ```
 
-The `invoke` argument should be supplied a reference to a function that should
-be called in the event that the parsed CLI invocation targeted the given
-command/subcommand.
+You have a couple of options when choosing how to define the function that will
+be invoked for your command.
 
-For a vanilla command, that means the function is simply called. For
-subcommands, where there may be one `invoke` function per subcommand option
-(maybe, plus one for the top-level command), this means that only the selected
-subcommand's `invoke` function will be called.
+1. you can simply make your dataclass callable:
 
-Then, in order to cause the function to be invoked, you would call
-`cappa.invoke`, rather than `cappa.parse`.
+   ```python
+   @dataclass
+   class Example:
+       foo: int
 
-```python
-from dataclasses import dataclass
-from typing_extensions import Annotated
+       def __call__(self):
+           print(self.foo)
+   ```
 
-import cappa
+   This has the benefit of simplicity, and avoids the need to decorate your
+   class. The potential drawback, is that it couples the behavior to the class
+   itself. However being forced to define function at the same location as your
+   CLI definition may or may not be a drawback at all, for your usecase.
 
-def option_one():
-    print('option-one')
+2. You can utilize the explcit `invoke=function` argument:
 
-@cappa.command(invoke=option_one)
-@dataclass
-class OptionOne:
-    ...
+   ```python
+   def function(example: Example):
+       print(example.foo)
 
-def option_two():
-    print('option-two')
+   @cappa.command(invoke=function)
+   @dataclass
+   class Example:
+       foo: int
+   ```
 
-@cappa.command(invoke=option_two)
-@dataclass
-class OptionTwo:
-    ...
+   This **does** require you to decorate your class (which you may or may not
+   have already needed to do). However, now `function` can be defined anywhere
+   else in your codebase, decoupling the CLI definition from the implementation
+   of the command itself.
 
+3. You can use a module-reference string to target a callable:
 
-def example():
-    ...
+   ```python
+   # example.py
+   @cappa.command(invoke='foo.bar.function')
+   @dataclass
+   class Example:
+       foo: int
 
-@cappa.command(invoke=example)
-@dataclass
-class Example:
-    options: Annotated[OptionOne | OptionTwo | None, cappa.Subcommand] = None
+   # foo/bar.py
+   def function(example: Example):
+       print(example.foo)
+   ```
 
+   The primary benefit of using string references, especially in large
+   applications is import speed. This is equally true in other libraries, like
+   click, where you need to essentially import your entire codebase in order to
+   evaluate **just** the shape of the CLI enough to show help text.
 
-cappa.invoke(Example)
+   With string references, you **can** (whether or not you should) define your
+   entire API shape in a standalone `cli.py` file with zero imports to the rest
+   of your code. This should ensure your CLI has a fast time-to-helptext.
+
+   Then at runtime, when the specific command/subcommand is chosen, only the
+   relevant portions of your code need to be imported.
+
+```{note}
+When dealing with nested subcommands, only the "invoke" function for the **actually**
+selected command/subcommand will be invoked.
 ```
 
-- `example.py` would call `example`
-- `example.py option-one` would call `option_one`
-- `example.py option-two` would call `option_two`
+Then, in order to opt into the invoke behavior, you need to call
+[cappa.invoke](cappa.invoke), rather than [cappa.parse](cappa.parse).
 
 ```{eval-rst}
 .. autoapimodule:: cappa
