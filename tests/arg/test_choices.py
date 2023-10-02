@@ -6,10 +6,11 @@ import cappa
 import pytest
 from typing_extensions import Annotated
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
-def test_manually_specified_choices():
+@backends
+def test_manually_specified_choices(backend):
     @dataclass
     class ArgTest:
         choice: Annotated[str, cappa.Arg(choices=["a", "1"])]
@@ -20,8 +21,8 @@ def test_manually_specified_choices():
     result = parse(ArgTest, "1")
     assert result.choice == "1"
 
-    with pytest.raises(
-        ValueError,
-        match=r"argument choice: invalid choice: 'two' \(choose from 'a', '1'\)",
-    ):
-        parse(ArgTest, "two")
+    with pytest.raises(cappa.Exit) as e:
+        parse(ArgTest, "two", backend=backend)
+
+    message = str(e.value.message).lower()
+    assert "invalid choice: 'two' (choose from 'a', '1')" in message

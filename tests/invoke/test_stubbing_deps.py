@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import cappa
 from typing_extensions import Annotated
 
-from tests.utils import invoke
+from tests.utils import backends, invoke
 
 
 def two():
@@ -30,9 +30,10 @@ class Command:
     ...
 
 
-def test_invoke_top_level_command():
+@backends
+def test_invoke_top_level_command(backend):
     def stub_two():
         return 4
 
-    result = invoke(Command, deps={two: cappa.Dep(stub_two), three: 6})
+    result = invoke(Command, deps={two: cappa.Dep(stub_two), three: 6}, backend=backend)
     assert result == (4, 6)

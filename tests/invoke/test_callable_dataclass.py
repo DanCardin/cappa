@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import cappa
 from typing_extensions import Annotated
 
-from tests.utils import invoke
+from tests.utils import backends, invoke
 
 
 def dependency():
@@ -20,6 +20,7 @@ class Command:
         return self.foo + dep
 
 
-def test_invoke_top_level_command():
-    result = invoke(Command, "7")
+@backends
+def test_invoke_top_level_command(backend):
+    result = invoke(Command, "7", backend=backend)
     assert result == 7 + 5

@@ -6,7 +6,7 @@ import typing
 
 from typing_inspect import is_literal_type
 
-from cappa.typing import T, is_none_type, is_subclass, is_union_type, render_type
+from cappa.typing import T, backend_type, is_none_type, is_subclass, is_union_type
 
 __all__ = [
     "parse_value",
@@ -141,7 +141,7 @@ def parse_union(*type_args: type) -> typing.Callable[[typing.Any], typing.Any]:
                 pass
 
         raise ValueError(
-            f"Could not parse '{value}' given options: {', '.join(render_type(t) for t in type_args)}"
+            f"Could not parse '{value}' given options: {', '.join(backend_type(t) for t in type_args)}"
         )
 
     return union_mapper

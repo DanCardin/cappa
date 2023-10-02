@@ -1,50 +1,51 @@
 from dataclasses import dataclass
 
 import cappa
-from cappa import rich
+from cappa import output
 from typing_extensions import Annotated
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
+@backends
 class TestTestPrompt:
-    def test_value(self):
-        prompt = rich.TestPrompt("gimme text number", default="one", input="two")
+    def test_value(self, backend):
+        prompt = output.TestPrompt("gimme text number", default="one", input="two")
 
         @dataclass
         class Test:
             name: Annotated[str, cappa.Arg(default=prompt)]
 
-        result = parse(Test)
+        result = parse(Test, backend=backend)
 
         assert result.name == "two"
 
         expected = "gimme text number (one): "
-        output = prompt.file.getvalue()
-        assert output == expected
+        out = prompt.file.getvalue()
+        assert out == expected
 
-    def test_default(self):
-        prompt = rich.TestPrompt("gimme text number", default="one", input="")
+    def test_default(self, backend):
+        prompt = output.TestPrompt("gimme text number", default="one", input="")
 
         @dataclass
         class Test:
             name: Annotated[str, cappa.Arg(default=prompt)]
 
-        result = parse(Test)
+        result = parse(Test, backend=backend)
 
         assert result.name == "one"
 
         expected = "gimme text number (one): "
-        output = prompt.file.getvalue()
-        assert output == expected
+        out = prompt.file.getvalue()
+        assert out == expected
 
-    def test_mapped(self):
-        prompt = rich.TestPrompt("gimme text number", default="1", input="5")
+    def test_mapped(self, backend):
+        prompt = output.TestPrompt("gimme text number", default="1", input="5")
 
         @dataclass
         class Test:
             num: Annotated[int, cappa.Arg(default=prompt)]
 
-        result = parse(Test)
+        result = parse(Test, backend=backend)
 
         assert result.num == 5

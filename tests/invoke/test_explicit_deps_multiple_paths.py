@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import cappa
 from typing_extensions import Annotated
 
-from tests.utils import invoke
+from tests.utils import backends, invoke
 
 log = logging.getLogger("test")
 
@@ -43,14 +43,15 @@ class Command:
     ...
 
 
-def test_invoke_top_level_command(caplog):
+@backends
+def test_invoke_top_level_command(caplog, backend):
     """Assert multiple paths to explicit dependencies are still fullfilled.
 
     * Ensure they are only called once overall, regardless of the number of downstream dependents.
     """
     caplog.set_level(logging.DEBUG)
 
-    result = invoke(Command)
+    result = invoke(Command, backend=backend)
 
     assert result == {
         "one": {"two": {"three": True}, "three": True},

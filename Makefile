@@ -3,7 +3,7 @@
 PACKAGE_VERSION = $(shell python -c 'import importlib.metadata; print(importlib.metadata.version("responsaas"))')
 
 install:
-	poetry install -E rich
+	poetry install
 
 test:
 	coverage run -m pytest src tests

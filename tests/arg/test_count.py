@@ -5,28 +5,30 @@ from dataclasses import dataclass
 import cappa
 from typing_extensions import Annotated
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
-def test_count_action():
+@backends
+def test_count_action(backend):
     @dataclass
     class ArgTest:
         arg: Annotated[int, cappa.Arg(short=True, action=cappa.ArgAction.count)]
 
-    result = parse(ArgTest, "-a")
+    result = parse(ArgTest, "-a", backend=backend)
     assert result.arg == 1
 
-    result = parse(ArgTest, "-aaa")
+    result = parse(ArgTest, "-aaa", backend=backend)
     assert result.arg == 3
 
 
-def test_count_option():
+@backends
+def test_count_option(backend):
     @dataclass
     class ArgTest:
         arg: Annotated[int, cappa.Arg(short=True, count=True)]
 
-    result = parse(ArgTest, "-a")
+    result = parse(ArgTest, "-a", backend=backend)
     assert result.arg == 1
 
-    result = parse(ArgTest, "-aaa")
+    result = parse(ArgTest, "-aaa", backend=backend)
     assert result.arg == 3

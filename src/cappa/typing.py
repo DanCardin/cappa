@@ -41,16 +41,16 @@ def find_type_annotation(
 
 
 def assert_not_missing(value: T | MISSING) -> T:
-    assert not isinstance(value, MISSING)
+    assert not isinstance(value, MISSING), value
     return typing.cast(T, value)
 
 
 def assert_type(value: typing.Any, typ: type[T]) -> T:
-    assert isinstance(value, typ)
+    assert isinstance(value, typ), value
     return typing.cast(T, value)
 
 
-def render_type(typ) -> str:
+def backend_type(typ) -> str:
     if is_literal_type(typ):
         return typing.get_args(typ)[0]
 

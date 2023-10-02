@@ -3,23 +3,11 @@ from dataclasses import dataclass
 import cappa
 import pytest
 
-
-def test_with_rich(capsys):
-    cappa.print("test", rich=True)
-
-    out = capsys.readouterr().err
-    assert out == "test\n"
+from tests.utils import backends
 
 
-@pytest.mark.parametrize("flush", (True, False))
-def test_without_rich(capsys, flush):
-    cappa.print("test", rich=False, flush=flush)
-
-    out = capsys.readouterr().err
-    assert out == "test\n"
-
-
-def test_invoke_exit_success_with_message(capsys):
+@backends
+def test_invoke_exit_success_with_message(capsys, backend):
     def fn():
         raise cappa.Exit("With message")
 
@@ -29,13 +17,14 @@ def test_invoke_exit_success_with_message(capsys):
         ...
 
     with pytest.raises(cappa.Exit):
-        cappa.invoke(Example, argv=[""])
+        cappa.invoke(Example, argv=[""], backend=backend)
 
-    out = capsys.readouterr().err
+    out = capsys.readouterr().out
     assert out == "With message\n"
 
 
-def test_invoke_exit_success_without_message(capsys):
+@backends
+def test_invoke_exit_success_without_message(capsys, backend):
     def fn():
         raise cappa.Exit()
 
@@ -45,13 +34,14 @@ def test_invoke_exit_success_without_message(capsys):
         ...
 
     with pytest.raises(cappa.Exit):
-        cappa.invoke(Example, argv=[""])
+        cappa.invoke(Example, argv=[""], backend=backend)
 
-    out = capsys.readouterr().err
+    out = capsys.readouterr().out
     assert out == ""
 
 
-def test_invoke_exit_errror():
+@backends
+def test_invoke_exit_errror(capsys, backend):
     def fn():
         raise cappa.Exit("With message", code=1)
 
@@ -61,6 +51,8 @@ def test_invoke_exit_errror():
         ...
 
     with pytest.raises(cappa.Exit) as e:
-        cappa.invoke(Example, argv=[""])
+        cappa.invoke(Example, argv=[""], backend=backend)
 
     assert e.value.code == 1
+    out = capsys.readouterr().err
+    assert out == "With message\n"

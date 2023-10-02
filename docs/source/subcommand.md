@@ -15,12 +15,12 @@ annotating the union with `cappa.Subcommand`. I.e.
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Annotated
-from cappa import Subcommand, Subcmd
+from cappa import Subcommand, Subcommands
 
 @dataclass
 class Command:
     # This
-    subcommand: Subcmd[SubcmdOne | SubcmdTwo]
+    subcommand: Subcommands[SubcmdOne | SubcmdTwo]
 
     # is shorthand for this
     subcommand2: Annotated[SubcmdOne | SubcmdTwo, Subcommand]
@@ -37,8 +37,9 @@ class SubcmdTwo:
     option: int
 ```
 
-- You can use the `Subcmd[...]` shorthand to avoid the use of `Annotated`, in
-  cases where you dont need to customize `Subcommand`'s constructor arguments.
+- You can use the `Subcommands[...]` shorthand to avoid the use of `Annotated`,
+  in cases where you dont need to customize `Subcommand`'s constructor
+  arguments.
 
 - Annotation with `Subcommand` will instantiate it no arguments, getting the
   default behavior

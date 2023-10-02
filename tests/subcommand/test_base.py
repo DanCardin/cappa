@@ -7,7 +7,7 @@ import cappa
 import pytest
 from typing_extensions import Annotated
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
 @dataclass
@@ -20,11 +20,15 @@ class RequiredMissing:
     subcommand: Annotated[RequiredMissingOne, cappa.Subcommand]
 
 
-def test_required_missing():
-    with pytest.raises(
-        Exception, match=r"following arguments are required: {required-missing-one}"
-    ):
-        parse(RequiredMissing)
+@backends
+def test_required_missing(backend):
+    with pytest.raises(cappa.Exit) as e:
+        parse(RequiredMissing, backend=backend)
+    assert isinstance(e.value.message, str)
+    assert (
+        "the following arguments are required: {required-missing-one}"
+        in e.value.message.lower()
+    )
 
 
 @dataclass
@@ -44,16 +48,21 @@ class RequiredProvided:
     ]
 
 
-def test_required_provided():
-    test = parse(RequiredProvided, "required-provided-one", "--foo", "foo")
+@backends
+def test_required_provided(backend):
+    test = parse(
+        RequiredProvided, "required-provided-one", "--foo", "foo", backend=backend
+    )
     assert isinstance(test.subcommand, RequiredProvidedOne)
     assert test.subcommand.foo == "foo"
 
-    test = parse(RequiredProvided, "required-provided-two")
+    test = parse(RequiredProvided, "required-provided-two", backend=backend)
     assert isinstance(test.subcommand, RequiredProvidedTwo)
     assert test.subcommand.bar is None
 
-    test = parse(RequiredProvided, "required-provided-two", "--bar", "bar")
+    test = parse(
+        RequiredProvided, "required-provided-two", "--bar", "bar", backend=backend
+    )
     assert isinstance(test.subcommand, RequiredProvidedTwo)
     assert test.subcommand.bar == "bar"
 
@@ -69,6 +78,7 @@ class NamedSubcommand:
     subcommand: Annotated[NamedSubcommandOne, cappa.Subcommand()]
 
 
-def test_named_subcommand():
-    test = parse(NamedSubcommand, "one")
+@backends
+def test_named_subcommand(backend):
+    test = parse(NamedSubcommand, "one", backend=backend)
     assert isinstance(test.subcommand, NamedSubcommandOne)

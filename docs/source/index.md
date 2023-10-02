@@ -28,6 +28,14 @@ vs Click / Typer / Argparse <comparison>
 Parse Vs Invoke <parse_vs_invoke>
 Dataclasses/Pydantic/Attrs <class_compatibility>
 Rich Integration <rich>
+Completions <completion>
+Parser Backends (Cappa/Argparse) <backends>
+```
+
+```{toctree}
+:caption: Extra Details
+:hidden:
+
 Testing <testing>
 Exiting and Exit Codes <exiting>
 Manual Construction <manual_construction>
@@ -39,4 +47,5 @@ Internals <internals>
 :hidden:
 
 GitHub Repository <https://github.com/dancardin/cappa>
+PyPI <https://pypi.org/projects/cappa>
 ```

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import cappa
 import pytest
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
 @dataclass
@@ -19,9 +19,10 @@ class Invalid:
     a: int = field(metadata={"cappa": 4})
 
 
-def test_valid():
+@backends
+def test_valid(backend):
     with pytest.raises(
         ValueError,
         match='`metadata={"cappa": <x>}` must be of type `Arg` or `Subcommand`',
     ):
-        parse(Command, "-n", "foo", "subcommand", "4")
+        parse(Command, "-n", "foo", "subcommand", "4", backend=backend)

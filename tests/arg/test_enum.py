@@ -3,9 +3,10 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass
 
+import cappa
 import pytest
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
 class Options(enum.Enum):
@@ -19,14 +20,16 @@ class ArgTest:
     options: Options
 
 
-def test_valid():
-    test = parse(ArgTest, "two")
+@backends
+def test_valid(backend):
+    test = parse(ArgTest, "two", backend=backend)
     assert test.options is Options.two
 
 
-def test_invalid():
-    with pytest.raises(
-        ValueError,
-        match=r"argument options: invalid choice: 'thename' \(choose from 'one', 'two', 'three'\)",
-    ):
-        parse(ArgTest, "thename")
+@backends
+def test_invalid(backend):
+    with pytest.raises(cappa.Exit) as e:
+        parse(ArgTest, "thename", backend=backend)
+
+    message = str(e.value.message).lower()
+    assert "invalid choice: 'thename' (choose from 'one', 'two', 'three')" in message

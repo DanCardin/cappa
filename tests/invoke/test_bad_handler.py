@@ -5,17 +5,18 @@ from dataclasses import dataclass
 import cappa
 import pytest
 
-from tests.utils import invoke
+from tests.utils import backends, invoke
 
 
-def test_missing_invoke():
+@backends
+def test_missing_invoke(backend):
     @cappa.command()
     @dataclass
     class Command:
         ...
 
     with pytest.raises(RuntimeError) as e:
-        invoke(Command)
+        invoke(Command, backend=backend)
 
     exc = e.value
     cause = exc.__cause__
@@ -26,14 +27,15 @@ def test_missing_invoke():
     )
 
 
-def test_string_missing_function():
+@backends
+def test_string_missing_function(backend):
     @cappa.command(invoke="sys")
     @dataclass
     class Command:
         ...
 
     with pytest.raises(RuntimeError) as e:
-        invoke(Command)
+        invoke(Command, backend=backend)
 
     exc = e.value
     cause = exc.__cause__
@@ -44,14 +46,15 @@ def test_string_missing_function():
     )
 
 
-def test_string_references_invalid_module():
+@backends
+def test_string_references_invalid_module(backend):
     @cappa.command(invoke="completely.wrong")
     @dataclass
     class Command:
         ...
 
     with pytest.raises(RuntimeError) as e:
-        invoke(Command)
+        invoke(Command, backend=backend)
 
     exc = e.value
     cause = exc.__cause__
@@ -61,14 +64,15 @@ def test_string_references_invalid_module():
     )
 
 
-def test_string_references_invalid_function():
+@backends
+def test_string_references_invalid_function(backend):
     @cappa.command(invoke="builtins.meow")
     @dataclass
     class Command:
         ...
 
     with pytest.raises(RuntimeError) as e:
-        invoke(Command)
+        invoke(Command, backend=backend)
 
     exc = e.value
     cause = exc.__cause__
@@ -79,14 +83,15 @@ def test_string_references_invalid_function():
     )
 
 
-def test_string_reference_not_callable():
+@backends
+def test_string_reference_not_callable(backend):
     @cappa.command(invoke="builtins.__name__")
     @dataclass
     class Command:
         ...
 
     with pytest.raises(RuntimeError) as e:
-        invoke(Command)
+        invoke(Command, backend=backend)
 
     exc = e.value
     cause = exc.__cause__

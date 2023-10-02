@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import cappa
 from typing_extensions import Annotated
 
-from tests.utils import invoke
+from tests.utils import backends, invoke
 
 
 def has_default(default: bool = True):
@@ -24,6 +24,7 @@ class Command:
     ...
 
 
-def test_invoke_top_level_command():
-    result = invoke(Command)
+@backends
+def test_invoke_top_level_command(backend):
+    result = invoke(Command, backend=backend)
     assert result == {"one": True, "default": True}

@@ -120,7 +120,17 @@ There are two kinds of invoke dependencies, implicit and explicit.
 
 ### Implicit Dependencies
 
-These are objects of the types described in your CLI object heirarchy. That is,
+Implicit dependencies are known-unique object instances that the invoke system
+can produce for your function without an explicit `Dep` annotation.
+
+These objects include:
+
+- The root `Command` object
+- Any subcommand `Command` objects upstream of the selected subcommand
+- A [cappa.Output](cappa.Output), which can be used to produce (themed)
+  stdout/stderr output.
+
+For example:
 
 ```python
 @dataclass

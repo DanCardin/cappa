@@ -5,10 +5,11 @@ from dataclasses import dataclass
 import cappa
 import pytest
 
-from tests.utils import invoke
+from tests.utils import backends, invoke
 
 
-def test_invalid_dependency():
+@backends
+def test_invalid_dependency(backend):
     def command(levels: int):
         return levels
 
@@ -18,7 +19,7 @@ def test_invalid_dependency():
         ...
 
     with pytest.raises(RuntimeError) as e:
-        invoke(Command)
+        invoke(Command, backend=backend)
 
     exc = e.value
     cause = exc.__cause__
@@ -26,7 +27,8 @@ def test_invalid_dependency():
     assert "`levels: int` is not a valid dependency for Dep(command)." == str(cause)
 
 
-def test_unannotated_argument():
+@backends
+def test_unannotated_argument(backend):
     def command(levels):
         return levels
 
@@ -36,7 +38,7 @@ def test_unannotated_argument():
         ...
 
     with pytest.raises(RuntimeError) as e:
-        invoke(Command)
+        invoke(Command, backend=backend)
 
     exc = e.value
     cause = exc.__cause__
