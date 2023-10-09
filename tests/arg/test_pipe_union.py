@@ -6,14 +6,15 @@ from typing import Literal
 
 import pytest
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires 3.10")
-def test_valid():
+@backends
+def test_valid(backend):
     @dataclass
     class ArgTest:
         name: Literal["one"] | Literal["two"] | Literal["three"] | Literal[4]
 
-    test = parse(ArgTest, "two")
+    test = parse(ArgTest, "two", backend=backend)
     assert test.name == "two"

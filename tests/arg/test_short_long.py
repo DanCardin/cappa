@@ -5,46 +5,50 @@ from dataclasses import dataclass
 import cappa
 from typing_extensions import Annotated
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
-def test_short_missing_dash():
+@backends
+def test_short_missing_dash(backend):
     @dataclass
     class ArgTest:
-        number: Annotated[int, cappa.Arg(short="nu")]
+        number: Annotated[int, cappa.Arg(short="n")]
 
-    result = parse(ArgTest, "-nu", "4")
+    result = parse(ArgTest, "-n", "4", backend=backend)
     assert result.number == 4
 
 
-def test_multiple_shorts():
+@backends
+def test_multiple_shorts(backend):
     @dataclass
     class ArgTest:
         number: Annotated[int, cappa.Arg(short=["n", "o"])]
 
-    result = parse(ArgTest, "-n", "4")
+    result = parse(ArgTest, "-n", "4", backend=backend)
     assert result.number == 4
 
-    result = parse(ArgTest, "-o", "4")
+    result = parse(ArgTest, "-o", "4", backend=backend)
     assert result.number == 4
 
 
-def test_long_missing_dash():
+@backends
+def test_long_missing_dash(backend):
     @dataclass
     class ArgTest:
         number: Annotated[int, cappa.Arg(long="nu")]
 
-    result = parse(ArgTest, "--nu", "4")
+    result = parse(ArgTest, "--nu", "4", backend=backend)
     assert result.number == 4
 
 
-def test_multiple_longs():
+@backends
+def test_multiple_longs(backend):
     @dataclass
     class ArgTest:
         number: Annotated[int, cappa.Arg(long=["so", "long"])]
 
-    result = parse(ArgTest, "--so", "4")
+    result = parse(ArgTest, "--so", "4", backend=backend)
     assert result.number == 4
 
-    result = parse(ArgTest, "--long", "4")
+    result = parse(ArgTest, "--long", "4", backend=backend)
     assert result.number == 4

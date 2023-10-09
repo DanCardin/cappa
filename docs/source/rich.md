@@ -1,23 +1,36 @@
 # Rich
 
-All features described in this page require the "rich" extra, installed like so:
-
-```bash
-pip install 'cappa[rich]'
+```{note}
+In order to get rich "support" (essentially colored help text) when using the
+argparse backend, you should separately depend upon the "rich-argparse" dependency.
 ```
 
 ## Color
 
-The installation of the 'rich' extra (which also makes use of rich-argparse
-currently), will automatically enable colored output, which enables colored
-output of (primarily) the CLI's help text.
-
-`invoke` or `parse` accept a `color: bool = True` argument which can be used to
-enable/disable the colored output directly. Alternatively, rich automatically
-respects the `NO_COLOR` environment variable for disabling colored output.
+Colored output, including help-text generation, is automatically enabled.
+[invoke](cappa.invoke) or [parse](cappa.parse) both accept a
+`color: bool = True` argument which can be used to enable/disable the colored
+output directly. Alternatively, rich automatically respects the `NO_COLOR`
+environment variable for disabling colored output.
 
 You can control individual styling of the help text by including rich directives
-inside the help text text. For example `Arg(help="[bold]Help[/bold]")`.
+inside the help text text. For example `Arg(help="I need [bold]Help[/bold]!")`.
+
+### Theming
+
+You can define your own rich `Theme` object and supply it into
+[invoke](cappa.invoke) or [parse](cappa.parse), which will used when rendering
+help-text output (and error messaging).
+
+Cappa's theme defines and uses the follwing style groups, which you would need
+to also supply:
+
+- `cappa.prog`
+- `cappa.group`
+- `cappa.arg`
+- `cappa.arg.name`
+- `cappa.subcommand`
+- `cappa.help`
 
 ## Prompt/Confirm
 
@@ -61,10 +74,9 @@ to simulate a user inputting values to stdin inside tests.
 
 ## Pretty Tracebacks
 
-Prettily rendering tracebacks can be a UX improvement for your CLI. Cappa does
-not currently define any specific integration with rich for tracebacks, given
-that you simply install rich's native traceback handler before calling
-parse/invoke.
+Prettily backending tracebacks can be a UX improvement for your CLI. Cappa does
+not define any specific integration with rich for tracebacks, given that you
+simply install rich's native traceback handler before calling parse/invoke.
 
 ```python
 import cappa

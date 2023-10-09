@@ -6,10 +6,11 @@ import cappa
 import pytest
 from typing_extensions import Annotated
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
-def test_arg_name_disallowed():
+@backends
+def test_arg_name_disallowed(backend):
     @dataclass
     class ArgTest:
         bad: Annotated[bool, cappa.Arg(name="oops")] = False
@@ -17,4 +18,4 @@ def test_arg_name_disallowed():
     with pytest.raises(
         ValueError, match="Arg 'name' cannot be set when using automatic inference."
     ):
-        parse(ArgTest)
+        parse(ArgTest, backend=backend)

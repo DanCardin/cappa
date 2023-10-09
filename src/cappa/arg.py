@@ -10,6 +10,8 @@ from typing_inspect import is_optional_type
 
 from cappa.annotation import detect_choices, parse_value
 from cappa.class_inspect import Field, extract_dataclass_metadata
+from cappa.completion.completers import complete_choices
+from cappa.completion.types import Completion
 from cappa.subcommand import Subcommand
 from cappa.typing import (
     MISSING,
@@ -28,6 +30,14 @@ class ArgAction(enum.Enum):
     store_false = "store_false"
     append = "append"
     count = "count"
+
+    help = "help"
+    version = "version"
+    completion = "completion"
+
+    @classmethod
+    def value_actions(cls) -> typing.Set[ArgAction]:
+        return {cls.help, cls.version, cls.completion}
 
 
 @dataclasses.dataclass
@@ -54,12 +64,20 @@ class Arg(typing.Generic[T]):
         parse: An optional function which accepts the raw string argument as input and
             returns a parsed value type's instance. This should only be required for
             complex types that the type system's built-in parsing cannot handle.
+
+        group: Optional group names for the argument. This affects how they're displayed
+            in the backended help text.
+        hidden: Whether the argument should be hidden in help text. Defaults to False.
+
         action: Generally automatically inferred from the data type. This allows to
             override the default.
         num_args: Generally automatically inferred from the data type. This allows to
             override the default.
         choices: Generally automatically inferred from the data type. This allows to
             override the default.
+        completion: Used to provide custom completions. If specified, should be a function
+            which acccepts a partial string value and returns a list of
+            [cappa.Completion](cappa.Completion) objects.
 
         required: Defaults to automatically inferring requiredness, based on whether the
             class's value has a default. By setting this, you can force a particular value.
@@ -73,9 +91,13 @@ class Arg(typing.Generic[T]):
     help: str | None = None
     parse: Callable[[typing.Any], T] | None = None
 
+    group: str | tuple[int, str] | MISSING = missing
+    hidden: bool = False
+
     action: ArgAction | None = None
     num_args: int | None = None
     choices: list[str] | None = None
+    completion: Callable[..., list[Completion]] | None = None
 
     required: bool | None = None
 
@@ -107,23 +129,29 @@ class Arg(typing.Generic[T]):
         self,
         annotation=NoneType,
         fallback_help: str | None = None,
+        action: ArgAction | None = None,
+        name: str | None = None,
     ) -> Arg:
         origin = typing.get_origin(annotation) or annotation
         type_args = typing.get_args(annotation)
         required = infer_required(self, annotation, self.default)
 
-        name = typing.cast(str, self.name)
+        name = typing.cast(str, name or self.name)
         short = infer_short(self, name)
         long = infer_long(self, origin, name)
         choices = infer_choices(self, origin, type_args)
-        action = infer_action(self, origin, type_args, long, self.default)
+        action = action or infer_action(self, origin, type_args, long, self.default)
         num_args = infer_num_args(self, origin, type_args, long)
 
         parse = infer_parse(self, annotation)
         help = infer_help(self, choices, fallback_help)
+        completion = infer_completion(self, choices)
+
+        group = infer_group(self, short, long)
 
         return dataclasses.replace(
             self,
+            name=name,
             required=required,
             short=short,
             long=long,
@@ -132,7 +160,20 @@ class Arg(typing.Generic[T]):
             num_args=num_args,
             parse=parse,
             help=help,
+            completion=completion,
+            group=group,
         )
+
+    def names(self) -> list[str]:
+        short_names = typing.cast(list, self.short or [])
+        long_names = typing.cast(list, self.long or [])
+        return short_names + long_names
+
+    def names_str(self, delimiter: str = ", ") -> str:
+        if self.long or self.short:
+            return delimiter.join(self.names())
+
+        return typing.cast(str, self.name)
 
 
 def infer_name(arg: Arg, field: Field) -> str:
@@ -160,6 +201,9 @@ def infer_required(arg: Arg, annotation: type, default: typing.Any | MISSING):
         return arg.required
 
     if default is missing:
+        if is_subclass(annotation, bool):
+            return False
+
         return not is_optional_type(annotation)
 
     return False
@@ -178,7 +222,7 @@ def infer_short(arg: Arg, name: str) -> list[str] | typing.Literal[False]:
     else:
         short = arg.short
 
-    return [item if item.startswith("-") else f"-{item}" for item in short]
+    return [item[:2] if item.startswith("-") else f"-{item[0]}" for item in short]
 
 
 def infer_long(arg: Arg, origin: type, name: str) -> list[str] | typing.Literal[False]:
@@ -267,6 +311,9 @@ def infer_num_args(
         if is_positional:
             return -1
 
+    if is_subclass(origin, bool):
+        return 1
+
     return None
 
 
@@ -293,3 +340,42 @@ def infer_help(
         return f"{help} {choices_str}"
 
     return choices_str
+
+
+def infer_completion(
+    arg: Arg, choices: list[str] | None
+) -> Callable[[str], list[Completion]] | None:
+    if arg.completion:
+        return arg.completion
+
+    if choices:
+        return complete_choices(choices, help=arg.help)
+
+    return None
+
+
+def infer_group(
+    arg: Arg, short: list[str] | bool, long: list[str] | bool
+) -> str | tuple[int, str]:
+    group = arg.group
+    group_name = None
+    if isinstance(group, str):
+        group_name = group
+        group = missing
+
+    if group is missing:
+        if short or long:
+            return (0, group_name or "Options")
+
+        return (1, group_name or "Arguments")
+
+    return typing.cast(typing.Tuple[int, str], group)
+
+
+no_extra_arg_actions = {
+    ArgAction.store_true,
+    ArgAction.store_false,
+    ArgAction.count,
+    ArgAction.version,
+    ArgAction.help,
+}

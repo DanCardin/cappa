@@ -86,7 +86,9 @@ class Field:
             field = cls(
                 name=name,
                 annotation=f.annotation,
-                default=f.default or missing,
+                default=f.default
+                if f.default.__repr__() != "PydanticUndefined"
+                else missing,
                 default_factory=f.default_factory or missing,
             )
             fields.append(field)

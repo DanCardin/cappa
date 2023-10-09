@@ -8,9 +8,9 @@ from dataclasses import dataclass
 
 from typing_extensions import get_type_hints
 
-from cappa import output
 from cappa.command import Command, HasCommand
-from cappa.subcommand import Subcommands
+from cappa.output import Exit, Output
+from cappa.subcommand import Subcommand
 from cappa.typing import find_type_annotation
 
 T = typing.TypeVar("T", bound=HasCommand)
@@ -31,6 +31,8 @@ def invoke_callable(
     command: Command,
     parsed_command: Command[T],
     instance: T,
+    *,
+    output: Output,
     deps: typing.Sequence[Callable]
     | typing.Mapping[Callable, Dep | typing.Any]
     | None = None,
@@ -38,6 +40,7 @@ def invoke_callable(
     try:
         fn: Callable = resolve_invoke_handler(parsed_command, instance)
         implicit_deps = resolve_implicit_deps(command, instance)
+        implicit_deps[Output] = output
         fullfilled_deps = resolve_global_deps(deps, implicit_deps)
 
         kwargs = fullfill_deps(fn, fullfilled_deps)
@@ -48,8 +51,8 @@ def invoke_callable(
 
     try:
         return fn(**kwargs)
-    except output.Exit as e:
-        e.print()
+    except Exit as e:
+        output.exit(e)
         raise e
 
 
@@ -125,7 +128,7 @@ def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
     deps = {instance.__class__: instance}
 
     for arg in command.arguments:
-        if not isinstance(arg, Subcommands):
+        if not isinstance(arg, Subcommand):
             # Args do not produce dependencies themselves.
             continue
 

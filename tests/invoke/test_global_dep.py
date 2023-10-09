@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import cappa
 
-from tests.utils import invoke
+from tests.utils import backends, invoke
 
 
 def foo(command: Command):
@@ -25,8 +25,9 @@ class Command:
     ...
 
 
-def test_invoke_top_level_command(capsys):
-    result = invoke(Command, deps=[foo, bar])
+@backends
+def test_invoke_top_level_command(capsys, backend):
+    result = invoke(Command, deps=[foo, bar], backend=backend)
     assert result == 1
 
     out = capsys.readouterr().out

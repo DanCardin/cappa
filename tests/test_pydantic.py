@@ -4,7 +4,7 @@ import cappa
 from pydantic import BaseModel, dataclasses
 from typing_extensions import Annotated
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
 class PydanticCommand(BaseModel):
@@ -12,8 +12,9 @@ class PydanticCommand(BaseModel):
     foo: Annotated[int, cappa.Arg(short=True)]
 
 
-def test_base_model():
-    result = parse(PydanticCommand, "meow", "-f", "4")
+@backends
+def test_base_model(backend):
+    result = parse(PydanticCommand, "meow", "-f", "4", backend=backend)
     assert result == PydanticCommand(name="meow", foo=4)
 
 
@@ -23,6 +24,7 @@ class DataclassCommand:
     foo: Annotated[int, cappa.Arg(short=True)]
 
 
-def test_dataclass():
-    result = parse(DataclassCommand, "meow", "-f", "4")
+@backends
+def test_dataclass(backend):
+    result = parse(DataclassCommand, "meow", "-f", "4", backend=backend)
     assert result == DataclassCommand(name="meow", foo=4)

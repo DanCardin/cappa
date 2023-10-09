@@ -18,8 +18,7 @@ class RunnerArgs(typing.TypedDict, total=False):
 
     obj: type
     deps: typing.Sequence[typing.Callable]
-    render: typing.Callable
-    exit_with: typing.Callable
+    backend: typing.Callable | None
     color: bool
     version: str | cappa.Arg
     help: bool | cappa.Arg
@@ -70,8 +69,7 @@ class CommandRunner:
 
     obj: type | None = None
     deps: typing.Sequence[typing.Callable] | None = None
-    render: typing.Callable | None = None
-    exit_with: typing.Callable | None = None
+    backend: typing.Callable | None = None
     color: bool = True
     version: str | cappa.Arg | None = None
     help: bool | cappa.Arg = True
@@ -82,8 +80,7 @@ class CommandRunner:
         return {
             "argv": self.base_args + list(args),
             "obj": kwargs.get("obj") or self.obj,
-            "render": kwargs.get("render") or self.render,
-            "exit_with": kwargs.get("exit_with") or self.exit_with,
+            "backend": kwargs.get("backend") or self.backend,
             "color": kwargs.get("color") or self.color,
             "version": kwargs.get("version") or self.version,
             "help": kwargs.get("help") or self.help,

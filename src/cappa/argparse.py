@@ -7,8 +7,9 @@ import typing
 from typing_extensions import assert_never
 
 from cappa.arg import Arg, ArgAction
-from cappa.command import Command, Subcommands
-from cappa.output import Exit
+from cappa.command import Command, Subcommand
+from cappa.help import create_help_arg, create_version_arg, generate_arg_groups
+from cappa.output import Exit, HelpExit
 from cappa.typing import assert_not_missing, assert_type, missing
 
 if sys.version_info < (3, 9):  # pragma: no cover
@@ -38,6 +39,10 @@ class _HelpAction(argparse._HelpAction):
         self.metavar = metavar
         super().__init__(**kwargs)
 
+    def __call__(self, parser, namespace, values, option_string=None):
+        parser.print_help()
+        raise HelpExit("", code=0)
+
 
 class _VersionAction(argparse._VersionAction):
     def __init__(self, metavar=None, **kwargs):
@@ -64,8 +69,7 @@ class _CountAction(argparse._CountAction):
 
 
 class ArgumentParser(argparse.ArgumentParser):
-    def __init__(self, *args, exit_with, **kwargs):
-        self.exit_with = exit_with
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.register("action", "store_true", _StoreTrueAction)
@@ -75,7 +79,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.register("action", "count", _CountAction)
 
     def exit(self, status=0, message=None):
-        raise self.exit_with(message, code=status)
+        raise Exit(message, code=status)
 
 
 class BooleanOptionalAction(argparse.Action):
@@ -115,38 +119,36 @@ class Nestedspace(argparse.Namespace):
             self.__dict__[name] = value
 
 
-def render(
+def backend(
     command: Command[T],
     argv: list[str],
-    exit_with=None,
     color: bool = True,
     version: str | Arg | None = None,
     help: bool | Arg = True,
-) -> tuple[Command[T], dict[str, typing.Any]]:
-    if exit_with is None:
-        exit_with = Exit
+    completion: bool | Arg = True,
+) -> tuple[typing.Any, Command[T], dict[str, typing.Any]]:
+    version = create_version_arg(version)
+    command.add_meta_actions(help=create_help_arg(help), version=version)
 
-    parser = create_parser(command, exit_with, color=color)
-    add_help_group(parser, version=version, help=help)
+    parser = create_parser(command, color=color)
+    if version:
+        parser.version = version.name  # type: ignore
 
     ns = Nestedspace()
 
     try:
         result_namespace = parser.parse_args(argv[1:], ns)
     except argparse.ArgumentError as e:
-        raise exit_with(str(e), code=127)
-    except Exit as e:
-        raise exit_with(e.message, code=e.code)
+        raise Exit(str(e), code=2)
 
     result = to_dict(result_namespace)
     command = result.pop("__command__")
 
-    return command, result
+    return parser, command, result
 
 
 def create_parser(
     command: Command,
-    exit_with: typing.Callable,
     color: bool = True,
 ) -> argparse.ArgumentParser:
     kwargs: dict[str, typing.Any] = {}
@@ -156,7 +158,6 @@ def create_parser(
     parser = ArgumentParser(
         prog=command.name,
         description=join_help(command.help, command.description),
-        exit_with=exit_with,
         allow_abbrev=False,
         add_help=False,
         formatter_class=choose_help_formatter(color=color),
@@ -167,43 +168,6 @@ def create_parser(
     add_arguments(parser, command)
 
     return parser
-
-
-def add_help_group(
-    parser: argparse.ArgumentParser,
-    version: str | Arg | None = None,
-    help: bool | Arg = True,
-):
-    if not version and not help:
-        return
-
-    help_group = parser.add_argument_group("help")
-    if version:
-        if isinstance(version, str):
-            arg: Arg = Arg(
-                version,
-                short=["-v"],
-                long=["--version"],
-                help="Show the version and exit.",
-            )
-        else:
-            arg = version.normalize()
-
-        add_argument(help_group, arg, version=arg.name, action=_VersionAction)
-
-    if help:
-        if isinstance(help, bool):
-            arg = Arg(
-                name="help",
-                short=["-h"],
-                long=["--help"],
-                help="Show this message and exit.",
-            )
-        else:
-            arg = help.normalize()
-            arg.name = "help"
-
-        add_argument(help_group, arg, action=_HelpAction)
 
 
 def choose_help_formatter(color: bool = True):
@@ -222,16 +186,18 @@ def choose_help_formatter(color: bool = True):
     return help_formatter
 
 
-def add_arguments(
-    parser: argparse.ArgumentParser, command: Command, dest_prefix="", exit_with=Exit
-):
-    for arg in command.arguments:
-        if isinstance(arg, Arg):
-            add_argument(parser, arg, dest_prefix=dest_prefix)
-        elif isinstance(arg, Subcommands):
-            add_subcommands(parser, arg, dest_prefix=dest_prefix, exit_with=exit_with)
-        else:
-            assert_never(arg)
+def add_arguments(parser: argparse.ArgumentParser, command: Command, dest_prefix=""):
+    arg_groups = generate_arg_groups(command, include_hidden=True)
+    for group_name, args in arg_groups:
+        group = parser.add_argument_group(title=group_name)
+
+        for arg in args:
+            if isinstance(arg, Arg):
+                add_argument(group, arg, dest_prefix=dest_prefix)
+            elif isinstance(arg, Subcommand):
+                add_subcommands(parser, group_name, arg, dest_prefix=dest_prefix)
+            else:
+                assert_never(arg)
 
 
 def add_argument(
@@ -253,17 +219,14 @@ def add_argument(
 
     is_positional = not names
 
-    num_args = render_num_args(arg.num_args)
+    num_args = backend_num_args(arg.num_args)
 
     kwargs: dict[str, typing.Any] = {
         "dest": dest_prefix + name,
         "help": arg.help,
         "metavar": name,
+        "action": get_action(arg),
     }
-
-    action = get_action(arg)
-    if action:
-        kwargs["action"] = action
 
     if not is_positional and arg.required:
         kwargs["required"] = arg.required
@@ -274,8 +237,8 @@ def add_argument(
         else:
             kwargs["default"] = arg.default
 
-    if num_args is not None and (
-        arg.action is None or arg.action is not arg.action.store_true
+    if num_args and (
+        arg.action and arg.action not in {arg.action.store_true, arg.action.store_false}
     ):
         kwargs["nargs"] = num_args
     elif is_positional and not arg.required:
@@ -291,14 +254,14 @@ def add_argument(
 
 def add_subcommands(
     parser: argparse.ArgumentParser,
-    subcommands: Subcommands,
+    group: str,
+    subcommands: Subcommand,
     dest_prefix="",
-    exit_with=Exit,
 ):
     subcommand_dest = subcommands.name
     subparsers = parser.add_subparsers(
-        title=subcommand_dest,
-        required=subcommands.required,
+        title=group,
+        required=assert_type(subcommands.required, bool),
         description=subcommands.help,
         parser_class=ArgumentParser,
     )
@@ -310,7 +273,7 @@ def add_subcommands(
             help=subcommand.help,
             description=subcommand.description,
             formatter_class=parser.formatter_class,
-            exit_with=exit_with,  # type: ignore
+            add_help=False,
         )
         subparser.set_defaults(
             __command__=subcommand, **{nested_dest_prefix + "__name__": name}
@@ -323,7 +286,7 @@ def add_subcommands(
         )
 
 
-def render_num_args(num_args: int | None) -> int | str | None:
+def backend_num_args(num_args: int | None) -> int | str | None:
     if num_args is None:
         return None
 
@@ -347,14 +310,12 @@ def join_help(*segments):
     return " ".join([s for s in segments if s])
 
 
-def get_action(arg: Arg) -> type[argparse.Action] | str | None:
-    if not arg.action:
-        return None
-
-    if arg.action in {ArgAction.store_true, ArgAction.store_false}:
+def get_action(arg: Arg) -> type[argparse.Action] | str:
+    action = assert_type(arg.action, ArgAction)
+    if action in {ArgAction.store_true, ArgAction.store_false}:
         long = assert_type(arg.long, list)
         has_no_option = any("--no-" in i for i in long)
         if has_no_option:
             return BooleanOptionalAction
 
-    return arg.action.value
+    return action.value

@@ -6,10 +6,11 @@ from typing import Set
 import cappa
 from typing_extensions import Annotated
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
-def test_list_option():
+@backends
+def test_list_option(backend):
     @dataclass
     class ArgTest:
         variable_number: Annotated[Set[str], cappa.Arg(short=True, long=True)] = field(
@@ -26,11 +27,13 @@ def test_list_option():
         "two",
         "-v",
         "two",
+        backend=backend,
     )
     assert test.variable_number == {"one", "two"}
 
 
-def test_list_positional():
+@backends
+def test_list_positional(backend):
     @dataclass
     class ArgTest:
         variable_number: Set[int] = field(default_factory=set)
@@ -43,5 +46,6 @@ def test_list_positional():
         "2",
         "3",
         "1",
+        backend=backend,
     )
     assert test.variable_number == {1, 2, 3}

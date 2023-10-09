@@ -149,7 +149,7 @@ import cappa
 
 @dataclass
 class Example:
-    cmd: cappa.Subcmd[Print | Fail]
+    cmd: cappa.Subcommands[Print | Fail]
 
 
 def print_cmd(print: Print):

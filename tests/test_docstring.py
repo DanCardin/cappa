@@ -21,8 +21,9 @@ class IncludesDocstring:
     bar: bool = False
 
 
+@pytest.mark.help
 def test_required_provided(capsys):
-    with pytest.raises(ValueError):
+    with pytest.raises(cappa.Exit):
         parse(IncludesDocstring, "--help")
 
     result = capsys.readouterr().out
@@ -33,12 +34,13 @@ def test_required_provided(capsys):
     assert "--bar       whether to bar (default: False)" in result
 
 
+@pytest.mark.help
 def test_just_a_title(capsys):
     @dataclass
     class IncludesDocstring:
         """Just a title."""
 
-    with pytest.raises(ValueError):
+    with pytest.raises(cappa.Exit):
         parse(IncludesDocstring, "--help")
 
     result = capsys.readouterr().out
@@ -46,13 +48,14 @@ def test_just_a_title(capsys):
     assert "Just a title" in result
 
 
+@pytest.mark.help
 def test_docstring_with_explicit_help(capsys):
     @cappa.command(help="help text")
     @dataclass
     class IncludesDocstring:
         """Just a title."""
 
-    with pytest.raises(ValueError):
+    with pytest.raises(cappa.Exit):
         parse(IncludesDocstring, "--help")
 
     result = capsys.readouterr().out
@@ -61,13 +64,14 @@ def test_docstring_with_explicit_help(capsys):
     assert "help text" in result
 
 
+@pytest.mark.help
 def test_docstring_with_explicit_description(capsys):
     @cappa.command(description="description")
     @dataclass
     class IncludesDocstring:
         """Just a title."""
 
-    with pytest.raises(ValueError):
+    with pytest.raises(cappa.Exit):
         parse(IncludesDocstring, "--help")
 
     result = capsys.readouterr().out

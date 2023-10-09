@@ -4,8 +4,9 @@ from typing import List
 import cappa
 import pytest
 from cappa.annotation import parse_list, parse_value
+from cappa.output import Exit
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
 @dataclass
@@ -25,21 +26,25 @@ command = cappa.Command(
 )
 
 
-def test_valid():
-    result = parse(command, "one", "2", "3")
+@backends
+def test_valid(backend):
+    result = parse(command, "one", "2", "3", backend=backend)
     assert result == Foo(bar="one", baz=[2, 3])
 
 
-def test_help(capsys):
-    with pytest.raises(ValueError):
-        parse(command, "-h")
+@pytest.mark.help
+@backends
+def test_help(capsys, backend):
+    with pytest.raises(Exit):
+        parse(command, "-h", backend=backend)
 
     out = capsys.readouterr().out
     assert "Short help." in out
     assert "Long description." in out
 
 
-def test_subcommand():
+@backends
+def test_subcommand(backend):
     @dataclass
     class Bar:
         bar: str
@@ -51,7 +56,7 @@ def test_subcommand():
     command = cappa.Command(
         Foo,
         arguments=[
-            cappa.Subcommands(
+            cappa.Subcommand(
                 name="sub",
                 options={
                     "bar": cappa.Command(
@@ -67,5 +72,5 @@ def test_subcommand():
         description="Long description.",
     )
 
-    result = parse(command, "bar", "one")
+    result = parse(command, "bar", "one", backend=backend)
     assert result == Foo(sub=Bar("one"))
