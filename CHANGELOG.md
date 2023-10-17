@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1
+- Provide clear error message when a version Arg is supplied without a name.
+- Documentation updates
+
 ## 0.7.0
 
 - Adds native cappa parser option vs argparse

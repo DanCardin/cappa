@@ -42,8 +42,9 @@ def parse(
             parsed state. This defaults to constructing built-in function using argparse.
         color: Whether to output in color, if the `color` extra is installed.
         version: If a string is supplied, adds a -v/--version flag which returns the
-            given version string. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
-            fields to add a corresponding version argument.
+            given string as the version. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
+            fields to add a corresponding version argument. Note the `name` is assumed to **be**
+            the CLI's version, e.x. `Arg('1.2.3', help="Prints the version")`.
         help: If `True` (default to True), adds a -h/--help flag. If an `Arg` is supplied,
             uses the `short`/`long`/`help` fields to add a corresponding help argument.
         completion: Enables completion when using the cappa `backend` option. If `True`
@@ -98,8 +99,9 @@ def invoke(
             parsed state. This defaults to constructing built-in function using argparse.
         color: Whether to output in color, if the `color` extra is installed.
         version: If a string is supplied, adds a -v/--version flag which returns the
-            given version string. If an `Arg` is supplied, uses the `name`/`short`/`long`
-            fields to add a corresponding version argument.
+            given string as the version. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
+            fields to add a corresponding version argument. Note the `name` is assumed to **be**
+            the CLI's version, e.x. `Arg('1.2.3', help="Prints the version")`.
         help: If `True` (default to True), adds a -h/--help flag. If an `Arg` is supplied,
             uses the `short`/`long`/`help` fields to add a corresponding help argument.
         completion: Enables completion when using the cappa `backend` option. If `True`
