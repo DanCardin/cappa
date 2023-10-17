@@ -163,7 +163,7 @@ class Print:
     loudly: bool
 
 @dataclass
-class Exit:
+class Fail:
     code: int
 
     def __call__(self):  # again, __call__ is shorthand for the above explicit `invoke=` form.
