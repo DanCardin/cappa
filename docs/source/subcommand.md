@@ -11,6 +11,11 @@ As you'll have already seen throughout the documentation, before now.
 Subcommands are expressed by annotating a union of subcommand options, and
 annotating the union with `cappa.Subcommand`. I.e.
 
+```{note}
+If you want to explicitly control the name of a subcommand beyond the default,
+you must annotate the command's class with `@cappa.command(name="the-name")`.
+```
+
 ```python
 from __future__ import annotations
 from dataclasses import dataclass
