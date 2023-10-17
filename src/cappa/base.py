@@ -47,8 +47,8 @@ def parse(
         help: If `True` (default to True), adds a -h/--help flag. If an `Arg` is supplied,
             uses the `short`/`long`/`help` fields to add a corresponding help argument.
         completion: Enables completion when using the cappa `backend` option. If `True`
-        (default to True), adds a --completion flag. An `Arg` can be supplied to customize
-        the argument's behavior.
+            (default to True), adds a --completion flag. An `Arg` can be supplied to customize
+            the argument's behavior.
         theme: Optional rich theme to customized output formatting.
     """
     if argv is None:  # pragma: no cover
@@ -103,8 +103,8 @@ def invoke(
         help: If `True` (default to True), adds a -h/--help flag. If an `Arg` is supplied,
             uses the `short`/`long`/`help` fields to add a corresponding help argument.
         completion: Enables completion when using the cappa `backend` option. If `True`
-        (default to True), adds a --completion flag. An `Arg` can be supplied to customize
-        the argument's behavior.
+            (default to True), adds a --completion flag. An `Arg` can be supplied to customize
+            the argument's behavior.
         theme: Optional rich theme to customized output formatting.
     """
     if argv is None:  # pragma: no cover
