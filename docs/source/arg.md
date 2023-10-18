@@ -18,8 +18,8 @@ By default:
 - Each class member is inferred to be a positional argument
 - Its name is the dash-case version of the class member name
 - Its value is coerced to the annotated type
-- Its help text is inferred from the class docstring's Argument section (either
-  numpy or google style)
+- Its help text is inferred from various natural sources (See
+  [Help Text Inference](./help.md) for details)
 
 However, by using `Arg`, with syntax like
 `name: Annotated[str, cappa.Arg(...)]`, you can customize the behavior of the

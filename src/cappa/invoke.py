@@ -166,7 +166,9 @@ def fullfill_deps(fn: Callable, fullfilled_deps: dict, call: bool = True) -> typ
         if annotation is None:
             dep = None
         else:
-            dep, annotation = find_type_annotation(annotation, Dep)
+            object_annotation = find_type_annotation(annotation, Dep)
+            dep = object_annotation.obj
+            annotation = object_annotation.annotation
 
         if dep is None:
             # Non-annotated args are either implicit dependencies (and thus already fullfilled),

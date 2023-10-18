@@ -28,6 +28,7 @@ vs Click / Typer / Argparse <comparison>
 Parse Vs Invoke <parse_vs_invoke>
 Dataclasses/Pydantic/Attrs <class_compatibility>
 Rich Integration <rich>
+Help Text Inference <help>
 Completions <completion>
 Parser Backends (Cappa/Argparse) <backends>
 ```

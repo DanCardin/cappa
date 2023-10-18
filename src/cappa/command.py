@@ -100,12 +100,14 @@ class Command(typing.Generic[T]):
 
             for field in fields:
                 type_hint = type_hints[field.name]
+                arg_help = arg_help_map.get(field.name)
 
-                maybe_subcommand = Subcommand.collect(field, type_hint)
+                maybe_subcommand = Subcommand.collect(
+                    field, type_hint, fallback_help=arg_help
+                )
                 if maybe_subcommand:
                     arguments.append(maybe_subcommand)
                 else:
-                    arg_help = arg_help_map.get(field.name)
                     arg_def: Arg = Arg.collect(field, type_hint, fallback_help=arg_help)
                     arguments.append(arg_def)
 
