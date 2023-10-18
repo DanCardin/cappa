@@ -3,13 +3,16 @@ from __future__ import annotations
 import argparse
 import sys
 import typing
+from collections.abc import Callable
 
 from typing_extensions import assert_never
 
 from cappa.arg import Arg, ArgAction
 from cappa.command import Command, Subcommand
 from cappa.help import create_help_arg, create_version_arg, generate_arg_groups
+from cappa.invoke import fullfill_deps
 from cappa.output import Exit, HelpExit
+from cappa.parser import RawOption, Value
 from cappa.typing import assert_not_missing, assert_type, missing
 
 if sys.version_info < (3, 9):  # pragma: no cover
@@ -99,6 +102,26 @@ class BooleanOptionalAction(argparse.Action):
 
     def format_usage(self):
         return " | ".join(self.option_strings)
+
+
+def custom_action(arg: Arg, action: Callable):
+    class CustomAction(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            # XXX: This should ideally be able to inject parser state, but here, we dont
+            #      have access to the same state as the native parser.
+            fullfilled_deps: dict = {
+                Value: Value(values),
+                Command: namespace.__command__,
+                Arg: arg,
+            }
+            if option_string:
+                fullfilled_deps[RawOption] = RawOption.from_str(option_string)
+
+            deps = fullfill_deps(action, fullfilled_deps)
+            result = action(**deps)
+            setattr(namespace, self.dest, result)
+
+    return CustomAction
 
 
 class Nestedspace(argparse.Namespace):
@@ -232,13 +255,13 @@ def add_argument(
         kwargs["required"] = arg.required
 
     if arg.default is not missing:
-        if arg.action and arg.action is arg.action.append:
+        if arg.action and arg.action is ArgAction.append:
             kwargs["default"] = list(arg.default)  # type: ignore
         else:
             kwargs["default"] = arg.default
 
     if num_args and (
-        arg.action and arg.action not in {arg.action.store_true, arg.action.store_false}
+        arg.action and arg.action not in {ArgAction.store_true, ArgAction.store_false}
     ):
         kwargs["nargs"] = num_args
     elif is_positional and not arg.required:
@@ -310,12 +333,15 @@ def join_help(*segments):
     return " ".join([s for s in segments if s])
 
 
-def get_action(arg: Arg) -> type[argparse.Action] | str:
-    action = assert_type(arg.action, ArgAction)
-    if action in {ArgAction.store_true, ArgAction.store_false}:
-        long = assert_type(arg.long, list)
-        has_no_option = any("--no-" in i for i in long)
-        if has_no_option:
-            return BooleanOptionalAction
+def get_action(arg: Arg) -> argparse.Action | type[argparse.Action] | str:
+    action = arg.action
+    if isinstance(action, ArgAction):
+        if action in {ArgAction.store_true, ArgAction.store_false}:
+            long = assert_type(arg.long, list)
+            has_no_option = any("--no-" in i for i in long)
+            if has_no_option:
+                return BooleanOptionalAction
+        return action.value
 
-    return action.value
+    action = typing.cast(Callable, action)
+    return custom_action(arg, action)

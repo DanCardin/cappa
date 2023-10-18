@@ -46,6 +46,76 @@ can be used and are interpreted to handle different kinds of CLI input.
    :noindex:
 ```
 
+## Action
+
+Obliquely referenced through other `Arg` options like `count`, every `Arg` has a
+corrresponding "action". The action is automatically inferred, most of the time,
+based on other options (i.e. `count`), the annotated type (i.e. `bool` ->
+`ArgAction.set_true/ArgAction.set_false`, `list` -> `ArgAction.append`), etc.
+
+However the inferred action can always be directly set, in order to override the
+default inferred behavior.
+
+### Custom Actions
+
+```{note}
+This feature is currently experimental, in particular because the parser state
+available to either backend's callable is radically different. However, for an
+action callable which accepts no arguments, behaviors is unlikely to change.
+```
+
+In addition to one of the literal `ArgAction` variants, the provided action can
+be given as an arbitrary callable.
+
+The callable will be called as the parser "action" in response to parsing that
+argument.
+
+Similarly to the [invoke][./invoke.md] system, you can use the type system to
+automatically inject objects of supported types from the parse context into the
+function in question. The return value of the function will be used as the
+result of parsing that particular argument.
+
+The set of available objects to inject include:
+
+- [Command](cappa.Command): The command currently being parsed (a relevant piece
+  of context when using subcommands)
+- [Arg](cappa.Arg): The argument being parsed.
+- [Value](cappa.parser.Value): The raw input value parsed in the context of the
+  argument. Depending on other settings, this may be a list (when num_args > 1),
+  or a raw value otherwise.
+- [RawOption](cappa.parser.RawOption): In the event the value in question
+  corresponds to an option value, the representation of that option from the
+  original input.
+
+The above set of objects is of potentially limited value. More parser state will
+likely be exposed through this interface in the future.
+
+For example:
+
+```python
+def example():
+    return 'foo!'
+
+def example(arg: Arg):
+    return 'foo!'
+
+def example2(value: Value):
+    return value.value[1:]
+
+
+@dataclass
+class Example:
+    ex1: Annotated[str, cappa.Arg(action=example)
+    ex2: Annotated[str, cappa.Arg(action=example2)
+    ex3: Annotated[str, cappa.Arg(action=example3)
+```
+
+```{eval-rst}
+.. autoapimodule:: cappa
+   :members: Argction
+   :noindex:
+```
+
 ## Environment Variable Fallback
 
 ```{eval-rst}
