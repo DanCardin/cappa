@@ -53,7 +53,8 @@ assert isinstance(p4, PAttrsClass)
 ```
 
 However, you can additionally wrap the class in the `cappa.command` decorator to
-gain access to (described below) more customizability and behavior.
+gain access to (described below) more customizability (such as customizing
+the command's name) and behavior (such as [invoke](./invoke.md)).
 
 ```{note}
 The wrapped class is directly returned from the decorator. So unlike `click`,

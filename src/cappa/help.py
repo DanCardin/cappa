@@ -12,6 +12,7 @@ from cappa.arg import Arg, ArgAction, no_extra_arg_actions
 from cappa.command import Command
 from cappa.output import Displayable
 from cappa.subcommand import Subcommand
+from cappa.typing import missing
 
 ArgGroup: TypeAlias = typing.Tuple[str, typing.List[typing.Union[Arg, Subcommand]]]
 
@@ -29,7 +30,13 @@ def create_version_arg(version: str | Arg | None = None) -> Arg | None:
             group=(3, "Help"),
         )
 
-    return version.normalize(action=ArgAction.version)
+    version = version.normalize(action=ArgAction.version)
+    if version.name is missing:
+        raise ValueError(
+            "Expected explicit version `Arg` to supply version number as its name, like `Arg('1.2.3', ...)`"
+        )
+
+    return version
 
 
 def create_help_arg(help: bool | Arg | None = True) -> Arg | None:
