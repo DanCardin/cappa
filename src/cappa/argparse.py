@@ -137,7 +137,7 @@ def backend(
     ns = Nestedspace()
 
     try:
-        result_namespace = parser.parse_args(argv[1:], ns)
+        result_namespace = parser.parse_args(argv, ns)
     except argparse.ArgumentError as e:
         raise Exit(str(e), code=2)
 
@@ -156,7 +156,7 @@ def create_parser(
         kwargs["exit_on_error"] = False
 
     parser = ArgumentParser(
-        prog=command.name,
+        prog=command.real_name(),
         description=join_help(command.help, command.description),
         allow_abbrev=False,
         add_help=False,

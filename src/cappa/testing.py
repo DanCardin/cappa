@@ -56,7 +56,7 @@ class CommandRunner:
 
         Or create a runner that always uses the same base CLI object, and default base command
 
-        >>> runner = CommandRunner(Obj, base_args=['command', 'first'])
+        >>> runner = CommandRunner(Obj, base_args=['first'])
 
         Now each test, can customize the behavior to suit the test in question.
 
@@ -74,7 +74,7 @@ class CommandRunner:
     version: str | cappa.Arg | None = None
     help: bool | cappa.Arg = True
 
-    base_args: list[str] = field(default_factory=lambda: ["command"])
+    base_args: list[str] = field(default_factory=lambda: [])
 
     def coalesce_args(self, *args: str, **kwargs: Unpack[RunnerArgs]) -> dict:
         return {

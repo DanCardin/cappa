@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import sys
 import typing
 
 from rich.theme import Theme
@@ -54,9 +53,6 @@ def parse(
             the argument's behavior.
         theme: Optional rich theme to customized output formatting.
     """
-    if argv is None:  # pragma: no cover
-        argv = sys.argv
-
     command = Command.get(obj)
 
     output = Output.from_theme(theme)
@@ -113,9 +109,6 @@ def invoke(
             the argument's behavior.
         theme: Optional rich theme to customized output formatting.
     """
-    if argv is None:  # pragma: no cover
-        argv = sys.argv
-
     command: Command = Command.get(obj)
 
     output = Output.from_theme(theme)

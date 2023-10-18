@@ -55,10 +55,7 @@ def backend(
     if not color:
         os.environ["NO_COLOR"] = "1"
 
-    try:
-        prog, *argv = argv
-    except ValueError:
-        prog = ""
+    prog = command.real_name()
 
     args = RawArg.collect(argv, provide_completions=provide_completions)
 

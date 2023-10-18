@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.2
+
+- The command's name should now always translate to the prog name
+- Explicitly provided argv should now **not** include the prog name
+
+## 0.8.1
+
+- Correct the version long name when long=True.
+
 ## 0.8.0
 
 - Implement support for PEP-727 help text inference.
