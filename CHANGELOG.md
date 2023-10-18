@@ -1,6 +1,11 @@
 # Changelog
 
+## 0.8.0
+
+- Implement support for PEP-727 help text inference.
+
 ## 0.7.1
+
 - Provide clear error message when a version Arg is supplied without a name.
 - Documentation updates
 

@@ -53,8 +53,8 @@ assert isinstance(p4, PAttrsClass)
 ```
 
 However, you can additionally wrap the class in the `cappa.command` decorator to
-gain access to (described below) more customizability (such as customizing
-the command's name) and behavior (such as [invoke](./invoke.md)).
+gain access to (described below) more customizability (such as customizing the
+command's name) and behavior (such as [invoke](./invoke.md)).
 
 ```{note}
 The wrapped class is directly returned from the decorator. So unlike `click`,
@@ -78,16 +78,10 @@ The `name` field can be used to override this behavior.
 
 ## Help/Description Text
 
-```{note}
-All of `Command`, `Subcommand`, and `Arg` accept `help` arguments which can
-be used to override the default behavior for that item.
+See [Help Text Inference](./help.md) for details.
 
-Command also accepts a "description", which constitutes the extended text section
-below.
-```
-
-By default, the help text for commands/subcommands/options will be inferred from
-the docstrings of the referenced classes. For example,
+Command also accepts a "description", which constitutes the extended text
+section below.
 
 ```python
 class Example:
@@ -101,7 +95,7 @@ class Example:
     foo: int
 ```
 
-would produce the following help text:
+would produce something like the following help text:
 
 ```
 Usage: example.py [-h]

@@ -176,7 +176,7 @@ def choose_help_formatter(color: bool = True):
     ] = argparse.ArgumentDefaultsHelpFormatter
 
     if color is True:
-        try:
+        try:  # pragma: no cover
             from rich_argparse import ArgumentDefaultsRichHelpFormatter
 
             help_formatter = ArgumentDefaultsRichHelpFormatter

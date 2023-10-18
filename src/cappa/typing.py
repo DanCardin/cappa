@@ -3,10 +3,18 @@ from __future__ import annotations
 import sys
 import types
 import typing
+from dataclasses import dataclass
 
 import typing_inspect
-from typing_extensions import Annotated
+from typing_extensions import Annotated, assert_never
 from typing_inspect import is_literal_type, typing_extensions
+
+try:
+    from typing_extensions import Doc  # type: ignore
+
+    doc_type: type | None = Doc
+except ImportError:  # pragma: no cover
+    doc_type = None
 
 if sys.version_info < (3, 10):
     NoneType = type(None)  # pragma: no cover
@@ -19,10 +27,18 @@ missing = ...
 MISSING: typing.TypeAlias = type(missing)  # type: ignore
 
 
+@dataclass
+class ObjectAnnotation(typing.Generic[T]):
+    obj: T | None
+    annotation: typing.Type
+    doc: str | None = None
+
+
 def find_type_annotation(
     type_hint: typing.Type, kind: typing.Type[T]
-) -> tuple[T | None, typing.Type]:
+) -> ObjectAnnotation[T]:
     instance = None
+    doc = None
 
     if typing_extensions.get_origin(type_hint) is Annotated:
         annotations = type_hint.__metadata__
@@ -37,7 +53,15 @@ def find_type_annotation(
                 instance = annotation()
                 break
 
-    return instance, type_hint
+        if doc_type:
+            for annotation in annotations:
+                if isinstance(annotation, doc_type):
+                    doc = annotation.documentation  # type: ignore
+                    break
+        else:
+            assert_never(doc_type)  # type: ignore
+
+    return ObjectAnnotation(obj=instance, annotation=type_hint, doc=doc)
 
 
 def assert_not_missing(value: T | MISSING) -> T:

@@ -38,7 +38,7 @@ class Subcommand:
     """
 
     name: str | MISSING = ...
-    help: str = ""
+    help: str | None = None
     required: bool | None = None
     group: str | tuple[int, str] = (3, "Subcommands")
     hidden: bool = False
@@ -47,8 +47,12 @@ class Subcommand:
     options: dict[str, Command] = dataclasses.field(default_factory=dict)
 
     @classmethod
-    def collect(cls, field: Field, type_hint: type) -> Self | None:
-        subcommand, annotation = find_type_annotation(type_hint, cls)
+    def collect(
+        cls, field: Field, type_hint: type, fallback_help: str | None = None
+    ) -> Self | None:
+        object_annotation = find_type_annotation(type_hint, cls)
+        subcommand = object_annotation.obj
+
         field_metadata = extract_dataclass_metadata(field)
         if field_metadata:
             if not isinstance(field_metadata, Subcommand):
@@ -59,14 +63,24 @@ class Subcommand:
         if subcommand is None:
             return None
 
-        return subcommand.normalize(annotation, name=field.name)
+        return subcommand.normalize(
+            object_annotation.annotation,
+            name=field.name,
+            fallback_help=object_annotation.doc or fallback_help,
+        )
 
-    def normalize(self, annotation=NoneType, name: str | None = None) -> Self:
+    def normalize(
+        self,
+        annotation=NoneType,
+        name: str | None = None,
+        fallback_help: str | None = None,
+    ) -> Self:
         name = name or assert_type(self.name, str)
         types = infer_types(self, annotation)
         required = infer_required(self, annotation)
         options = infer_options(self, types)
         group = infer_group(self)
+        help = infer_help(self, fallback_help)
 
         return dataclasses.replace(
             self,
@@ -75,6 +89,7 @@ class Subcommand:
             required=required,
             options=options,
             group=group,
+            help=help,
         )
 
     def map_result(self, parsed_args):
@@ -139,6 +154,13 @@ def infer_group(arg: Subcommand) -> str | tuple[int, str]:
         return (3, group_name or "Subcommands")
 
     return typing.cast(typing.Tuple[int, str], group)
+
+
+def infer_help(arg: Subcommand, fallback_help: str | None) -> str | None:
+    help = arg.help
+    if help is None:
+        help = fallback_help
+    return help
 
 
 Subcommands: TypeAlias = Annotated[T, Subcommand]

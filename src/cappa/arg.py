@@ -105,12 +105,16 @@ class Arg(typing.Generic[T]):
     def collect(
         cls, field: Field, type_hint: type, fallback_help: str | None = None
     ) -> Arg:
-        maybe_arg, annotation = find_type_annotation(type_hint, cls)
+        object_annotation = find_type_annotation(type_hint, cls)
+        annotation = object_annotation.annotation
 
-        if maybe_arg is None:
-            maybe_arg = cls()
+        if object_annotation.obj is None:
+            arg = cls()
+        else:
+            arg = typing.cast(Arg, object_annotation.obj)
 
-        arg = typing.cast(Arg, maybe_arg)
+        if object_annotation.doc:
+            fallback_help = object_annotation.doc
 
         # Dataclass field metatdata takes precedence if it exists.
         field_metadata = extract_dataclass_metadata(field)
@@ -123,7 +127,7 @@ class Arg(typing.Generic[T]):
         default = infer_default(arg, field)
 
         arg = dataclasses.replace(arg, name=name, default=default)
-        return arg.normalize(annotation, fallback_help)
+        return arg.normalize(annotation, fallback_help=fallback_help)
 
     def normalize(
         self,
