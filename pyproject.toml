@@ -1,10 +1,13 @@
 [tool.poetry]
 name = "cappa"
-version = "0.8.1"
+version = "0.8.2"
 description = ""
 authors = ["DanCardin <ddcardin@gmail.com>"]
 readme = "README.md"
 packages = [{include = "cappa", from = "src"}]
+
+[tool.poetry.scripts]
+meow = "cappa.meow:run"
 
 [tool.poetry.dependencies]
 python = "^3.8"

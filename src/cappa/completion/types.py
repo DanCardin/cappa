@@ -14,11 +14,6 @@ class ShellHandler:
     template: str
 
     def backend_template(self, prog: str, arg: Arg) -> str:
-        try:
-            prog, _ = prog.rsplit("/", 1)
-        except ValueError:
-            pass
-
         safe_name = re.sub(r"\W*", "", prog.replace("-", "_"), flags=re.ASCII)
 
         assert isinstance(arg.long, list)

@@ -33,7 +33,7 @@ def test_generate_completions():
 
     assert e.value.code == 0
     assert e.value.message
-    assert "_testpy_completion" in str(e.value.message)
+    assert "_args_completion" in str(e.value.message)
 
 
 def test_invalid_setup():
@@ -59,7 +59,7 @@ def test_no_completion():
     with pytest.raises(cappa.Exit) as e:
         cappa.parse(
             Example,
-            argv=["ex", "--completion", "generate"],
+            argv=["--completion", "generate"],
             backend=backend,
             completion=False,
         )
@@ -79,19 +79,19 @@ def test_arg_completion(capsys):
     with pytest.raises(SystemExit) as e:
         cappa.parse(
             Example,
-            argv=["ex", "-p", "generate"],
+            argv=["-p", "generate"],
             completion=completion,
             backend=backend,
         )
     assert e.value.code == 0
 
     out = capsys.readouterr().out
-    assert "_ex_completion" in out
+    assert "_example_completion" in out
 
     with pytest.raises(SystemExit) as e:
         cappa.parse(
             Example,
-            argv=["ex", "--help"],
+            argv=["--help"],
             completion=completion,
             backend=backend,
         )

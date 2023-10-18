@@ -17,7 +17,7 @@ def test_invoke_exit_success_with_message(capsys, backend):
         ...
 
     with pytest.raises(cappa.Exit):
-        cappa.invoke(Example, argv=[""], backend=backend)
+        cappa.invoke(Example, argv=[], backend=backend)
 
     out = capsys.readouterr().out
     assert out == "With message\n"
@@ -34,7 +34,7 @@ def test_invoke_exit_success_without_message(capsys, backend):
         ...
 
     with pytest.raises(cappa.Exit):
-        cappa.invoke(Example, argv=[""], backend=backend)
+        cappa.invoke(Example, argv=[], backend=backend)
 
     out = capsys.readouterr().out
     assert out == ""
@@ -51,7 +51,7 @@ def test_invoke_exit_errror(capsys, backend):
         ...
 
     with pytest.raises(cappa.Exit) as e:
-        cappa.invoke(Example, argv=[""], backend=backend)
+        cappa.invoke(Example, argv=[], backend=backend)
 
     assert e.value.code == 1
     out = capsys.readouterr().err

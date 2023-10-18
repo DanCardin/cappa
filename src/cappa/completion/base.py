@@ -32,7 +32,7 @@ def execute(
 
     backend(
         command,
-        [prog, *command_args],
+        command_args,
         version=version,
         help=help,
         provide_completions=True,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import inspect
+import sys
 import typing
 from collections.abc import Callable
 
@@ -66,9 +67,9 @@ class Command(typing.Generic[T]):
         if self.name is not None:
             return self.name
 
-        cls_name = self.cmd_cls.__name__
         import re
 
+        cls_name = self.cmd_cls.__name__
         return re.sub(r"(?<!^)(?=[A-Z])", "-", cls_name).lower()
 
     @classmethod
@@ -120,7 +121,7 @@ class Command(typing.Generic[T]):
         cls,
         command: Command[T],
         *,
-        argv: list[str],
+        argv: list[str] | None = None,
         output: Output,
         backend: typing.Callable | None = None,
         color: bool = True,
@@ -128,6 +129,9 @@ class Command(typing.Generic[T]):
         help: bool | Arg = True,
         completion: bool | Arg = True,
     ) -> tuple[Command, Command[T], T]:
+        if argv is None:  # pragma: no cover
+            argv = sys.argv[1:]
+
         command = cls.collect(command)
 
         if backend is None:  # pragma: no cover

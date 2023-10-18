@@ -29,11 +29,11 @@ def test_no_help(backend):
     assert result == Example()
 
     with pytest.raises(SystemExit) as e:
-        cappa.parse(Example, argv=["ex", "-h"], help=False, backend=backend)
+        cappa.parse(Example, argv=["-h"], help=False, backend=backend)
     assert e.value.code == 2
 
     with pytest.raises(SystemExit) as e:
-        cappa.parse(Example, argv=["ex", "--help"], help=False, backend=backend)
+        cappa.parse(Example, argv=["--help"], help=False, backend=backend)
     assert e.value.code == 2
 
 
@@ -50,14 +50,14 @@ def test_arg_help(capsys, backend):
     assert result == Example()
 
     with pytest.raises(SystemExit) as e:
-        cappa.parse(Example, argv=["ex", "-p"], help=help, backend=backend)
+        cappa.parse(Example, argv=["-p"], help=help, backend=backend)
     assert e.value.code == 0
 
     out = capsys.readouterr().out
     assert "-p, --pelp" in out
 
     with pytest.raises(SystemExit) as e:
-        cappa.parse(Example, argv=["ex", "--pelp"], help=help, backend=backend)
+        cappa.parse(Example, argv=["--pelp"], help=help, backend=backend)
     assert e.value.code == 0
 
     out = capsys.readouterr().out
@@ -71,7 +71,7 @@ def test_version_enabled(capsys, backend):
         ...
 
     with pytest.raises(SystemExit) as e:
-        cappa.parse(Example, argv=["ex", "--version"], version="1.2.3", backend=backend)
+        cappa.parse(Example, argv=["--version"], version="1.2.3", backend=backend)
     assert e.value.code == 0
 
     out = capsys.readouterr().out
@@ -90,14 +90,14 @@ def test_arg_version(capsys, backend):
     assert result == Example()
 
     with pytest.raises(SystemExit) as e:
-        cappa.parse(Example, argv=["ex", "-p"], version=version, backend=backend)
+        cappa.parse(Example, argv=["-p"], version=version, backend=backend)
     assert e.value.code == 0
 
     out = capsys.readouterr().out
     assert "1.2.3" in out
 
     with pytest.raises(SystemExit) as e:
-        cappa.parse(Example, argv=["ex", "--persion"], version=version, backend=backend)
+        cappa.parse(Example, argv=["--persion"], version=version, backend=backend)
     assert e.value.code == 0
 
     out = capsys.readouterr().out
@@ -123,7 +123,7 @@ def test_arg_explicit_version_missing_name(backend):
     version: cappa.Arg = cappa.Arg(short="-p", long="--persion")
 
     with pytest.raises(ValueError) as e:
-        cappa.parse(Example, argv=["ex", "-p"], version=version, backend=backend)
+        cappa.parse(Example, argv=["-p"], version=version, backend=backend)
 
     assert (
         str(e.value)
@@ -140,7 +140,20 @@ def test_arg_explicit_version_long_true_defaults_to_version(capsys, backend):
     version: cappa.Arg = cappa.Arg("1.2.3", short="-p", long=True)
 
     with pytest.raises(cappa.Exit):
-        cappa.parse(Example, argv=["ex", "--version"], version=version, backend=backend)
+        cappa.parse(Example, argv=["--version"], version=version, backend=backend)
 
     out = capsys.readouterr().out
     assert "1.2.3" in out
+
+
+@backends
+def test_prog_basename(capsys, backend):
+    @dataclass
+    class Example:
+        ...
+
+    with pytest.raises(cappa.Exit):
+        cappa.parse(Example, argv=["--help"], backend=backend)
+
+    out = capsys.readouterr().out
+    assert "usage: example" in out.lower()

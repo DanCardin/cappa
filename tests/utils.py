@@ -8,7 +8,7 @@ from cappa.testing import CommandRunner
 
 backends = pytest.mark.parametrize("backend", [None, backend])
 
-runner = CommandRunner(base_args=["test.py"])
+runner = CommandRunner(base_args=[])
 
 
 def parse(cls, *args, backend=None):
