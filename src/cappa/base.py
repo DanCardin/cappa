@@ -40,7 +40,9 @@ def parse(
             necessary when testing.
         backend: A function used to perform the underlying parsing and return a raw
             parsed state. This defaults to constructing built-in function using argparse.
-        color: Whether to output in color, if the `color` extra is installed.
+        color: Whether to output in color. Note by default this will only affect the native
+            `cappa.backend` backend. If using the argparse backend, `rich-argparse` must be
+            separately installed.
         version: If a string is supplied, adds a -v/--version flag which returns the
             given string as the version. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
             fields to add a corresponding version argument. Note the `name` is assumed to **be**
@@ -97,7 +99,9 @@ def invoke(
             necessary when testing.
         backend: A function used to perform the underlying parsing and return a raw
             parsed state. This defaults to constructing built-in function using argparse.
-        color: Whether to output in color, if the `color` extra is installed.
+        color: Whether to output in color. Note by default this will only affect the native
+            `cappa.backend` backend. If using the argparse backend, `rich-argparse` must be
+            separately installed.
         version: If a string is supplied, adds a -v/--version flag which returns the
             given string as the version. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
             fields to add a corresponding version argument. Note the `name` is assumed to **be**
