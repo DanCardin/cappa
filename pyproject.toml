@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cappa"
-version = "0.8.0"
+version = "0.8.1"
 description = ""
 authors = ["DanCardin <ddcardin@gmail.com>"]
 readme = "README.md"

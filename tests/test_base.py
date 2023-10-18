@@ -115,7 +115,7 @@ def test_version_without_help(backend):
 
 
 @backends
-def test_arg_explicit_version_missing_name(capsys, backend):
+def test_arg_explicit_version_missing_name(backend):
     @dataclass
     class Example:
         ...
@@ -129,3 +129,18 @@ def test_arg_explicit_version_missing_name(capsys, backend):
         str(e.value)
         == "Expected explicit version `Arg` to supply version number as its name, like `Arg('1.2.3', ...)`"
     )
+
+
+@backends
+def test_arg_explicit_version_long_true_defaults_to_version(capsys, backend):
+    @dataclass
+    class Example:
+        ...
+
+    version: cappa.Arg = cappa.Arg("1.2.3", short="-p", long=True)
+
+    with pytest.raises(cappa.Exit):
+        cappa.parse(Example, argv=["ex", "--version"], version=version, backend=backend)
+
+    out = capsys.readouterr().out
+    assert "1.2.3" in out
