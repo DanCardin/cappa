@@ -160,12 +160,6 @@ class Command(typing.Generic[T]):
         for arg in self.value_arguments():
             is_subcommand = isinstance(arg, Subcommand)
             if arg.name not in parsed_args:
-                # if arg.required:
-                #     raise Exit(
-                #         f"The following arguments are required: {arg.names_str()}",
-                #         code=1,
-                #     )
-
                 if is_subcommand:
                     continue
 

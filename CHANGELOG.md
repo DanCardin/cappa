@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.3
+
+- Fix `Literal["one", "two"]` syntax vs `Literal["one"] | Literal["two"]`
+- Apply custom completions to already "valid" arguments values
+- Deduplicate the --completion helptext choices
+
 ## 0.8.2
 
 - The command's name should now always translate to the prog name

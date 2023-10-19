@@ -67,16 +67,22 @@ def parse_value(annotation: type) -> typing.Callable:
     return origin
 
 
-def parse_literal(type_arg: T) -> typing.Callable[[typing.Any], T]:
+def parse_literal(*type_args: T) -> typing.Callable[[typing.Any], T]:
     """Create a value parser for a given literal value."""
-    mapping_fn: typing.Type = type(type_arg)
+    unique_type_args = set(type_args)
 
     def literal_mapper(value):
-        mapped_value = mapping_fn(value)
-        if mapped_value == type_arg:
-            return mapped_value
+        if value in unique_type_args:
+            return value
 
-        raise ValueError(f"{value} != {type_arg}")
+        for type_arg in unique_type_args:
+            raw_value = str(type_arg)
+            if raw_value == value:
+                return type_arg
+
+        raise ValueError(
+            f"Invalid choice: '{value}' (choose from {', '.join(str(t) for t in type_args)})"
+        )
 
     return literal_mapper
 
@@ -171,5 +177,8 @@ def detect_choices(origin: type, type_args: tuple[type, ...]) -> list[str] | Non
     if is_union_type(origin):
         if all(is_literal_type(t) for t in type_args):
             return [str(typing.get_args(t)[0]) for t in type_args]
+
+    if is_literal_type(origin):
+        return [str(t) for t in type_args]
 
     return None

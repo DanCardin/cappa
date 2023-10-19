@@ -382,7 +382,13 @@ def consume_arg(
                 )
 
             if context.provide_completions and not context.has_values():
-                raise CompletionError(FileCompletion(result))
+                if arg.completion:
+                    completions: list[Completion] | list[
+                        FileCompletion
+                    ] = arg.completion(result)
+                else:
+                    completions = [FileCompletion(result)]
+                raise CompletionError(*completions)
         else:
             if not option and not arg.required:
                 return
