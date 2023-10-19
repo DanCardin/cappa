@@ -226,7 +226,7 @@ def infer_short(arg: Arg, name: str) -> list[str] | typing.Literal[False]:
     else:
         short = arg.short
 
-    return [item[:2] if item.startswith("-") else f"-{item[0]}" for item in short]
+    return [item if item.startswith("-") else f"-{item[0]}" for item in short]
 
 
 def infer_long(arg: Arg, origin: type, name: str) -> list[str] | typing.Literal[False]:
