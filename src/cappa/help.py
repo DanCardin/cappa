@@ -4,6 +4,8 @@ import typing
 from itertools import groupby
 
 from rich.console import NewLine
+from rich.markdown import Markdown
+from rich.padding import Padding
 from rich.table import Table
 from rich.text import Text
 from typing_extensions import TypeAlias
@@ -16,6 +18,8 @@ from cappa.typing import missing
 
 ArgGroup: TypeAlias = typing.Tuple[str, typing.List[typing.Union[Arg, Subcommand]]]
 
+left_padding = (0, 0, 0, 2)
+
 
 def create_version_arg(version: str | Arg | None = None) -> Arg | None:
     if not version:
@@ -27,7 +31,7 @@ def create_version_arg(version: str | Arg | None = None) -> Arg | None:
             short=["-v"],
             long=["--version"],
             help="Show the version and exit.",
-            group=(3, "Help"),
+            group=(4, "Help"),
         )
 
     if version.name is missing:
@@ -51,7 +55,7 @@ def create_help_arg(help: bool | Arg | None = True) -> Arg | None:
             short=["-h"],
             long=["--help"],
             help="Show this message and exit.",
-            group=(3, "Help"),
+            group=(4, "Help"),
         )
 
     return help.normalize(action=ArgAction.help, name="help")
@@ -66,11 +70,11 @@ def create_completion_arg(completion: bool | Arg = True) -> Arg | None:
             name="completion",
             long=["--completion"],
             choices=["generate", "complete"],
-            group=(3, "Help"),
+            group=(4, "Help"),
             help="Use `--completion generate` to print shell-specific completion source.",
         ).normalize(action=ArgAction.completion)
 
-    return completion.normalize(action=ArgAction.completion)
+    return completion.normalize(name="completion", action=ArgAction.completion)
 
 
 def format_help(command: Command, prog: str) -> list[Displayable]:
@@ -79,10 +83,12 @@ def format_help(command: Command, prog: str) -> list[Displayable]:
     lines: list[Displayable] = []
     lines.append(add_short_args(prog, arg_groups))
 
-    desc = " ".join([s for s in [command.help, command.description] if s])
-    if desc:
+    if command.help:
         lines.append(NewLine())
-        lines.append(Text(desc))
+        lines.append(Padding(Markdown(f"**{command.help}**"), left_padding))
+    if command.description:
+        lines.append(NewLine())
+        lines.append(Padding(Markdown(command.description), left_padding))
 
     lines.extend(add_long_args(arg_groups))
     return lines
@@ -105,38 +111,44 @@ def add_short_args(prog: str, arg_groups: list[ArgGroup]) -> str:
     segments: list[str] = [f"Usage: {prog}"]
     for _, args in arg_groups:
         for arg in args:
-            segments.append(format_arg_name(arg, ", "))
+            segments.append(format_arg_name(arg, ", ", n=1))
 
     return " ".join(segments)
 
 
 def add_long_args(arg_groups: list[ArgGroup]) -> list:
-    table = Table(box=None)
-    table.add_column(style="cappa.arg", justify="right")
-    table.add_column(style="cappa.help")
+    table = Table(box=None, expand=False, padding=left_padding)
+    table.add_column(justify="left", ratio=1)
+    table.add_column(style="cappa.help", ratio=2)
 
     for group, args in arg_groups:
         table.add_row(
-            Text(group, style="cappa.group", justify="right"),
+            Text(group, style="cappa.group", justify="left"),
             Text(style="cappa.group"),
         )
         for arg in args:
-            table.add_row(format_arg_name(arg, "/"), arg.help)
+            if isinstance(arg, Arg):
+                table.add_row(
+                    Padding(format_arg_name(arg, ", "), left_padding), arg.help
+                )
+            else:
+                for option in arg.options.values():
+                    table.add_row(*format_subcommand(option))
 
         table.add_row()
 
     return [table]
 
 
-def format_arg_name(arg: Arg | Subcommand, delimiter) -> str:
+def format_arg_name(arg: Arg | Subcommand, delimiter, *, n=0) -> str:
     if isinstance(arg, Arg):
-        arg_names = arg.names_str(delimiter)
+        arg_names = arg.names_str(delimiter, n=n)
         text = f"[cappa.arg]{arg_names}[/cappa.arg]"
 
         is_option = arg.short or arg.long
         has_value = arg.action not in no_extra_arg_actions
         if is_option and has_value:
-            text = f"{text} [cappa.arg.name]{arg.name}[/cappa.arg.name]"
+            text = f"{text} [cappa.arg.name]{arg.name.upper()}[/cappa.arg.name]"
 
         if not arg.required:
             return rf"\[{text}]"
@@ -144,4 +156,13 @@ def format_arg_name(arg: Arg | Subcommand, delimiter) -> str:
         return text
 
     arg_names = arg.names_str(",")
-    return f"[cappa.subcommand]{arg_names}[/cappa.subcommand]"
+    return f"{{[cappa.subcommand]{arg_names}[/cappa.subcommand]}}"
+
+
+def format_subcommand(command: Command):
+    return (
+        Padding(
+            f"[cappa.subcommand]{command.real_name()}[/cappa.subcommand]", left_padding
+        ),
+        command.help,
+    )

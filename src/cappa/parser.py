@@ -37,10 +37,12 @@ class BadArgumentError(RuntimeError):
 @dataclasses.dataclass
 class HelpAction(RuntimeError):
     command: Command
+    command_name: str
 
     @classmethod
-    def from_command(cls, command: Command):
-        raise cls(command)
+    def from_context(cls, context: ParseContext, command: Command):
+        name = " ".join(c.real_name() for c in context.command_stack)
+        raise cls(command, name)
 
 
 @dataclasses.dataclass
@@ -88,14 +90,14 @@ def backend(
         help=help_arg, version=version_arg, completion=completion_arg
     )
 
-    context = ParseContext.from_command(command, args)
+    context = ParseContext.from_command(args, [command])
     context.provide_completions = provide_completions
 
     try:
         try:
             parse(context)
         except HelpAction as e:
-            raise HelpExit(format_help(e.command, prog), code=0)
+            raise HelpExit(format_help(e.command, e.command_name), code=0)
         except VersionAction as e:
             raise Exit(e.version.name, code=0)
         except BadArgumentError as e:
@@ -124,12 +126,11 @@ def backend(
     if provide_completions:
         raise Exit(code=0)
 
-    return (context, context.selected_command or command, context.result)
+    return (context, context.command_stack[-1] or command, context.result)
 
 
 @dataclasses.dataclass
 class ParseContext:
-    command: Command
     remaining_args: deque[RawArg | RawOption]
     options: dict[str, Arg]
     arguments: deque[Arg | Subcommand]
@@ -138,19 +139,26 @@ class ParseContext:
     consumed_args: list[RawArg | RawOption] = dataclasses.field(default_factory=list)
 
     result: dict[str, typing.Any] = dataclasses.field(default_factory=dict)
-    selected_command: Command | None = None
+    command_stack: list[Command] = dataclasses.field(default_factory=list)
 
     provide_completions: bool = False
 
     @classmethod
     def from_command(
         cls,
-        command: Command,
         args: deque[RawArg | RawOption],
+        command_stack: list[Command],
     ) -> ParseContext:
+        command = command_stack[-1]
         options, missing_options = cls.collect_options(command)
         arguments = deque(cls.collect_arguments(command))
-        return cls(command, args, options, arguments, missing_options=missing_options)
+        return cls(
+            args,
+            options,
+            arguments,
+            missing_options=missing_options,
+            command_stack=command_stack,
+        )
 
     @staticmethod
     def collect_options(command: Command) -> tuple[dict[str, Arg], set[str]]:
@@ -187,6 +195,10 @@ class ParseContext:
             ):
                 result.append(arg)
         return result
+
+    @property
+    def command(self):
+        return self.command_stack[-1]
 
     def has_values(self) -> bool:
         return bool(self.remaining_args)
@@ -410,7 +422,7 @@ def consume_subcommand(context: ParseContext, arg: Subcommand) -> typing.Any:
             return
 
         raise BadArgumentError(
-            f"The following arguments are required: {arg.names_str()}",
+            f"The following arguments are required: {{{arg.names_str()}}}",
             value="",
             command=context.command,
             arg=arg,
@@ -423,9 +435,12 @@ def consume_subcommand(context: ParseContext, arg: Subcommand) -> typing.Any:
         )
 
     command = arg.options[value.raw]
-    context.selected_command = command
+    context.command_stack.append(command)
 
-    nested_context = ParseContext.from_command(command, context.remaining_args)
+    nested_context = ParseContext.from_command(
+        context.remaining_args,
+        command_stack=context.command_stack,
+    )
     nested_context.provide_completions = context.provide_completions
     nested_context.result["__name__"] = value.raw
 
@@ -433,8 +448,6 @@ def consume_subcommand(context: ParseContext, arg: Subcommand) -> typing.Any:
 
     name = typing.cast(str, arg.name)
     context.result[name] = nested_context.result
-    if nested_context.selected_command:
-        context.selected_command = nested_context.selected_command
 
 
 def consume_arg(
@@ -560,7 +573,7 @@ def store_append(context: ParseContext, arg: Arg, value: Value[typing.Any]):
 
 
 process_options = {
-    ArgAction.help: HelpAction.from_command,
+    ArgAction.help: HelpAction.from_context,
     ArgAction.version: VersionAction.from_arg,
     ArgAction.completion: CompletionAction.from_value,
     ArgAction.set: store_set,

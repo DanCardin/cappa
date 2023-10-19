@@ -6,6 +6,8 @@ import typing
 from dataclasses import dataclass
 
 from rich.console import Console, NewLine
+from rich.markdown import Markdown
+from rich.padding import Padding
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 from rich.text import Text
@@ -15,7 +17,7 @@ from typing_extensions import TypeAlias
 prompt_types = (Prompt, Confirm)
 
 
-Displayable: TypeAlias = typing.Union[str, Text, Table, NewLine]
+Displayable: TypeAlias = typing.Union[str, Text, Table, NewLine, Markdown, Padding]
 
 
 @dataclass
