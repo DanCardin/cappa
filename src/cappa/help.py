@@ -62,13 +62,13 @@ def create_completion_arg(completion: bool | Arg = True) -> Arg | None:
         return None
 
     if isinstance(completion, bool):
-        completion = Arg(
+        return Arg(
             name="completion",
             long=["--completion"],
             choices=["generate", "complete"],
             group=(3, "Help"),
-            help="Use `--completion generate` to print shell-specific completion source",
-        ).normalize()
+            help="Use `--completion generate` to print shell-specific completion source.",
+        ).normalize(action=ArgAction.completion)
 
     return completion.normalize(action=ArgAction.completion)
 
