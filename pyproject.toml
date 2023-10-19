@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "cappa"
 version = "0.8.4"
-description = ""
+description = "Declarative CLI argument parser."
 authors = ["DanCardin <ddcardin@gmail.com>"]
 readme = "README.md"
 packages = [{include = "cappa", from = "src"}]
