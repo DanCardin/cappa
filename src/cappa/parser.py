@@ -234,13 +234,12 @@ class RawOption:
     @classmethod
     def from_str(cls, arg: str) -> RawOption:
         is_long = arg.startswith("--")
+        is_explicit = "=" in arg
 
         name = arg
         value = None
-        if is_long:
-            is_explicit = "=" in arg
-            if is_explicit:
-                name, value = arg.split("=")
+        if is_explicit:
+            name, value = arg.split("=")
         return cls(name=name, is_long=is_long, value=value)
 
 
@@ -299,10 +298,51 @@ def parse_short_option(context: ParseContext, arg: RawOption) -> None:
     if arg.name == "-" and context.provide_completions:
         return parse_option(context, arg)
 
-    for ch in arg.name[1:]:
-        opt = RawOption(f"-{ch}", is_long=True)
+    virtual_options, virtual_arg = generate_virtual_args(arg, context.options)
+    *first_virtual_options, last_virtual_option = virtual_options
+
+    for opt in first_virtual_options:
         parse_option(context, opt)
+
+    if virtual_arg:
+        context.remaining_args.appendleft(virtual_arg)
+
+    parse_option(context, last_virtual_option)
     return None
+
+
+def generate_virtual_args(
+    arg: RawOption, options: dict[str, typing.Any]
+) -> tuple[list[RawOption], RawArg | None]:
+    """Produce "virtual" options from short (potentially concatenated) options.
+
+    Examples:
+        -abc -> -a, -b, -c
+        -c0 -> -c 0
+        -abc0 -> -a, -b, -c, 0
+    """
+    result = []
+
+    partial_arg = ""
+    remaining_arg = arg.name[1:]
+    while remaining_arg:
+        partial_arg += remaining_arg[0]
+        remaining_arg = remaining_arg[1:]
+
+        option_name = f"-{partial_arg}"
+        if option_name in options:
+            result.append(RawOption(option_name, is_long=True, value=arg.value))
+            partial_arg = ""
+
+    if not result:
+        # i.e. -p, where -p is not a real short option. It will get skipped above.
+        return ([RawOption(arg.name, is_long=True, value=arg.value)], None)
+
+    raw_arg = None
+    if partial_arg:
+        raw_arg = RawArg(partial_arg)
+
+    return (result, raw_arg)
 
 
 def parse_args(context: ParseContext) -> None:
