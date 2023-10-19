@@ -1,13 +1,26 @@
 [tool.poetry]
 name = "cappa"
-version = "0.8.4"
-description = ""
-authors = ["DanCardin <ddcardin@gmail.com>"]
-readme = "README.md"
-packages = [{include = "cappa", from = "src"}]
+version = "0.8.5"
+description = "Declarative CLI argument parser."
 
-[tool.poetry.scripts]
-meow = "cappa.meow:run"
+repository = "https://github.com/dancardin/cappa"
+authors = ["DanCardin <ddcardin@gmail.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+keywords = [
+  "CLI",
+  "argparse",
+  "parser",
+]
+classifiers = [
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+packages = [{include = "cappa", from = "src"}]
+include = [
+    "*.md",
+    "py.typed",
+]
 
 [tool.poetry.dependencies]
 python = ">=3.8,<4"
