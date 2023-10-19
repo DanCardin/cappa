@@ -4,6 +4,7 @@ import sys
 import types
 import typing
 from dataclasses import dataclass
+from inspect import cleandoc
 
 import typing_inspect
 from typing_extensions import Annotated, assert_never
@@ -56,7 +57,7 @@ def find_type_annotation(
         if doc_type:
             for annotation in annotations:
                 if isinstance(annotation, doc_type):
-                    doc = annotation.documentation  # type: ignore
+                    doc = cleandoc(annotation.documentation)  # type: ignore
                     break
         else:
             assert_never(doc_type)  # type: ignore
