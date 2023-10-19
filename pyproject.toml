@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cappa"
-version = "0.8.3"
+version = "0.8.4"
 description = ""
 authors = ["DanCardin <ddcardin@gmail.com>"]
 readme = "README.md"
@@ -10,11 +10,11 @@ packages = [{include = "cappa", from = "src"}]
 meow = "cappa.meow:run"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.8,<4"
 
-typing-extensions = "^4.7.1"
-typing-inspect = "^0.9.0"
-docstring-parser = "^0.15"
+typing-extensions = ">=4.7.1"
+typing-inspect = ">=0.9.0"
+docstring-parser = ">=0.15"
 rich = "*"
 
 [tool.poetry.group.dev.dependencies]
