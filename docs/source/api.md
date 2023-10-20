@@ -9,3 +9,8 @@
 .. autoapimodule:: cappa.testing
    :members: CommandRunner, RunnerArgs
 ```
+
+```{eval-rst}
+.. autoapimodule:: cappa.parser
+   :members: Value, RawOption
+```

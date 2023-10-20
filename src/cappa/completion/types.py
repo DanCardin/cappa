@@ -34,11 +34,3 @@ class Completion:
 @dataclasses.dataclass
 class FileCompletion:
     text: str
-
-
-class CompletionError(RuntimeError):
-    def __init__(
-        self, *completions: Completion | FileCompletion, value="complete", **_
-    ) -> None:
-        self.completions = completions
-        self.value = value

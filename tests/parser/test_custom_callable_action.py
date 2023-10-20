@@ -1,21 +1,85 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Union
+from typing import Union
 
 import cappa
+import pytest
+from cappa.parser import Value
 from typing_extensions import Annotated
 
 from tests.utils import backends, parse
 
 
+################################
+def exit():
+    raise cappa.Exit("message")
+
+
 @backends
-def test_callable_action_fast_exit(backend):
+def test_callable_action_fast_exits(backend):
     @dataclass
     class Args:
-        foo: str
-        raw: Annotated[Union[List[str], None], cappa.Arg(num_args=-1)] = None
+        value: Annotated[str, cappa.Arg(action=exit, short=True)]
 
-    test = parse(Args, "foovalue", "--", "--raw", "value", backend=backend)
-    assert test.foo == "foovalue"
-    assert test.raw == ["--raw", "value"]
+    with pytest.raises(cappa.Exit) as e:
+        parse(Args, "-v", "the", "rest", "is", "trash", backend=backend)
+    assert e.value.message == "message"
+
+
+################################
+def truncate(value: Value[str]):
+    return value.value[1:]
+
+
+@backends
+def test_uses_return_value(backend):
+    @dataclass
+    class Args:
+        value: Annotated[str, cappa.Arg(action=truncate, short=True)]
+
+    args = parse(Args, "-v", "okay", backend=backend)
+    assert args.value == "kay"
+
+
+@backends
+def test_custom_arg(backend):
+    @dataclass
+    class Args:
+        value: Annotated[str, cappa.Arg(action=truncate)]
+
+    args = parse(Args, "okay", backend=backend)
+    assert args.value == "kay"
+
+
+################################
+def command_name(command: cappa.Command):
+    return command.real_name()
+
+
+@dataclass
+class SubBSub:
+    value: Annotated[str, cappa.Arg(action=command_name, short=True)]
+
+
+@dataclass
+class SubA:
+    value: Annotated[str, cappa.Arg(action=command_name, short=True)]
+
+
+@dataclass
+class SubB:
+    cmd: cappa.Subcommands[SubBSub]
+
+
+@backends
+def test_subcommand_name(backend):
+    @dataclass
+    class Args:
+        cmd: cappa.Subcommands[Union[SubA, SubB]]
+
+    args = parse(Args, "sub-a", "-v", "one", backend=backend)
+    assert args.cmd.value == "sub-a"
+
+    args = parse(Args, "sub-b", "sub-b-sub", "-v", "one", backend=backend)
+    assert args.cmd.cmd.value == "sub-b-sub"

@@ -25,6 +25,22 @@ from cappa.typing import (
 
 @enum.unique
 class ArgAction(enum.Enum):
+    """`Arg` action typee.
+
+    Options:
+        set: Stores the given CLI value directly.
+        store_true: Stores a literal `True` value, causing options to not attempt to
+            consume additional CLI arguments
+        store_false: Stores a literal `False` value, causing options to not attempt to
+            consume additional CLI arguments
+        append: Produces a list, and accumulates the given value on top of prior values.
+        count: Increments an integer starting at 0
+
+        help: Cancels argument parsing and prints the help text
+        version: Cancels argument parsing and prints the CLI version
+        completion: Cancels argument parsing and enters "completion mode"
+    """
+
     set = "store"
     store_true = "store_true"
     store_false = "store_false"
@@ -94,7 +110,7 @@ class Arg(typing.Generic[T]):
     group: str | tuple[int, str] | MISSING = missing
     hidden: bool = False
 
-    action: ArgAction | None = None
+    action: ArgAction | Callable | None = None
     num_args: int | None = None
     choices: list[str] | None = None
     completion: Callable[..., list[Completion]] | None = None
@@ -133,7 +149,7 @@ class Arg(typing.Generic[T]):
         self,
         annotation=NoneType,
         fallback_help: str | None = None,
-        action: ArgAction | None = None,
+        action: ArgAction | Callable | None = None,
         name: str | None = None,
     ) -> Arg:
         origin = typing.get_origin(annotation) or annotation
@@ -265,7 +281,7 @@ def infer_choices(
 
 def infer_action(
     arg: Arg, origin: type, type_args: tuple[type, ...], long, default: typing.Any
-) -> ArgAction:
+) -> ArgAction | Callable:
     if arg.count:
         return ArgAction.count
 

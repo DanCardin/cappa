@@ -148,7 +148,7 @@ def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
     return deps
 
 
-def fullfill_deps(fn: Callable, fullfilled_deps: dict, call: bool = True) -> typing.Any:
+def fullfill_deps(fn: Callable, fullfilled_deps: dict) -> typing.Any:
     result = {}
 
     signature = inspect.signature(fn)
@@ -169,6 +169,8 @@ def fullfill_deps(fn: Callable, fullfilled_deps: dict, call: bool = True) -> typ
             object_annotation = find_type_annotation(annotation, Dep)
             dep = object_annotation.obj
             annotation = object_annotation.annotation
+
+        annotation = typing.get_origin(annotation) or annotation
 
         if dep is None:
             # Non-annotated args are either implicit dependencies (and thus already fullfilled),
