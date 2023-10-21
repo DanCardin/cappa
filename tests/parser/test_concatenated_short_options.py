@@ -6,7 +6,6 @@ from typing_extensions import Annotated
 from tests.utils import backends, parse
 
 
-@cappa.command(name="insiders")
 @dataclass
 class Args:
     arg: Annotated[int, cappa.Arg(short="-a", long=True)]
@@ -30,3 +29,18 @@ def test_single_option_value_equals(backend):
 def test_mulitple_option_no_space(backend):
     args = parse(Args, "-fba0", backend=backend)
     assert args == Args(arg=0, foo=True, bar=True)
+
+
+@backends
+def test_distinguish_short_args_with_args_from_without(backend):
+    # Only short args which consume no additional values (i.e. flags) should
+    # be captured as concatenated short args. With arg which consumes a value,
+    # subsequent characters should be given as part of the "arg" portion of
+    # the value
+    @dataclass
+    class Args:
+        arg: Annotated[str, cappa.Arg(short="-a")]
+        foo: Annotated[bool, cappa.Arg(short="-f")] = False
+
+    args = parse(Args, "-fahello world", backend=backend)
+    assert args == Args(arg="hello world", foo=True)

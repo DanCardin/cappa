@@ -242,7 +242,7 @@ def add_argument(
 
     is_positional = not names
 
-    num_args = backend_num_args(arg.num_args)
+    num_args = backend_num_args(arg.num_args, is_positional)
 
     kwargs: dict[str, typing.Any] = {
         "dest": dest_prefix + name,
@@ -309,8 +309,8 @@ def add_subcommands(
         )
 
 
-def backend_num_args(num_args: int | None) -> int | str | None:
-    if num_args is None:
+def backend_num_args(num_args: int | None, is_positional) -> int | str | None:
+    if num_args is None or num_args == 1:
         return None
 
     if num_args == -1:
