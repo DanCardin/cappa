@@ -53,13 +53,13 @@ and redefining argparse's objects with slight, necessary modifications.
 
 ## Cappa backend
 
-Some "headline" features you get when using the cappa backend:
+Ihe main "headline" feature you get when using the cappa backend is: Automatic
+[completion](./completion.md) support.
 
-- Automatic [completion](./completion.md) support
-- Automatic rich-powered, colored help-text formatting
+Is roughly 1/3 the size in LOC, given that much of the featureset and
+flexibility of argparse are unused and a source of contention with cappa's
+design. It's going to be easier to support arbitrary features with the native
+parser than with an external backend.
 
-But generally, it's going to be easier to support arbitrary features with a
-custom parser than with an external backend.
-
-This backend is not currently the default due to its relative infancy. It will,
-however, **become** the default before 1.0 of the library.
+This backend is not currently the default, however it **will** become the
+default before 1.0 of the library.

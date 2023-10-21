@@ -266,7 +266,6 @@ def add_subcommands(
     subparsers = parser.add_subparsers(
         title=group,
         required=assert_type(subcommands.required, bool),
-        description=subcommands.help,
         parser_class=ArgumentParser,
     )
 

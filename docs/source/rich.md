@@ -1,10 +1,5 @@
 # Rich
 
-```{note}
-In order to get rich "support" (essentially colored help text) when using the
-argparse backend, you should separately depend upon the "rich-argparse" dependency.
-```
-
 ## Color
 
 Colored output, including help-text generation, is automatically enabled.
