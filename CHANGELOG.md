@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.7
+
+- Allow defining custom callable as an `action`.
+- Improve behavior consuming concatenated short arguments
+
+## 0.8.6
+
+- Improve behavior consuming concatenated short arguments
+
+## 0.8.5
+
+- Add metadata to package distribution
+
+## 0.8.4
+
+- Loosen dependency version specifiers
+
 ## 0.8.3
 
 - Fix `Literal["one", "two"]` syntax vs `Literal["one"] | Literal["two"]`

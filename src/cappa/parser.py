@@ -351,9 +351,17 @@ def generate_virtual_args(
         remaining_arg = remaining_arg[1:]
 
         option_name = f"-{partial_arg}"
-        if option_name in options:
+
+        option = options.get(option_name)
+        if option:
             result.append(RawOption(option_name, is_long=True, value=arg.value))
             partial_arg = ""
+
+            # An option which requires consuming further arguments should consume
+            # the rest of the concatenated character sequence as its value.
+            if option.num_args:
+                partial_arg = remaining_arg
+                break
 
     if not result:
         # i.e. -p, where -p is not a real short option. It will get skipped above.

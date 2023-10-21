@@ -161,7 +161,7 @@ class Arg(typing.Generic[T]):
         long = infer_long(self, origin, name)
         choices = infer_choices(self, origin, type_args)
         action = action or infer_action(self, origin, type_args, long, self.default)
-        num_args = infer_num_args(self, origin, type_args, long)
+        num_args = infer_num_args(self, origin, type_args, action, long)
 
         parse = infer_parse(self, annotation)
         help = infer_help(self, choices, fallback_help)
@@ -313,28 +313,34 @@ def infer_action(
 
 
 def infer_num_args(
-    arg: Arg, origin: type, type_args: tuple[type, ...], long
+    arg: Arg,
+    origin: type,
+    type_args: tuple[type, ...],
+    action: ArgAction | Callable,
+    long,
 ) -> int | None:
-    if arg.num_args is not None or arg.parse:
+    if arg.num_args is not None:
         return arg.num_args
 
-    is_positional = not arg.short and not long
+    if arg.parse:
+        return 1
 
+    if isinstance(action, ArgAction) and action in no_extra_arg_actions:
+        return 0
+
+    is_positional = not arg.short and not long
     if is_subclass(origin, (list, set)) and is_positional:
         return -1
 
-    if is_subclass(origin, tuple):
-        is_unbounded_tuple = len(type_args) == 2 and type_args[1] == ...
-        if not is_unbounded_tuple:
-            return len(type_args)
+    is_tuple = is_subclass(origin, tuple)
+    is_unbounded_tuple = is_tuple and len(type_args) == 2 and type_args[1] == ...
 
-        if is_positional:
-            return -1
+    if is_tuple and not is_unbounded_tuple:
+        return len(type_args)
 
-    if is_subclass(origin, bool):
-        return 1
-
-    return None
+    if is_unbounded_tuple and is_positional:
+        return -1
+    return 1
 
 
 def infer_parse(arg: Arg, annotation: type) -> Callable:
