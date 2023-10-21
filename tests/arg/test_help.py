@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Literal, Union
 
@@ -8,42 +9,45 @@ import pytest
 from cappa.output import Exit
 from typing_extensions import Annotated, Doc  # type: ignore
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
 @pytest.mark.help
-def test_explicit_parse_function(capsys):
+@backends
+def test_explicit_parse_function(backend, capsys):
     @dataclass
     class ArgTest:
         numbers: Annotated[int, cappa.Arg(parse=int, help="example")]
 
     with pytest.raises(Exit):
-        parse(ArgTest, "--help")
+        parse(ArgTest, "--help", backend=backend)
 
     stdout = capsys.readouterr().out
-    assert "numbers     example" in stdout
+    assert re.match(r".*numbers\s+example.*", stdout, re.DOTALL)
 
 
 @pytest.mark.help
-def test_choices_in_help(capsys):
+@backends
+def test_choices_in_help(backend, capsys):
     @dataclass
     class ArgTest:
         numbers: Annotated[
             Union[Literal[1], Literal[2]], cappa.Arg(parse=int, help="example")
         ]
 
-    result = parse(ArgTest, "1")
+    result = parse(ArgTest, "1", backend=backend)
     assert result == ArgTest(1)
 
     with pytest.raises(Exit):
-        parse(ArgTest, "--help")
+        parse(ArgTest, "--help", backend=backend)
 
     stdout = capsys.readouterr().out
     assert "Valid options: 1, 2" in stdout
 
 
 @pytest.mark.help
-def test_pep_727_doc_annotated(capsys):
+@backends
+def test_pep_727_doc_annotated(backend, capsys):
     @dataclass
     class ArgTest:
         """Test.
@@ -61,7 +65,7 @@ def test_pep_727_doc_annotated(capsys):
         ]
 
     with pytest.raises(Exit):
-        parse(ArgTest, "--help")
+        parse(ArgTest, "--help", backend=backend)
 
     stdout = capsys.readouterr().out
     assert "Use Doc if exists" in stdout

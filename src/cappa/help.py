@@ -122,9 +122,12 @@ def add_long_args(arg_groups: list[ArgGroup]) -> list:
     table.add_column(style="cappa.help", ratio=2)
 
     for group, args in arg_groups:
+        is_subcommand_group = all(isinstance(arg, Subcommand) for arg in args)
+        desc_text = args[0].help or "" if is_subcommand_group else ""
+
         table.add_row(
             Text(group, style="cappa.group", justify="left"),
-            Text(style="cappa.group"),
+            Text(desc_text, style="cappa.group"),
         )
         for arg in args:
             if isinstance(arg, Arg):

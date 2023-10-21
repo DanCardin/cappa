@@ -1,9 +1,10 @@
+import re
 from dataclasses import dataclass
 
 import cappa
 import pytest
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
 @dataclass
@@ -22,26 +23,28 @@ class IncludesDocstring:
 
 
 @pytest.mark.help
-def test_required_provided(capsys):
+@backends
+def test_required_provided(backend, capsys):
     with pytest.raises(cappa.Exit):
-        parse(IncludesDocstring, "--help")
+        parse(IncludesDocstring, "--help", backend=backend)
 
     result = capsys.readouterr().out
 
-    assert "[--bar] [-h] foo" in result
-    assert "Does a thing. and does it really well!" in result
-    assert "foo         the value of foo" in result
-    assert "--bar       whether to bar (default: False)" in result
+    assert "[--bar] foo [-h]" in result
+    assert re.match(r".*Does a thing\.\s+and does it really well!.*", result, re.DOTALL)
+    assert re.match(r".*foo\s+the value of foo.*", result, re.DOTALL)
+    assert re.match(r".*\[--bar\]\s+whether to bar.*", result, re.DOTALL)
 
 
 @pytest.mark.help
-def test_just_a_title(capsys):
+@backends
+def test_just_a_title(backend, capsys):
     @dataclass
     class IncludesDocstring:
         """Just a title."""
 
     with pytest.raises(cappa.Exit):
-        parse(IncludesDocstring, "--help")
+        parse(IncludesDocstring, "--help", backend=backend)
 
     result = capsys.readouterr().out
 
@@ -49,14 +52,15 @@ def test_just_a_title(capsys):
 
 
 @pytest.mark.help
-def test_docstring_with_explicit_help(capsys):
+@backends
+def test_docstring_with_explicit_help(backend, capsys):
     @cappa.command(help="help text")
     @dataclass
     class IncludesDocstring:
         """Just a title."""
 
     with pytest.raises(cappa.Exit):
-        parse(IncludesDocstring, "--help")
+        parse(IncludesDocstring, "--help", backend=backend)
 
     result = capsys.readouterr().out
 
@@ -65,14 +69,15 @@ def test_docstring_with_explicit_help(capsys):
 
 
 @pytest.mark.help
-def test_docstring_with_explicit_description(capsys):
+@backends
+def test_docstring_with_explicit_description(backend, capsys):
     @cappa.command(description="description")
     @dataclass
     class IncludesDocstring:
         """Just a title."""
 
     with pytest.raises(cappa.Exit):
-        parse(IncludesDocstring, "--help")
+        parse(IncludesDocstring, "--help", backend=backend)
 
     result = capsys.readouterr().out
 

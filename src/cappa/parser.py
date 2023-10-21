@@ -1,19 +1,13 @@
 from __future__ import annotations
 
 import dataclasses
-import os
 import typing
 from collections import deque
 
 from cappa.arg import Arg, ArgAction, no_extra_arg_actions
 from cappa.command import Command, Subcommand
 from cappa.completion.types import Completion, FileCompletion
-from cappa.help import (
-    create_completion_arg,
-    create_help_arg,
-    create_version_arg,
-    format_help,
-)
+from cappa.help import format_help
 from cappa.invoke import fullfill_deps
 from cappa.output import Exit, HelpExit
 from cappa.typing import T, assert_type
@@ -56,39 +50,28 @@ class VersionAction(RuntimeError):
 
 class CompletionAction(RuntimeError):
     def __init__(
-        self, *completions: Completion | FileCompletion, value="complete", **_
+        self,
+        *completions: Completion | FileCompletion,
+        value="complete",
+        arg: Arg | None = None,
     ) -> None:
         self.completions = completions
         self.value = value
+        self.arg = arg
 
     @classmethod
-    def from_value(cls, value: Value[str]):
-        raise cls(value=value.value)
+    def from_value(cls, value: Value[str], arg: Arg):
+        raise cls(value=value.value, arg=arg)
 
 
 def backend(
     command: Command[T],
     argv: list[str],
-    color: bool = True,
-    version: str | Arg | None = None,
-    help: bool | Arg | None = True,
-    completion: bool | Arg = True,
     provide_completions: bool = False,
 ) -> tuple[typing.Any, Command[T], dict[str, typing.Any]]:
-    if not color:
-        os.environ["NO_COLOR"] = "1"
-
     prog = command.real_name()
 
     args = RawArg.collect(argv, provide_completions=provide_completions)
-
-    help_arg = create_help_arg(help)
-    version_arg = create_version_arg(version)
-    completion_arg = create_completion_arg(completion)
-
-    command.add_meta_actions(
-        help=help_arg, version=version_arg, completion=completion_arg
-    )
 
     context = ParseContext.from_command(args, [command])
     context.provide_completions = provide_completions
@@ -114,14 +97,7 @@ def backend(
             completions = format_completions(*e.completions)
             raise Exit(completions, code=0)
 
-        execute(
-            command,
-            prog,
-            e.value,
-            help=help_arg,
-            version=version_arg,
-            completion=assert_type(completion_arg, Arg),
-        )
+        execute(command, prog, e.value, assert_type(e.arg, Arg))
 
     if provide_completions:
         raise Exit(code=0)

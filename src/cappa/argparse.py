@@ -9,7 +9,7 @@ from typing_extensions import assert_never
 
 from cappa.arg import Arg, ArgAction
 from cappa.command import Command, Subcommand
-from cappa.help import create_help_arg, create_version_arg, generate_arg_groups
+from cappa.help import format_help, generate_arg_groups
 from cappa.invoke import fullfill_deps
 from cappa.output import Exit, HelpExit
 from cappa.parser import RawOption, Value
@@ -42,10 +42,6 @@ class _HelpAction(argparse._HelpAction):
         self.metavar = metavar
         super().__init__(**kwargs)
 
-    def __call__(self, parser, namespace, values, option_string=None):
-        parser.print_help()
-        raise HelpExit("", code=0)
-
 
 class _VersionAction(argparse._VersionAction):
     def __init__(self, metavar=None, **kwargs):
@@ -72,8 +68,9 @@ class _CountAction(argparse._CountAction):
 
 
 class ArgumentParser(argparse.ArgumentParser):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, command: Command, **kwargs):
         super().__init__(*args, **kwargs)
+        self.command = command
 
         self.register("action", "store_true", _StoreTrueAction)
         self.register("action", "store_false", _StoreFalseAction)
@@ -83,6 +80,9 @@ class ArgumentParser(argparse.ArgumentParser):
 
     def exit(self, status=0, message=None):
         raise Exit(message, code=status)
+
+    def print_help(self):
+        raise HelpExit(format_help(self.command, self.prog))
 
 
 class BooleanOptionalAction(argparse.Action):
@@ -143,19 +143,19 @@ class Nestedspace(argparse.Namespace):
 
 
 def backend(
-    command: Command[T],
-    argv: list[str],
-    color: bool = True,
-    version: str | Arg | None = None,
-    help: bool | Arg = True,
-    completion: bool | Arg = True,
+    command: Command[T], argv: list[str]
 ) -> tuple[typing.Any, Command[T], dict[str, typing.Any]]:
-    version = create_version_arg(version)
-    command.add_meta_actions(help=create_help_arg(help), version=version)
+    parser = create_parser(command)
 
-    parser = create_parser(command, color=color)
-    if version:
+    try:
+        version = next(
+            a
+            for a in command.arguments
+            if isinstance(a, Arg) and a.action is ArgAction.version
+        )
         parser.version = version.name  # type: ignore
+    except StopIteration:
+        pass
 
     ns = Nestedspace()
 
@@ -170,20 +170,17 @@ def backend(
     return parser, command, result
 
 
-def create_parser(
-    command: Command,
-    color: bool = True,
-) -> argparse.ArgumentParser:
+def create_parser(command: Command) -> argparse.ArgumentParser:
     kwargs: dict[str, typing.Any] = {}
     if sys.version_info >= (3, 9):  # pragma: no cover
         kwargs["exit_on_error"] = False
 
     parser = ArgumentParser(
+        command=command,
         prog=command.real_name(),
         description=join_help(command.help, command.description),
         allow_abbrev=False,
         add_help=False,
-        formatter_class=choose_help_formatter(color=color),
         **kwargs,
     )
     parser.set_defaults(__command__=command)
@@ -191,22 +188,6 @@ def create_parser(
     add_arguments(parser, command)
 
     return parser
-
-
-def choose_help_formatter(color: bool = True):
-    help_formatter: type[
-        argparse.HelpFormatter
-    ] = argparse.ArgumentDefaultsHelpFormatter
-
-    if color is True:
-        try:  # pragma: no cover
-            from rich_argparse import ArgumentDefaultsRichHelpFormatter
-
-            help_formatter = ArgumentDefaultsRichHelpFormatter
-        except ImportError:  # pragma: no cover
-            pass
-
-    return help_formatter
 
 
 def add_arguments(parser: argparse.ArgumentParser, command: Command, dest_prefix=""):
@@ -242,7 +223,7 @@ def add_argument(
 
     is_positional = not names
 
-    num_args = backend_num_args(arg.num_args, is_positional)
+    num_args = backend_num_args(arg.num_args)
 
     kwargs: dict[str, typing.Any] = {
         "dest": dest_prefix + name,
@@ -297,6 +278,8 @@ def add_subcommands(
             description=subcommand.description,
             formatter_class=parser.formatter_class,
             add_help=False,
+            command=subcommand,  # type: ignore
+            prog=f"{parser.prog} {subcommand.real_name()}",
         )
         subparser.set_defaults(
             __command__=subcommand, **{nested_dest_prefix + "__name__": name}
@@ -309,7 +292,7 @@ def add_subcommands(
         )
 
 
-def backend_num_args(num_args: int | None, is_positional) -> int | str | None:
+def backend_num_args(num_args: int | None) -> int | str | None:
     if num_args is None or num_args == 1:
         return None
 

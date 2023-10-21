@@ -11,14 +11,7 @@ from cappa.output import Exit
 from cappa.parser import Completion, FileCompletion, backend
 
 
-def execute(
-    command: Command,
-    prog: str,
-    action: str,
-    help: Arg | None,
-    version: Arg | None,
-    completion: Arg,
-):
+def execute(command: Command, prog: str, action: str, arg: Arg):
     shell_name = Path(os.environ.get("SHELL", "bash")).name
     shell = available_shells.get(shell_name)
 
@@ -26,15 +19,13 @@ def execute(
         raise Exit("Unknown shell", code=1)
 
     if action == "generate":
-        raise Exit(shell.backend_template(prog, completion), code=0)
+        raise Exit(shell.backend_template(prog, arg), code=0)
 
     command_args = parse_incomplete_command()
 
     backend(
         command,
         command_args,
-        version=version,
-        help=help,
         provide_completions=True,
     )
 

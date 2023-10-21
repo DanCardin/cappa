@@ -7,7 +7,7 @@ import pytest
 from cappa.output import Exit
 from typing_extensions import Annotated, Doc  # type: ignore
 
-from tests.utils import parse
+from tests.utils import backends, parse
 
 
 @dataclass
@@ -16,13 +16,14 @@ class Cmd:
 
 
 @pytest.mark.help
-def test_pep_727_doc_annotated_arg_wins(capsys):
+@backends
+def test_pep_727_doc_annotated_arg_wins(backend, capsys):
     @dataclass
     class ArgTest:
         subcommand: Annotated[Cmd, cappa.Subcommand(help="Arg wins"), Doc("Doc loses")]
 
     with pytest.raises(Exit):
-        parse(ArgTest, "--help")
+        parse(ArgTest, "--help", backend=backend)
 
     stdout = capsys.readouterr().out
     assert "Arg wins" in stdout
@@ -30,7 +31,8 @@ def test_pep_727_doc_annotated_arg_wins(capsys):
 
 
 @pytest.mark.help
-def test_pep_727_doc_annotated_doc_beats_docstring(capsys):
+@backends
+def test_pep_727_doc_annotated_doc_beats_docstring(backend, capsys):
     @dataclass
     class ArgTest:
         """Test.
@@ -42,7 +44,7 @@ def test_pep_727_doc_annotated_doc_beats_docstring(capsys):
         subcommand: Annotated[Cmd, cappa.Subcommand, Doc("Doc wins")]
 
     with pytest.raises(Exit):
-        parse(ArgTest, "--help")
+        parse(ArgTest, "--help", backend=backend)
 
     stdout = capsys.readouterr().out
     assert "Doc wins" in stdout
