@@ -36,9 +36,11 @@ class Output:
     )
 
     @classmethod
-    def from_theme(cls, theme: Theme | None = None):
-        output_console = Console(file=sys.stdout, theme=theme or cls.theme)
-        error_console = Console(file=sys.stderr, theme=theme or cls.theme)
+    def from_theme(cls, theme: Theme | None = None, color: bool = True):
+        no_color = None if color else True
+        theme = theme or cls.theme
+        output_console = Console(file=sys.stdout, theme=theme, no_color=no_color)
+        error_console = Console(file=sys.stderr, theme=theme, no_color=no_color)
         return cls(output_console, error_console)
 
     def exit(self, e: Exit):

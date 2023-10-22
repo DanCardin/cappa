@@ -2,7 +2,7 @@
 
 ```{eval-rst}
 .. autoapimodule:: cappa
-   :members: parse, invoke, command, Command, Subcommand, Dep, Arg, ArgAction, Exit, Env, Completion, Output
+   :members: parse, invoke, collect, command, Command, Subcommand, Dep, Arg, ArgAction, Exit, Env, Completion, Output
 ```
 
 ```{eval-rst}
