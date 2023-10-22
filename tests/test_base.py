@@ -157,3 +157,15 @@ def test_prog_basename(capsys, backend):
 
     out = capsys.readouterr().out
     assert "usage: example" in out.lower()
+
+
+@backends
+def test_collect_composes_with_parse(backend):
+    @dataclass
+    class Example:
+        ...
+
+    command = cappa.collect(Example)
+    result = cappa.parse(command, argv=[], backend=backend)
+
+    assert result == Example()

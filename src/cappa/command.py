@@ -7,7 +7,7 @@ import typing
 from collections.abc import Callable
 
 import docstring_parser
-from typing_extensions import Self, get_type_hints
+from typing_extensions import get_type_hints
 
 from cappa import class_inspect
 from cappa.arg import Arg, ArgAction
@@ -56,12 +56,14 @@ class Command(typing.Generic[T]):
     description: str | None = None
     invoke: Callable | str | None = None
 
+    _collected: bool = False
+
     @classmethod
-    def get(cls, obj: typing.Type[T]) -> Self:
+    def get(cls, obj: typing.Type[T] | Command[T]) -> Command[T]:
         if isinstance(obj, cls):
             return obj
 
-        return getattr(obj, "__cappa__", cls(obj))
+        return getattr(obj, "__cappa__", cls(obj))  # type: ignore
 
     def real_name(self) -> str:
         if self.name is not None:
@@ -73,7 +75,7 @@ class Command(typing.Generic[T]):
         return re.sub(r"(?<!^)(?=[A-Z])", "-", cls_name).lower()
 
     @classmethod
-    def collect(cls, command: Command):
+    def collect(cls, command: Command[T]) -> Command[T]:
         kwargs: CommandArgs = {}
         arg_help_map = {}
 
@@ -186,18 +188,29 @@ class Command(typing.Generic[T]):
         version: Arg | None = None,
         completion: Arg | None = None,
     ):
-        if help:
-            for arg in self.arguments:
-                if isinstance(arg, Subcommand):
-                    for option in arg.options.values():
-                        option.add_meta_actions(help)
+        if self._collected:
+            return self
 
-            self.arguments.append(help)
+        arguments = [
+            dataclasses.replace(
+                arg,
+                options={
+                    name: option.add_meta_actions(help)
+                    for name, option in arg.options.items()
+                },
+            )
+            if help and isinstance(arg, Subcommand)
+            else arg
+            for arg in self.arguments
+        ]
+
+        if help:
+            arguments.append(help)
         if version:
-            self.arguments.append(version)
+            arguments.append(version)
         if completion:
-            self.arguments.append(completion)
-        return self
+            arguments.append(completion)
+        return dataclasses.replace(self, arguments=arguments, _collected=True)
 
 
 H = typing.TypeVar("H", covariant=True)

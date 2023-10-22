@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import os
 import typing
 
 from rich.theme import Theme
@@ -25,7 +24,7 @@ T = typing.TypeVar("T")
 
 
 def parse(
-    obj: type[T],
+    obj: type[T] | Command[T],
     *,
     argv: list[str] | None = None,
     backend: typing.Callable | None = None,
@@ -63,15 +62,14 @@ def parse(
 
         backend = argparse.backend
 
-    command: Command = collect(
+    command: Command[T] = collect(
         obj,
         help=help,
         version=version,
         completion=completion,
-        color=color,
         backend=backend,
     )
-    output = Output.from_theme(theme)
+    output = Output.from_theme(theme, color=color)
     _, _, instance = Command.parse_command(
         command,
         argv=argv,
@@ -82,7 +80,7 @@ def parse(
 
 
 def invoke(
-    obj: type,
+    obj: type[T] | Command[T],
     *,
     deps: typing.Sequence[typing.Callable] | None = None,
     argv: list[str] | None = None,
@@ -92,7 +90,7 @@ def invoke(
     help: bool | Arg = True,
     completion: bool | Arg = True,
     theme: Theme | None = None,
-):
+) -> T:
     """Parse the command, and invoke the selected command or subcommand.
 
     In the event that a subcommand is selected, only the selected subcommand
@@ -128,10 +126,9 @@ def invoke(
         help=help,
         version=version,
         completion=completion,
-        color=color,
         backend=backend,
     )
-    output = Output.from_theme(theme)
+    output = Output.from_theme(theme, color=color)
     command, parsed_command, instance = Command.parse_command(
         command,
         argv=argv,
@@ -186,23 +183,34 @@ def command(
 
 
 def collect(
-    obj: type,
+    obj: type[T] | Command[T],
     *,
     backend: typing.Callable | None = None,
     version: str | Arg | None = None,
     help: bool | Arg = True,
     completion: bool | Arg = True,
-    color: bool = True,
-):
-    if not color:
-        # XXX: This should probably be doing something with the Output rather than
-        #      mutating global state.
-        os.environ["NO_COLOR"] = "1"
+) -> Command[T]:
+    """Retrieve the `Command` object from a cappa-capable source class.
 
+    Arguments:
+        obj: A class which can represent a CLI command chain.
+        backend: A function used to perform the underlying parsing and return a raw
+            parsed state. This defaults to constructing built-in function using argparse.
+        version: If a string is supplied, adds a -v/--version flag which returns the
+            given string as the version. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
+            fields to add a corresponding version argument. Note the `name` is assumed to **be**
+            the CLI's version, e.x. `Arg('1.2.3', help="Prints the version")`.
+        help: If `True` (default to True), adds a -h/--help flag. If an `Arg` is supplied,
+            uses the `short`/`long`/`help` fields to add a corresponding help argument.
+        completion: Enables completion when using the cappa `backend` option. If `True`
+            (default to True), adds a --completion flag. An `Arg` can be supplied to customize
+            the argument's behavior.
+        color: Whether to output in color.
+    """
     if backend is None:  # pragma: no cover
         backend = argparse.backend
 
-    command: Command = Command.get(obj)
+    command: Command[T] = Command.get(obj)
     command = Command.collect(command)
 
     if backend is argparse.backend:
@@ -212,7 +220,6 @@ def collect(
     version_arg = create_version_arg(version)
     completion_arg = create_completion_arg(completion)
 
-    command.add_meta_actions(
+    return command.add_meta_actions(
         help=help_arg, version=version_arg, completion=completion_arg
     )
-    return command

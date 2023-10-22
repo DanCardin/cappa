@@ -1,4 +1,4 @@
-from cappa.base import command, invoke, parse
+from cappa.base import collect, command, invoke, parse
 from cappa.command import Command
 from cappa.completion.types import Completion
 from cappa.env import Env
@@ -27,6 +27,7 @@ __all__ = [
     "Subcommands",
     "argparse",
     "backend",
+    "collect",
     "command",
     "invoke",
     "parse",

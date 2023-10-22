@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.9
+
+- Avoid mutating command when adding meta arguments
+- Avoid setting global NO_COLOR env var when disabling color
+
+## 0.8.8
+
+- Clean up help text output formatting
+- Show rich-style help text when using argparse backend
+
 ## 0.8.7
 
 - Allow defining custom callable as an `action`.
