@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import dataclasses
+import os
 import typing
 
 from rich.theme import Theme
 from typing_extensions import dataclass_transform
 
+from cappa import argparse
 from cappa.class_inspect import detect
 from cappa.command import Command
+from cappa.help import (
+    create_completion_arg,
+    create_help_arg,
+    create_version_arg,
+)
 from cappa.invoke import invoke_callable
 from cappa.output import Output
 
@@ -39,9 +46,7 @@ def parse(
             necessary when testing.
         backend: A function used to perform the underlying parsing and return a raw
             parsed state. This defaults to constructing built-in function using argparse.
-        color: Whether to output in color. Note by default this will only affect the native
-            `cappa.backend` backend. If using the argparse backend, `rich-argparse` must be
-            separately installed.
+        color: Whether to output in color.
         version: If a string is supplied, adds a -v/--version flag which returns the
             given string as the version. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
             fields to add a corresponding version argument. Note the `name` is assumed to **be**
@@ -53,20 +58,26 @@ def parse(
             the argument's behavior.
         theme: Optional rich theme to customized output formatting.
     """
-    command = Command.get(obj)
+    if backend is None:  # pragma: no cover
+        from cappa import argparse
 
+        backend = argparse.backend
+
+    command: Command = collect(
+        obj,
+        help=help,
+        version=version,
+        completion=completion,
+        color=color,
+        backend=backend,
+    )
     output = Output.from_theme(theme)
     _, _, instance = Command.parse_command(
         command,
         argv=argv,
         backend=backend,
-        color=color,
-        version=version,
-        help=help,
         output=output,
-        completion=completion,
     )
-
     return instance
 
 
@@ -95,9 +106,7 @@ def invoke(
             necessary when testing.
         backend: A function used to perform the underlying parsing and return a raw
             parsed state. This defaults to constructing built-in function using argparse.
-        color: Whether to output in color. Note by default this will only affect the native
-            `cappa.backend` backend. If using the argparse backend, `rich-argparse` must be
-            separately installed.
+        color: Whether to output in color.
         version: If a string is supplied, adds a -v/--version flag which returns the
             given string as the version. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
             fields to add a corresponding version argument. Note the `name` is assumed to **be**
@@ -109,20 +118,26 @@ def invoke(
             the argument's behavior.
         theme: Optional rich theme to customized output formatting.
     """
-    command: Command = Command.get(obj)
+    if backend is None:  # pragma: no cover
+        from cappa import argparse
 
+        backend = argparse.backend
+
+    command: Command = collect(
+        obj,
+        help=help,
+        version=version,
+        completion=completion,
+        color=color,
+        backend=backend,
+    )
     output = Output.from_theme(theme)
     command, parsed_command, instance = Command.parse_command(
         command,
         argv=argv,
         backend=backend,
-        color=color,
-        version=version,
-        help=help,
         output=output,
-        completion=completion,
     )
-
     return invoke_callable(command, parsed_command, instance, output=output, deps=deps)
 
 
@@ -168,3 +183,36 @@ def command(
     if _cls is not None:
         return wrapper(_cls)
     return wrapper
+
+
+def collect(
+    obj: type,
+    *,
+    backend: typing.Callable | None = None,
+    version: str | Arg | None = None,
+    help: bool | Arg = True,
+    completion: bool | Arg = True,
+    color: bool = True,
+):
+    if not color:
+        # XXX: This should probably be doing something with the Output rather than
+        #      mutating global state.
+        os.environ["NO_COLOR"] = "1"
+
+    if backend is None:  # pragma: no cover
+        backend = argparse.backend
+
+    command: Command = Command.get(obj)
+    command = Command.collect(command)
+
+    if backend is argparse.backend:
+        completion = False
+
+    help_arg = create_help_arg(help)
+    version_arg = create_version_arg(version)
+    completion_arg = create_completion_arg(completion)
+
+    command.add_meta_actions(
+        help=help_arg, version=version_arg, completion=completion_arg
+    )
+    return command

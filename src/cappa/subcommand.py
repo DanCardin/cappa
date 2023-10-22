@@ -28,9 +28,6 @@ class Subcommand:
     Arguments:
         name: Defaults to the name of the class, converted to dash case, but
             can be overridden here.
-        help: By default, the help text will be inferred from the containing class'
-            arguments' section, if it exists. Alternatively, you can directly supply
-            the help text here.
         types: Defaults to the class's annotated types, but can be overridden here.
         required: Defaults to automatically inferring requiredness, based on whether the
             class's value has a default. By setting this, you can force a particular value.
@@ -38,7 +35,6 @@ class Subcommand:
     """
 
     name: str | MISSING = ...
-    help: str | None = None
     required: bool | None = None
     group: str | tuple[int, str] = (3, "Subcommands")
     hidden: bool = False
@@ -80,7 +76,6 @@ class Subcommand:
         required = infer_required(self, annotation)
         options = infer_options(self, types)
         group = infer_group(self)
-        help = infer_help(self, fallback_help)
 
         return dataclasses.replace(
             self,
@@ -89,7 +84,6 @@ class Subcommand:
             required=required,
             options=options,
             group=group,
-            help=help,
         )
 
     def map_result(self, parsed_args):
@@ -154,13 +148,6 @@ def infer_group(arg: Subcommand) -> str | tuple[int, str]:
         return (3, group_name or "Subcommands")
 
     return typing.cast(typing.Tuple[int, str], group)
-
-
-def infer_help(arg: Subcommand, fallback_help: str | None) -> str | None:
-    help = arg.help
-    if help is None:
-        help = fallback_help
-    return help
 
 
 Subcommands: TypeAlias = Annotated[T, Subcommand]

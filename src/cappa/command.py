@@ -121,33 +121,15 @@ class Command(typing.Generic[T]):
         cls,
         command: Command[T],
         *,
-        argv: list[str] | None = None,
         output: Output,
-        backend: typing.Callable | None = None,
-        color: bool = True,
-        version: str | Arg | None = None,
-        help: bool | Arg = True,
-        completion: bool | Arg = True,
+        backend: typing.Callable,
+        argv: list[str] | None = None,
     ) -> tuple[Command, Command[T], T]:
         if argv is None:  # pragma: no cover
             argv = sys.argv[1:]
 
-        command = cls.collect(command)
-
-        if backend is None:  # pragma: no cover
-            from cappa import argparse
-
-            backend = argparse.backend
-
         try:
-            _, parsed_command, parsed_args = backend(
-                command,
-                argv,
-                color=color,
-                version=version,
-                help=help,
-                completion=completion,
-            )
+            _, parsed_command, parsed_args = backend(command, argv)
             result = command.map_result(command, parsed_args)
         except Exit as e:
             output.exit(e)
