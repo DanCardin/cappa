@@ -38,7 +38,7 @@ args: Example = cappa.parse(Example, backend=cappa.backend)
 
 Produces the following CLI:
 
-![help text](./_static/example.png)
+![help text](./docs/source/_static/example.png)
 
 In this way, you can turn any dataclass-like object (with some additional
 annotations, depending on what you're looking for) into a CLI.
