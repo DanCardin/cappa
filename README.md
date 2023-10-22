@@ -23,31 +23,22 @@ from typing_extensions import Annotated
 class Example:
     positional_arg: str
     boolean_flag: bool
-    single_option: Annotated[int | None, cappa.Arg(long=True)]
-    multiple_option: Annotated[list[str], cappa.Arg(short=True)]
+    single_option: Annotated[
+        int | None,
+        cappa.Arg(short=True, long=True, help="consectetur adipiscing elit"),
+    ]
+    multiple_option: Annotated[
+        list[Literal["one", "two", "three"]],
+        cappa.Arg(short=True, long=True, help="Lorem ipsum dolor sit amet"),
+    ]
 
 
-args: Example = cappa.parse(Example)
+args: Example = cappa.parse(Example, backend=cappa.backend)
 ```
 
 Produces the following CLI:
 
-```
-meow.py --boolean-flag [--single-option single_option] -m
-               multiple_option [-h]
-               positional_arg
-
-Positional Arguments:
-  positional_arg
-
-Options:
-  --boolean-flag
-  --single-option single_option
-  -m multiple_option
-
-Help:
-  -h, --help            Show this message and exit
-```
+![help text](./_static/example.png)
 
 In this way, you can turn any dataclass-like object (with some additional
 annotations, depending on what you're looking for) into a CLI.

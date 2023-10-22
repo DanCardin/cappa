@@ -184,14 +184,17 @@ class Arg(typing.Generic[T]):
             group=group,
         )
 
-    def names(self) -> list[str]:
+    def names(self, *, n=0) -> list[str]:
         short_names = typing.cast(list, self.short or [])
         long_names = typing.cast(list, self.long or [])
-        return short_names + long_names
+        result = short_names + long_names
+        if n:
+            return result[:n]
+        return result
 
-    def names_str(self, delimiter: str = ", ") -> str:
+    def names_str(self, delimiter: str = ", ", *, n=0) -> str:
         if self.long or self.short:
-            return delimiter.join(self.names())
+            return delimiter.join(self.names(n=n))
 
         return typing.cast(str, self.name)
 

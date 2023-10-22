@@ -101,7 +101,7 @@ class Subcommand:
         return list(self.options.keys())
 
     def names_str(self, delimiter: str = ", ") -> str:
-        return f"{{{delimiter.join(self.names())}}}"
+        return f"{delimiter.join(self.names())}"
 
     def completion(self, partial: str):
         return [Completion(o) for o in self.options if partial in o]

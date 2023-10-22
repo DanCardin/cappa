@@ -27,4 +27,4 @@ def test_required_missing(backend, capsys):
     assert e.value.code == 0
 
     help = capsys.readouterr().out
-    assert re.match(r".*Yup:?[\n\s]+\{foo\}.*", help, re.DOTALL)
+    assert re.match(r".*Yup:?[\n\s]+\{?foo.*", help, re.DOTALL)
