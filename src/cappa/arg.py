@@ -153,7 +153,7 @@ class Arg(typing.Generic[T]):
     ) -> Arg:
         origin = typing.get_origin(annotation) or annotation
         type_args = typing.get_args(annotation)
-        required = infer_required(self, annotation, self.default)
+        required = infer_required(self, origin, self.default)
 
         name = typing.cast(str, name or self.name)
         short = infer_short(self, name)

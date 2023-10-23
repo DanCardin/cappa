@@ -70,6 +70,15 @@ be given as an arbitrary callable.
 The callable will be called as the parser "action" in response to parsing that
 argument.
 
+```{note}
+Custom actions may interfere with general inference features, depending on what you're
+doing (given that you're taking over the parser's duty of determining how the
+code ought to handle the argument).
+
+As such, you may need to specify options like `num_args`, where you wouldn't have otherwise
+needed to.
+```
+
 Similarly to the [invoke][./invoke.md] system, you can use the type system to
 automatically inject objects of supported types from the parse context into the
 function in question. The return value of the function will be used as the
