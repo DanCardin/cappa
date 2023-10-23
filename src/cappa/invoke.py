@@ -40,7 +40,10 @@ def invoke_callable(
     try:
         fn: Callable = resolve_invoke_handler(parsed_command, instance)
         implicit_deps = resolve_implicit_deps(command, instance)
+
         implicit_deps[Output] = output
+        implicit_deps[Command] = parsed_command
+
         fullfilled_deps = resolve_global_deps(deps, implicit_deps)
 
         kwargs = fullfill_deps(fn, fullfilled_deps)

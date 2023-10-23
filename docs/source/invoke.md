@@ -125,25 +125,26 @@ can produce for your function without an explicit `Dep` annotation.
 
 These objects include:
 
-- The root `Command` object
-- Any subcommand `Command` objects upstream of the selected subcommand
+- Any command or subcommand user-defined objects upstream of the selected
+  command/subcommand. For example:
+
+  ```python
+  @dataclass
+  class SubExample:
+      ...
+
+  @dataclass
+  class Example:
+      subcommand: Annotated[SubExample, cappa.Subcommand]
+  ```
+
+  `Example` and `SubExample` will be available as implicit dependencies.
+
+- A [cappa.Command](cappa.Command), which provides the `Command` object
+  corresponding to the command/subcommand that was parsed.
+
 - A [cappa.Output](cappa.Output), which can be used to produce (themed)
   stdout/stderr output.
-
-For example:
-
-```python
-@dataclass
-class Subcommand:
-    ...
-
-@dataclass
-class Command:
-    subcommand: Annotated[Subcommand, cappa.Subcommand]
-```
-
-`Command` and `Subcommand` are the implicit dependencies available to you in
-your invoke functions.
 
 ```{note}
 If there were another subcommand option, and the CLI invocation selected one or
