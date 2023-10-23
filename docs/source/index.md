@@ -48,5 +48,5 @@ Internals <internals>
 :hidden:
 
 GitHub Repository <https://github.com/dancardin/cappa>
-PyPI <https://pypi.org/projects/cappa>
+PyPI <https://pypi.org/project/cappa>
 ```
