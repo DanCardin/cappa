@@ -19,3 +19,7 @@ lint:
 format:
 	ruff --fix src tests
 	black src tests
+
+readme-image:
+	FORCE_COLOR=true python readme.py --help | ansitoimg --title '' docs/source/_static/example.svg
+	
