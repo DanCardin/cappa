@@ -267,17 +267,21 @@ def parse(context: ParseContext) -> None:
         if not context.has_values():
             break
 
-    # Options are not explicitly iterated over because they can occur multi times non-contiguouesly.
+    # Options are not explicitly iterated over because they can occur multiple times non-contiguouesly.
     # So instead we check afterward, if there are any missing which we haven't yet fulfilled.
-    for opt_name in context.missing_options:
-        opt = context.options[opt_name]
-        if opt.required:
-            raise BadArgumentError(
-                f"The following arguments are required: {opt.names_str()}",
-                value="",
-                command=context.command,
-                arg=opt,
-            )
+    required_missing_options = [
+        context.options[opt_name]
+        for opt_name in sorted(context.missing_options)
+        if context.options[opt_name].required
+    ]
+    if required_missing_options:
+        names = ", ".join([opt.names_str("/") for opt in required_missing_options])
+        raise BadArgumentError(
+            f"The following arguments are required: {names}",
+            value="",
+            command=context.command,
+            arg=required_missing_options[0],
+        )
 
 
 def parse_option(context: ParseContext, raw: RawOption) -> None:
@@ -429,7 +433,7 @@ def consume_subcommand(context: ParseContext, arg: Subcommand) -> typing.Any:
 def consume_arg(
     context: ParseContext, arg: Arg, option: RawOption | None = None
 ) -> typing.Any:
-    orig_num_args = arg.num_args or 1
+    orig_num_args = arg.num_args if arg.num_args is not None else 1
     num_args = orig_num_args
 
     if arg.action in no_extra_arg_actions:

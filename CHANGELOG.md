@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.3
+
+- Ensure output of missing required options is deterministically ordered
+- Output all required options when listing out missing required options
+- Fix ignore num_args=0 override
+
 ## 0.9.2
 
 - Invoke the specific callable subcommand instance being targeted.

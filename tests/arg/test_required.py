@@ -35,3 +35,12 @@ def test_required_explicit(backend):
 
     result = parse(Command, "-a", "a", "-b", "b")
     assert result == Command(a="a", b="b")
+
+
+@backends
+def test_required_lists_all(backend):
+    with pytest.raises(cappa.Exit) as e:
+        parse(Command, backend=backend)
+
+    assert e.value.code == 2
+    assert "are required: -a, -b" in str(e.value.message)

@@ -7,7 +7,7 @@ from collections.abc import Callable
 
 from typing_extensions import assert_never
 
-from cappa.arg import Arg, ArgAction
+from cappa.arg import Arg, ArgAction, no_extra_arg_actions
 from cappa.command import Command, Subcommand
 from cappa.help import format_help, generate_arg_groups
 from cappa.invoke import fullfill_deps
@@ -241,9 +241,7 @@ def add_argument(
         else:
             kwargs["default"] = arg.default
 
-    if num_args and (
-        arg.action and arg.action not in {ArgAction.store_true, ArgAction.store_false}
-    ):
+    if num_args is not None and (arg.action and arg.action not in no_extra_arg_actions):
         kwargs["nargs"] = num_args
     elif is_positional and not arg.required:
         kwargs["nargs"] = "?"
