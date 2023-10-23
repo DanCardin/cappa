@@ -28,17 +28,16 @@ class ArgAction(enum.Enum):
     """`Arg` action typee.
 
     Options:
-        set: Stores the given CLI value directly.
-        store_true: Stores a literal `True` value, causing options to not attempt to
-            consume additional CLI arguments
-        store_false: Stores a literal `False` value, causing options to not attempt to
-            consume additional CLI arguments
-        append: Produces a list, and accumulates the given value on top of prior values.
-        count: Increments an integer starting at 0
-
-        help: Cancels argument parsing and prints the help text
-        version: Cancels argument parsing and prints the CLI version
-        completion: Cancels argument parsing and enters "completion mode"
+      - set: Stores the given CLI value directly.
+      - store_true: Stores a literal `True` value, causing options to not attempt to
+        consume additional CLI arguments
+      - store_false: Stores a literal `False` value, causing options to not attempt to
+        consume additional CLI arguments
+      - append: Produces a list, and accumulates the given value on top of prior values.
+      - count: Increments an integer starting at 0
+      - help: Cancels argument parsing and prints the help text
+      - version: Cancels argument parsing and prints the CLI version
+      - completion: Cancels argument parsing and enters "completion mode"
     """
 
     set = "store"

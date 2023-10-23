@@ -6,7 +6,7 @@ import typing
 from rich.theme import Theme
 from typing_extensions import dataclass_transform
 
-from cappa import argparse
+from cappa import argparse, parser
 from cappa.class_inspect import detect
 from cappa.command import Command
 from cappa.help import (
@@ -44,7 +44,8 @@ def parse(
         argv: Defaults to the process argv. This command is generally only
             necessary when testing.
         backend: A function used to perform the underlying parsing and return a raw
-            parsed state. This defaults to constructing built-in function using argparse.
+            parsed state. This defaults to the native cappa parser, but can be changed
+            to the argparse parser at `cappa.argparse.backend`.
         color: Whether to output in color.
         version: If a string is supplied, adds a -v/--version flag which returns the
             given string as the version. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
@@ -57,23 +58,20 @@ def parse(
             the argument's behavior.
         theme: Optional rich theme to customized output formatting.
     """
-    if backend is None:  # pragma: no cover
-        from cappa import argparse
-
-        backend = argparse.backend
+    concrete_backend = _default_backend(backend)
 
     command: Command[T] = collect(
         obj,
         help=help,
         version=version,
         completion=completion,
-        backend=backend,
+        backend=concrete_backend,
     )
     output = Output.from_theme(theme, color=color)
     _, _, instance = Command.parse_command(
         command,
         argv=argv,
-        backend=backend,
+        backend=concrete_backend,
         output=output,
     )
     return instance
@@ -103,7 +101,8 @@ def invoke(
         argv: Defaults to the process argv. This command is generally only
             necessary when testing.
         backend: A function used to perform the underlying parsing and return a raw
-            parsed state. This defaults to constructing built-in function using argparse.
+            parsed state. This defaults to the native cappa parser, but can be changed
+            to the argparse parser at `cappa.argparse.backend`.
         color: Whether to output in color.
         version: If a string is supplied, adds a -v/--version flag which returns the
             given string as the version. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
@@ -116,23 +115,20 @@ def invoke(
             the argument's behavior.
         theme: Optional rich theme to customized output formatting.
     """
-    if backend is None:  # pragma: no cover
-        from cappa import argparse
-
-        backend = argparse.backend
+    concrete_backend = _default_backend(backend)
 
     command: Command = collect(
         obj,
         help=help,
         version=version,
         completion=completion,
-        backend=backend,
+        backend=concrete_backend,
     )
     output = Output.from_theme(theme, color=color)
     command, parsed_command, instance = Command.parse_command(
         command,
         argv=argv,
-        backend=backend,
+        backend=concrete_backend,
         output=output,
     )
     return invoke_callable(command, parsed_command, instance, output=output, deps=deps)
@@ -207,13 +203,11 @@ def collect(
             the argument's behavior.
         color: Whether to output in color.
     """
-    if backend is None:  # pragma: no cover
-        backend = argparse.backend
-
     command: Command[T] = Command.get(obj)
     command = Command.collect(command)
 
-    if backend is argparse.backend:
+    concrete_backend = _default_backend(backend)
+    if concrete_backend is argparse.backend:
         completion = False
 
     help_arg = create_help_arg(help)
@@ -223,3 +217,9 @@ def collect(
     return command.add_meta_actions(
         help=help_arg, version=version_arg, completion=completion_arg
     )
+
+
+def _default_backend(backend: typing.Callable | None = None):
+    if backend is None:  # pragma: no cover
+        return parser.backend
+    return backend

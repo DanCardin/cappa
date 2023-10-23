@@ -33,33 +33,38 @@ cappa.parse(..., backend=cappa.backend)
 cappa.invoke(..., backend=cappa.backend)
 ```
 
-## Argparse backend
-
-Currently this is the default backend.
-
-Argparse is obviously fairly battle tested, and has some existing corpus of
-libraries designed to extend it. While we cant guarantee an arbitrary argparse
-extension will function correctly with cappa, but to the extent possible, that
-is a goal.
-
-This backend will be maintained for the foreseeable future.
-
-The main problem with the argparse backend is that cappa replaces much of the
-higher level features it provides at a higher level, outside the parser itself.
-
-A majority of the backend's source is working around specific argparse API
-decisions (a testament to the flexibility of its API, that it's even possible),
-and redefining argparse's objects with slight, necessary modifications.
-
 ## Cappa backend
 
-Ihe main "headline" feature you get when using the cappa backend is: Automatic
-[completion](./completion.md) support.
+This is the default backend.
 
-Is roughly 1/3 the size in LOC, given that much of the featureset and
+The main "headline" feature you get when using the cappa backend is: Automatic
+[completion](./completion.md) support. However, generally it's going to be
+easier to support arbitrary features with the native parser than with an
+external backend.
+
+It is roughly 1/3 the size in LOC, given that much of the featureset and
 flexibility of argparse are unused and a source of contention with cappa's
-design. It's going to be easier to support arbitrary features with the native
-parser than with an external backend.
+design (The whole native parser is ~500 LOC, whereas just the argparse adapter
+is ~350 LOC).
 
-This backend is not currently the default, however it **will** become the
-default before 1.0 of the library.
+## Argparse backend
+
+Cappa was originally written against the argparse backend, a testament to the
+flexibility of its API, that it's even possible.
+
+The main "problem" with the argparse backend is that cappa replaces much of the
+higher level features it provides at a higher level, outside the parser itself.
+A majority of the backend's source is working around specific argparse API
+decisions, and redefining argparse's objects with necessary modifications.
+
+This backend will be maintained for the foreseeable future, if for no other
+reason than it's a useful benchmark for parser compatibility.
+
+Some potential reasons you want want to use the argparse backend:
+
+- Argparse is also obviously fairly battle tested, and therefore theoretically
+  less likely to contain bugs that might exist in the native cappa backend.
+- Argparse may have pre-existing libraries designed to extend it. (While we cant
+  guarantee an arbitrary argparse extension will function correctly with cappa,
+  but to the extent possible, it's a goal that they should be supported if
+  possible.

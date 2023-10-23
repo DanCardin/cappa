@@ -2,11 +2,11 @@ from typing import Union
 from unittest.mock import patch
 
 import pytest
+from cappa import argparse, parser
 from cappa.output import Exit
-from cappa.parser import backend
 from cappa.testing import CommandRunner
 
-backends = pytest.mark.parametrize("backend", [None, backend])
+backends = pytest.mark.parametrize("backend", [None, argparse.backend])
 
 runner = CommandRunner(base_args=[])
 
@@ -26,7 +26,7 @@ def parse_completion(cls, *args, location=None) -> Union[str, None]:
     }
     with patch("os.environ", new=env):
         with pytest.raises(Exit) as e:
-            parse(cls, "--completion", "complete", backend=backend)
+            parse(cls, "--completion", "complete", backend=parser.backend)
 
         assert e.value.code == 0
         if e.value.message:

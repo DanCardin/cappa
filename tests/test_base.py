@@ -165,7 +165,7 @@ def test_collect_composes_with_parse(backend):
     class Example:
         ...
 
-    command = cappa.collect(Example)
+    command = cappa.collect(Example, backend=backend)
     result = cappa.parse(command, argv=[], backend=backend)
 
     assert result == Example()

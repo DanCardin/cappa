@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0
+
+- Change default backend to `cappa.parser.backend`. To opt into argparse
+  backend, explicitly supply it with `backend=cappa.argparse.backend`.
+
 ## 0.8.9
 
 - Avoid mutating command when adding meta arguments
