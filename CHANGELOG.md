@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1
+
+- Supply the parsed Command instance as an invoke dependency.
+
 ## 0.9.0
 
 - Change default backend to `cappa.parser.backend`. To opt into argparse
