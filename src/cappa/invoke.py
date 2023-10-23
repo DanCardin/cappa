@@ -38,8 +38,8 @@ def invoke_callable(
     | None = None,
 ):
     try:
-        fn: Callable = resolve_invoke_handler(parsed_command, instance)
         implicit_deps = resolve_implicit_deps(command, instance)
+        fn: Callable = resolve_invoke_handler(parsed_command, implicit_deps)
 
         implicit_deps[Output] = output
         implicit_deps[Command] = parsed_command
@@ -86,10 +86,14 @@ def resolve_global_deps(
     return implicit_deps
 
 
-def resolve_invoke_handler(command: Command, instance: T) -> Callable[..., T]:
+def resolve_invoke_handler(
+    command: Command[T], implicit_deps: dict
+) -> Callable[..., T]:
     fn = command.invoke
 
     if not fn:
+        command_type = command.cmd_cls
+        instance = implicit_deps.get(command_type)
         if callable(instance):
             return instance.__call__
 
