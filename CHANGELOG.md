@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.2
+
+- Invoke the specific callable subcommand instance being targeted.
+
 ## 0.9.1
 
 - Supply the parsed Command instance as an invoke dependency.
