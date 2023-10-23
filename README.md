@@ -14,31 +14,30 @@ inspiration from the "Derive" API from the
 [Clap](https://docs.rs/clap/latest/clap/_derive/index.html) written in Rust.
 
 ```python
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import cappa
+from typing import Literal
 from typing_extensions import Annotated
 
 
 @dataclass
 class Example:
-    positional_arg: str
-    boolean_flag: bool
-    single_option: Annotated[
-        int | None,
-        cappa.Arg(short=True, long=True, help="consectetur adipiscing elit"),
-    ]
+    positional_arg: str = "optional"
+    boolean_flag: bool = False
+    single_option: Annotated[int | None, cappa.Arg(short=True, help="A number")] = None
     multiple_option: Annotated[
         list[Literal["one", "two", "three"]],
-        cappa.Arg(short=True, long=True, help="Lorem ipsum dolor sit amet"),
-    ]
+        cappa.Arg(long=True, help="Pick one!"),
+    ] = field(default_factory=list)
 
 
 args: Example = cappa.parse(Example, backend=cappa.backend)
+print(args)
 ```
 
 Produces the following CLI:
 
-![help text](./docs/source/_static/example.png)
+![help text](./docs/source/_static/example.svg)
 
 In this way, you can turn any dataclass-like object (with some additional
 annotations, depending on what you're looking for) into a CLI.
