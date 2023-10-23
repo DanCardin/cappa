@@ -5,6 +5,7 @@ from typing import Tuple
 
 import cappa
 import pytest
+from cappa import argparse
 from typing_extensions import Annotated
 
 from tests.utils import backends, parse
@@ -22,7 +23,7 @@ def test_invalid_choice_help(backend):
     assert e.value.code == 2
 
     message = str(e.value.message)
-    if backend:
-        assert message == "Argument requires 2 values, only found 1 ('arg' so far)."
-    else:
+    if backend == argparse.backend:
         assert "the following arguments are required: arg" in message
+    else:
+        assert message == "Argument requires 2 values, only found 1 ('arg' so far)."
