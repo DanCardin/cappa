@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.0
+
+- Add option for explicit Output object, and add `error_format` option to allow
+  customizing output formatting.
+
 ## 0.10.2
 
 - Disallow explicit `required=False` in combination with the lack of a field

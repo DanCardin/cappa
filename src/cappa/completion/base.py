@@ -7,11 +7,11 @@ from pathlib import Path
 from cappa.arg import Arg
 from cappa.command import Command
 from cappa.completion.shells import available_shells
-from cappa.output import Exit
+from cappa.output import Exit, Output
 from cappa.parser import Completion, FileCompletion, backend
 
 
-def execute(command: Command, prog: str, action: str, arg: Arg):
+def execute(command: Command, prog: str, action: str, arg: Arg, output: Output):
     shell_name = Path(os.environ.get("SHELL", "bash")).name
     shell = available_shells.get(shell_name)
 
@@ -26,6 +26,7 @@ def execute(command: Command, prog: str, action: str, arg: Arg):
     backend(
         command,
         command_args,
+        output=output,
         provide_completions=True,
     )
 

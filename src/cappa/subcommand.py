@@ -82,10 +82,10 @@ class Subcommand:
             group=group,
         )
 
-    def map_result(self, parsed_args):
+    def map_result(self, prog: str, parsed_args):
         option_name = parsed_args.pop("__name__")
         option = self.options[option_name]
-        return option.map_result(option, parsed_args)
+        return option.map_result(option, prog, parsed_args)
 
     def names(self) -> list[str]:
         return list(self.options.keys())

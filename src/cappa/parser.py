@@ -9,7 +9,7 @@ from cappa.command import Command, Subcommand
 from cappa.completion.types import Completion, FileCompletion
 from cappa.help import format_help
 from cappa.invoke import fullfill_deps
-from cappa.output import Exit, HelpExit
+from cappa.output import Exit, HelpExit, Output
 from cappa.typing import T, assert_type
 
 
@@ -67,29 +67,31 @@ class CompletionAction(RuntimeError):
 def backend(
     command: Command[T],
     argv: list[str],
+    output: Output,
     provide_completions: bool = False,
 ) -> tuple[typing.Any, Command[T], dict[str, typing.Any]]:
     prog = command.real_name()
 
     args = RawArg.collect(argv, provide_completions=provide_completions)
 
-    context = ParseContext.from_command(args, [command])
+    context = ParseContext.from_command(args, [command], output)
     context.provide_completions = provide_completions
 
     try:
         try:
             parse(context)
         except HelpAction as e:
-            raise HelpExit(format_help(e.command, e.command_name), code=0)
+            raise HelpExit(
+                format_help(e.command, e.command_name), code=0, prog=context.prog
+            )
         except VersionAction as e:
-            raise Exit(e.version.value_name, code=0)
+            raise Exit(e.version.value_name, code=0, prog=context.prog)
         except BadArgumentError as e:
             if context.provide_completions and e.arg:
                 completions = e.arg.completion(e.value) if e.arg.completion else []
                 raise CompletionAction(*completions)
 
-            format_help(e.command, prog)
-            raise Exit(str(e), code=2)
+            raise Exit(str(e), code=2, prog=context.prog)
     except CompletionAction as e:
         from cappa.completion.base import execute, format_completions
 
@@ -97,7 +99,7 @@ def backend(
             completions = format_completions(*e.completions)
             raise Exit(completions, code=0)
 
-        execute(command, prog, e.value, assert_type(e.arg, Arg))
+        execute(command, prog, e.value, assert_type(e.arg, Arg), output=output)
 
     if provide_completions:
         raise Exit(code=0)
@@ -112,6 +114,8 @@ class ParseContext:
     arguments: deque[Arg | Subcommand]
     missing_options: set[str]
 
+    output: Output
+
     consumed_args: list[RawArg | RawOption] = dataclasses.field(default_factory=list)
 
     result: dict[str, typing.Any] = dataclasses.field(default_factory=dict)
@@ -124,6 +128,7 @@ class ParseContext:
         cls,
         args: deque[RawArg | RawOption],
         command_stack: list[Command],
+        output: Output,
     ) -> ParseContext:
         command = command_stack[-1]
         options, missing_options = cls.collect_options(command)
@@ -132,6 +137,7 @@ class ParseContext:
             args,
             options,
             arguments,
+            output=output,
             missing_options=missing_options,
             command_stack=command_stack,
         )
@@ -171,6 +177,10 @@ class ParseContext:
             ):
                 result.append(arg)
         return result
+
+    @property
+    def prog(self):
+        return " ".join(c.real_name() for c in self.command_stack)
 
     @property
     def command(self):
@@ -420,6 +430,7 @@ def consume_subcommand(context: ParseContext, arg: Subcommand) -> typing.Any:
     nested_context = ParseContext.from_command(
         context.remaining_args,
         command_stack=context.command_stack,
+        output=context.output,
     )
     nested_context.provide_completions = context.provide_completions
     nested_context.result["__name__"] = value.raw
@@ -454,7 +465,7 @@ def consume_arg(
             if isinstance(value, RawOption):
                 raise BadArgumentError(
                     f"Argument requires {orig_num_args} values, "
-                    f"only found {len(result)} ('{' '.join(result)}' so far).",
+                    f"only found {len(result)} ('{' '.join(result)}' so far)",
                     value=result,
                     command=context.command,
                     arg=arg,
@@ -491,7 +502,7 @@ def consume_arg(
                 return
 
             raise BadArgumentError(
-                f"Option '{arg.value_name}' requires an argument.",
+                f"Option '{arg.value_name}' requires an argument",
                 value="",
                 command=context.command,
                 arg=arg,
@@ -510,6 +521,7 @@ def consume_arg(
 
     fullfilled_deps: dict = {
         Command: context.command,
+        Output: context.output,
         ParseContext: context,
         Arg: arg,
         Value: Value(result),
