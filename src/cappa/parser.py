@@ -82,7 +82,7 @@ def backend(
         except HelpAction as e:
             raise HelpExit(format_help(e.command, e.command_name), code=0)
         except VersionAction as e:
-            raise Exit(e.version.name, code=0)
+            raise Exit(e.version.value_name, code=0)
         except BadArgumentError as e:
             if context.provide_completions and e.arg:
                 completions = e.arg.completion(e.value) if e.arg.completion else []
@@ -146,8 +146,8 @@ class ParseContext:
 
             if arg.short or arg.long:
                 if arg.action not in ArgAction.value_actions():
-                    unique_names.add(arg.name)
-                result[arg.name] = arg
+                    unique_names.add(arg.field_name)
+                result[arg.field_name] = arg
 
             assert arg.short is not True
             for short in arg.short or []:
@@ -426,7 +426,7 @@ def consume_subcommand(context: ParseContext, arg: Subcommand) -> typing.Any:
 
     parse(nested_context)
 
-    name = typing.cast(str, arg.name)
+    name = typing.cast(str, arg.field_name)
     context.result[name] = nested_context.result
 
 
@@ -491,14 +491,14 @@ def consume_arg(
                 return
 
             raise BadArgumentError(
-                f"Option '{arg.name}' requires an argument.",
+                f"Option '{arg.value_name}' requires an argument.",
                 value="",
                 command=context.command,
                 arg=arg,
             )
 
-    if option and arg.name in context.missing_options:
-        context.missing_options.remove(arg.name)
+    if option and arg.value_name in context.missing_options:
+        context.missing_options.remove(arg.value_name)
 
     action = arg.action
     assert action
@@ -518,7 +518,7 @@ def consume_arg(
         fullfilled_deps[RawOption] = option
 
     kwargs = fullfill_deps(action_handler, fullfilled_deps)
-    context.result[arg.name] = action_handler(**kwargs)
+    context.result[arg.value_name] = action_handler(**kwargs)
 
 
 @dataclasses.dataclass
@@ -539,7 +539,7 @@ def store_bool(val: bool):
 
 
 def store_count(context: ParseContext, arg: Arg):
-    return context.result.get(arg.name, 0) + 1
+    return context.result.get(arg.value_name, 0) + 1
 
 
 def store_set(value: Value[typing.Any]):
@@ -547,7 +547,7 @@ def store_set(value: Value[typing.Any]):
 
 
 def store_append(context: ParseContext, arg: Arg, value: Value[typing.Any]):
-    result = context.result.setdefault(arg.name, [])
+    result = context.result.setdefault(arg.value_name, [])
     result.append(value.value)
     return result
 

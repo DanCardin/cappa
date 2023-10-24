@@ -13,7 +13,7 @@ from cappa.help import format_help, generate_arg_groups
 from cappa.invoke import fullfill_deps
 from cappa.output import Exit, HelpExit
 from cappa.parser import RawOption, Value
-from cappa.typing import assert_not_missing, assert_type, missing
+from cappa.typing import assert_type, missing
 
 if sys.version_info < (3, 9):  # pragma: no cover
     # Backport https://github.com/python/cpython/pull/3680
@@ -153,7 +153,7 @@ def backend(
             for a in command.arguments
             if isinstance(a, Arg) and a.action is ArgAction.version
         )
-        parser.version = version.name  # type: ignore
+        parser.version = version.value_name  # type: ignore
     except StopIteration:
         pass
 
@@ -210,8 +210,6 @@ def add_argument(
     dest_prefix="",
     **extra_kwargs,
 ):
-    name: str = assert_not_missing(arg.name)
-
     names: list[str] = []
     if arg.short:
         short = assert_type(arg.short, list)
@@ -226,9 +224,9 @@ def add_argument(
     num_args = backend_num_args(arg.num_args)
 
     kwargs: dict[str, typing.Any] = {
-        "dest": dest_prefix + name,
+        "dest": dest_prefix + arg.field_name,
         "help": arg.help,
-        "metavar": name,
+        "metavar": arg.value_name,
         "action": get_action(arg),
     }
 
@@ -260,7 +258,7 @@ def add_subcommands(
     subcommands: Subcommand,
     dest_prefix="",
 ):
-    subcommand_dest = subcommands.name
+    subcommand_dest = subcommands.field_name
     subparsers = parser.add_subparsers(
         title=group,
         required=assert_type(subcommands.required, bool),

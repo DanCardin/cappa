@@ -30,9 +30,9 @@ def test_required_provided(backend, capsys):
 
     result = capsys.readouterr().out
 
-    assert "[--bar] foo [-h]" in result
+    assert "[--bar] FOO [-h]" in result
     assert re.match(r".*Does a thing\.\s+and does it really well!.*", result, re.DOTALL)
-    assert re.match(r".*foo\s+the value of foo.*", result, re.DOTALL)
+    assert re.match(r".*FOO\s+the value of foo.*", result, re.DOTALL)
     assert re.match(r".*\[--bar\]\s+whether to bar.*", result, re.DOTALL)
 
 

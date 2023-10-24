@@ -60,7 +60,8 @@ class Arg(typing.Generic[T]):
     """Describe a CLI argument.
 
     Arguments:
-        name: The name of the argument. Defaults to the name of the corresponding class field.
+        value_name: Placeholder for the argument's value in the help message / usage.
+            Defaults to the name of the corresponding class field.
         short: If `True`, uses first letter of the name to infer a (ex. `-s`) short
             flag. If a string is supplied, that will be used instead. If a string is supplied,
             it is split on '/' (forward slash), to support multiple options. Additionally
@@ -96,9 +97,12 @@ class Arg(typing.Generic[T]):
 
         required: Defaults to automatically inferring requiredness, based on whether the
             class's value has a default. By setting this, you can force a particular value.
+
+        field_name: The name of the class field to populate with this arg. In most usecases,
+            this field should be left unspecified and automatically inferred.
     """
 
-    name: str | MISSING = missing
+    value_name: str | MISSING = missing
     short: bool | str | list[str] = False
     long: bool | str | list[str] = False
     count: bool = False
@@ -115,6 +119,8 @@ class Arg(typing.Generic[T]):
     completion: Callable[..., list[Completion]] | None = None
 
     required: bool | None = None
+
+    field_name: str | MISSING = missing
 
     @classmethod
     def collect(
@@ -138,10 +144,10 @@ class Arg(typing.Generic[T]):
         if field_metadata:
             arg = field_metadata
 
-        name = infer_name(arg, field)
+        field_name = infer_field_name(arg, field)
         default = infer_default(arg, field)
 
-        arg = dataclasses.replace(arg, name=name, default=default)
+        arg = dataclasses.replace(arg, field_name=field_name, default=default)
         return arg.normalize(annotation, fallback_help=fallback_help)
 
     def normalize(
@@ -149,15 +155,20 @@ class Arg(typing.Generic[T]):
         annotation=NoneType,
         fallback_help: str | None = None,
         action: ArgAction | Callable | None = None,
-        name: str | None = None,
+        value_name: str | None = None,
+        field_name: str | None = None,
     ) -> Arg:
         origin = typing.get_origin(annotation) or annotation
         type_args = typing.get_args(annotation)
         required = infer_required(self, origin, self.default)
 
-        name = typing.cast(str, name or self.name)
-        short = infer_short(self, name)
-        long = infer_long(self, origin, name)
+        field_name = typing.cast(str, field_name or self.field_name)
+        value_name = value_name or (
+            self.value_name if self.value_name is not missing else field_name
+        )
+
+        short = infer_short(self, field_name)
+        long = infer_long(self, origin, field_name)
         choices = infer_choices(self, origin, type_args)
         action = action or infer_action(self, origin, type_args, long, self.default)
         num_args = infer_num_args(self, origin, type_args, action, long)
@@ -170,7 +181,8 @@ class Arg(typing.Generic[T]):
 
         return dataclasses.replace(
             self,
-            name=name,
+            field_name=field_name,
+            value_name=value_name,
             required=required,
             short=short,
             long=long,
@@ -195,11 +207,11 @@ class Arg(typing.Generic[T]):
         if self.long or self.short:
             return delimiter.join(self.names(n=n))
 
-        return typing.cast(str, self.name)
+        return typing.cast(str, self.value_name)
 
 
-def infer_name(arg: Arg, field: Field) -> str:
-    if not isinstance(arg.name, MISSING):
+def infer_field_name(arg: Arg, field: Field) -> str:
+    if not isinstance(arg.field_name, MISSING):
         raise ValueError("Arg 'name' cannot be set when using automatic inference.")
 
     return field.name

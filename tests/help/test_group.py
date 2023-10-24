@@ -22,4 +22,4 @@ def test_string_group(backend, capsys):
     assert e.value.code == 0
 
     out = capsys.readouterr().out
-    assert re.match(r".*Strings:?\s*\n\s*name.*", out, re.DOTALL)
+    assert re.match(r".*Strings:?\s*\n\s*NAME.*", out, re.DOTALL)

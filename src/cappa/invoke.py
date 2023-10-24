@@ -139,7 +139,7 @@ def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
             # Args do not produce dependencies themselves.
             continue
 
-        option_instance = getattr(instance, arg.name)
+        option_instance = getattr(instance, arg.field_name)
         if option_instance is None:
             # None is a valid subcommand instance value, but it wont exist as a dependency
             # where an actual command has been selected.

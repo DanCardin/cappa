@@ -23,7 +23,7 @@ def test_explicit_parse_function(backend, capsys):
         parse(ArgTest, "--help", backend=backend)
 
     stdout = capsys.readouterr().out
-    assert re.match(r".*numbers\s+example.*", stdout, re.DOTALL)
+    assert re.match(r".*NUMBERS\s+example.*", stdout, re.DOTALL)
 
 
 @pytest.mark.help
