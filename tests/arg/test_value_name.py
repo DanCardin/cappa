@@ -10,7 +10,6 @@ from typing_extensions import Annotated
 from tests.utils import backends, parse
 
 
-@cappa.command(name="example")
 @dataclass
 class Example:
     subcommand: Subcommands[Union[A, None]] = None
@@ -19,7 +18,7 @@ class Example:
 @cappa.command(name="a")
 @dataclass
 class A:
-    a: Annotated[str, cappa.Arg(value_name="<Str a>", short="-a", required=False)]
+    a: Annotated[str, cappa.Arg(value_name="<Str a>", short="-a")]
 
 
 @backends

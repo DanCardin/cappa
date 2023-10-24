@@ -497,8 +497,8 @@ def consume_arg(
                 arg=arg,
             )
 
-    if option and arg.value_name in context.missing_options:
-        context.missing_options.remove(arg.value_name)
+    if option and arg.field_name in context.missing_options:
+        context.missing_options.remove(arg.field_name)
 
     action = arg.action
     assert action
@@ -539,7 +539,7 @@ def store_bool(val: bool):
 
 
 def store_count(context: ParseContext, arg: Arg):
-    return context.result.get(arg.value_name, 0) + 1
+    return context.result.get(arg.field_name, 0) + 1
 
 
 def store_set(value: Value[typing.Any]):
@@ -547,7 +547,7 @@ def store_set(value: Value[typing.Any]):
 
 
 def store_append(context: ParseContext, arg: Arg, value: Value[typing.Any]):
-    result = context.result.setdefault(arg.value_name, [])
+    result = context.result.setdefault(arg.field_name, [])
     result.append(value.value)
     return result
 

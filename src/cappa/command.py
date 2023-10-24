@@ -14,6 +14,7 @@ from cappa.arg import Arg, ArgAction
 from cappa.env import Env
 from cappa.output import Exit, Output, prompt_types
 from cappa.subcommand import Subcommand
+from cappa.typing import missing
 
 T = typing.TypeVar("T")
 
@@ -145,6 +146,7 @@ class Command(typing.Generic[T]):
                 if is_subcommand:
                     continue
 
+                assert arg.default is not missing
                 value = arg.default
             else:
                 value = parsed_args[arg.field_name]
