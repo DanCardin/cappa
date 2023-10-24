@@ -24,8 +24,8 @@ class Foo:
 command = cappa.Command(
     Foo,
     arguments=[
-        cappa.Arg(name="bar", parse=str),
-        cappa.Arg(name="baz", parse=parse_list(int), num_args=-1),
+        cappa.Arg(field_name="bar", parse=str),
+        cappa.Arg(field_name="baz", parse=parse_list(int), num_args=-1),
     ],
     help="Short help.",
     description="Long description.",

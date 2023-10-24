@@ -13,7 +13,7 @@ from tests.utils import backends, parse
 def test_arg_name_disallowed(backend):
     @dataclass
     class ArgTest:
-        bad: Annotated[bool, cappa.Arg(name="oops")] = False
+        bad: Annotated[bool, cappa.Arg(field_name="oops")] = False
 
     with pytest.raises(
         ValueError, match="Arg 'name' cannot be set when using automatic inference."

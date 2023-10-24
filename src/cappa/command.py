@@ -105,9 +105,7 @@ class Command(typing.Generic[T]):
                 type_hint = type_hints[field.name]
                 arg_help = arg_help_map.get(field.name)
 
-                maybe_subcommand = Subcommand.collect(
-                    field, type_hint, fallback_help=arg_help
-                )
+                maybe_subcommand = Subcommand.collect(field, type_hint)
                 if maybe_subcommand:
                     arguments.append(maybe_subcommand)
                 else:
@@ -143,13 +141,13 @@ class Command(typing.Generic[T]):
         kwargs = {}
         for arg in self.value_arguments():
             is_subcommand = isinstance(arg, Subcommand)
-            if arg.name not in parsed_args:
+            if arg.field_name not in parsed_args:
                 if is_subcommand:
                     continue
 
                 value = arg.default
             else:
-                value = parsed_args[arg.name]
+                value = parsed_args[arg.field_name]
 
             if isinstance(value, Env):
                 value = value.evaluate()
@@ -170,7 +168,7 @@ class Command(typing.Generic[T]):
                         code=2,
                     )
 
-            kwargs[arg.name] = value
+            kwargs[arg.field_name] = value
 
         return command.cmd_cls(**kwargs)
 

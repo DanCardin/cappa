@@ -27,14 +27,14 @@ def create_version_arg(version: str | Arg | None = None) -> Arg | None:
 
     if isinstance(version, str):
         version = Arg(
-            version,
+            value_name=version,
             short=["-v"],
             long=["--version"],
             help="Show the version and exit.",
             group=(4, "Help"),
         )
 
-    if version.name is missing:
+    if version.value_name is missing:
         raise ValueError(
             "Expected explicit version `Arg` to supply version number as its name, like `Arg('1.2.3', ...)`"
         )
@@ -42,7 +42,7 @@ def create_version_arg(version: str | Arg | None = None) -> Arg | None:
     if version.long is True:
         version.long = "--version"
 
-    return version.normalize(action=ArgAction.version)
+    return version.normalize(action=ArgAction.version, field_name="version")
 
 
 def create_help_arg(help: bool | Arg | None = True) -> Arg | None:
@@ -51,14 +51,13 @@ def create_help_arg(help: bool | Arg | None = True) -> Arg | None:
 
     if isinstance(help, bool):
         help = Arg(
-            name="help",
             short=["-h"],
             long=["--help"],
             help="Show this message and exit.",
             group=(4, "Help"),
         )
 
-    return help.normalize(action=ArgAction.help, name="help")
+    return help.normalize(action=ArgAction.help, field_name="help")
 
 
 def create_completion_arg(completion: bool | Arg = True) -> Arg | None:
@@ -67,14 +66,14 @@ def create_completion_arg(completion: bool | Arg = True) -> Arg | None:
 
     if isinstance(completion, bool):
         return Arg(
-            name="completion",
+            field_name="completion",
             long=["--completion"],
             choices=["generate", "complete"],
             group=(4, "Help"),
             help="Use `--completion generate` to print shell-specific completion source.",
         ).normalize(action=ArgAction.completion)
 
-    return completion.normalize(name="completion", action=ArgAction.completion)
+    return completion.normalize(field_name="completion", action=ArgAction.completion)
 
 
 def format_help(command: Command, prog: str) -> list[Displayable]:
@@ -142,13 +141,18 @@ def add_long_args(arg_groups: list[ArgGroup]) -> list:
 
 def format_arg_name(arg: Arg | Subcommand, delimiter, *, n=0) -> str:
     if isinstance(arg, Arg):
-        arg_names = arg.names_str(delimiter, n=n)
-        text = f"[cappa.arg]{arg_names}[/cappa.arg]"
-
         is_option = arg.short or arg.long
         has_value = arg.action not in no_extra_arg_actions
+
+        arg_names = arg.names_str(delimiter, n=n)
+        if not is_option:
+            arg_names = arg_names.replace(" ", "-").upper()
+
+        text = f"[cappa.arg]{arg_names}[/cappa.arg]"
+
         if is_option and has_value:
-            text = f"{text} [cappa.arg.name]{arg.name.upper()}[/cappa.arg.name]"
+            name = arg.value_name.replace(" ", "-").upper()
+            text = f"{text} [cappa.arg.name]{name}[/cappa.arg.name]"
 
         if not arg.required:
             return rf"\[{text}]"

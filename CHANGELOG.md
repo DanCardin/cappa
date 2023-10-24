@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.0
+
+- Split Arg `name`/`field_name`. `name` controls help/error output naming.
+  `field_name` controls the the destination field on the dataclass object.
+
 ## 0.9.3
 
 - Ensure output of missing required options is deterministically ordered

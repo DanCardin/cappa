@@ -34,7 +34,7 @@ class Subcommand:
         hidden: Whether the argument should be hidden in help text. Defaults to False.
     """
 
-    name: str | MISSING = ...
+    field_name: str | MISSING = ...
     required: bool | None = None
     group: str | tuple[int, str] = (3, "Subcommands")
     hidden: bool = False
@@ -43,9 +43,7 @@ class Subcommand:
     options: dict[str, Command] = dataclasses.field(default_factory=dict)
 
     @classmethod
-    def collect(
-        cls, field: Field, type_hint: type, fallback_help: str | None = None
-    ) -> Self | None:
+    def collect(cls, field: Field, type_hint: type) -> Self | None:
         object_annotation = find_type_annotation(type_hint, cls)
         subcommand = object_annotation.obj
 
@@ -61,17 +59,15 @@ class Subcommand:
 
         return subcommand.normalize(
             object_annotation.annotation,
-            name=field.name,
-            fallback_help=object_annotation.doc or fallback_help,
+            field_name=field.name,
         )
 
     def normalize(
         self,
         annotation=NoneType,
-        name: str | None = None,
-        fallback_help: str | None = None,
+        field_name: str | None = None,
     ) -> Self:
-        name = name or assert_type(self.name, str)
+        field_name = field_name or assert_type(self.field_name, str)
         types = infer_types(self, annotation)
         required = infer_required(self, annotation)
         options = infer_options(self, types)
@@ -79,7 +75,7 @@ class Subcommand:
 
         return dataclasses.replace(
             self,
-            name=name,
+            field_name=field_name,
             types=types,
             required=required,
             options=options,
