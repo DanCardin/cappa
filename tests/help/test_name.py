@@ -13,8 +13,8 @@ from tests.utils import parse
 def test_argument_name(capsys):
     @dataclass
     class Args:
-        name: Annotated[str, cappa.Arg(value_name="string name", help="more")]
-        short: Annotated[str, cappa.Arg(short=True, value_name="optional string")]
+        name: Annotated[str, cappa.Arg(value_name="string-name", help="more")]
+        short: Annotated[str, cappa.Arg(short=True, value_name="optional-string")]
 
     with pytest.raises(cappa.HelpExit) as e:
         parse(Args, "--help")
