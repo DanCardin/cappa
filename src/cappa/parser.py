@@ -518,7 +518,7 @@ def consume_arg(
         fullfilled_deps[RawOption] = option
 
     kwargs = fullfill_deps(action_handler, fullfilled_deps)
-    context.result[arg.value_name] = action_handler(**kwargs)
+    context.result[arg.field_name] = action_handler(**kwargs)
 
 
 @dataclasses.dataclass

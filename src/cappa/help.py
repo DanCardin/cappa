@@ -146,12 +146,12 @@ def format_arg_name(arg: Arg | Subcommand, delimiter, *, n=0) -> str:
 
         arg_names = arg.names_str(delimiter, n=n)
         if not is_option:
-            arg_names = arg_names.replace(" ", "-").upper()
+            arg_names = arg_names.upper()
 
         text = f"[cappa.arg]{arg_names}[/cappa.arg]"
 
         if is_option and has_value:
-            name = arg.value_name.replace(" ", "-").upper()
+            name = arg.value_name.upper()
             text = f"{text} [cappa.arg.name]{name}[/cappa.arg.name]"
 
         if not arg.required:
