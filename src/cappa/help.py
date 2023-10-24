@@ -42,7 +42,9 @@ def create_version_arg(version: str | Arg | None = None) -> Arg | None:
     if version.long is True:
         version.long = "--version"
 
-    return version.normalize(action=ArgAction.version, field_name="version")
+    return version.normalize(
+        action=ArgAction.version, field_name="version", default=None
+    )
 
 
 def create_help_arg(help: bool | Arg | None = True) -> Arg | None:
@@ -57,7 +59,7 @@ def create_help_arg(help: bool | Arg | None = True) -> Arg | None:
             group=(4, "Help"),
         )
 
-    return help.normalize(action=ArgAction.help, field_name="help")
+    return help.normalize(action=ArgAction.help, field_name="help", default=None)
 
 
 def create_completion_arg(completion: bool | Arg = True) -> Arg | None:
@@ -65,15 +67,18 @@ def create_completion_arg(completion: bool | Arg = True) -> Arg | None:
         return None
 
     if isinstance(completion, bool):
-        return Arg(
-            field_name="completion",
+        completion = Arg(
             long=["--completion"],
             choices=["generate", "complete"],
             group=(4, "Help"),
             help="Use `--completion generate` to print shell-specific completion source.",
-        ).normalize(action=ArgAction.completion)
+        )
 
-    return completion.normalize(field_name="completion", action=ArgAction.completion)
+    return completion.normalize(
+        field_name="completion",
+        action=ArgAction.completion,
+        default=None,
+    )
 
 
 def format_help(command: Command, prog: str) -> list[Displayable]:

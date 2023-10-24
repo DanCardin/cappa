@@ -145,33 +145,35 @@ class Arg(typing.Generic[T]):
             arg = field_metadata
 
         field_name = infer_field_name(arg, field)
-        default = infer_default(arg, field)
+        default = infer_default(arg, field, annotation)
 
         arg = dataclasses.replace(arg, field_name=field_name, default=default)
         return arg.normalize(annotation, fallback_help=fallback_help)
 
     def normalize(
         self,
-        annotation=NoneType,
+        annotation: typing.Any = NoneType,
         fallback_help: str | None = None,
         action: ArgAction | Callable | None = None,
+        default: typing.Any = missing,
         value_name: str | None = None,
         field_name: str | None = None,
     ) -> Arg:
         origin = typing.get_origin(annotation) or annotation
         type_args = typing.get_args(annotation)
-        required = infer_required(self, origin, self.default)
 
         field_name = typing.cast(str, field_name or self.field_name)
         value_name = value_name or (
             self.value_name if self.value_name is not missing else field_name
         )
+        default = default if default is not missing else self.default
 
         short = infer_short(self, field_name)
         long = infer_long(self, origin, field_name)
         choices = infer_choices(self, origin, type_args)
-        action = action or infer_action(self, origin, type_args, long, self.default)
+        action = action or infer_action(self, origin, type_args, long, default)
         num_args = infer_num_args(self, origin, type_args, action, long)
+        required = infer_required(self, annotation, default)
 
         parse = infer_parse(self, annotation)
         help = infer_help(self, choices, fallback_help)
@@ -181,6 +183,7 @@ class Arg(typing.Generic[T]):
 
         return dataclasses.replace(
             self,
+            default=default,
             field_name=field_name,
             value_name=value_name,
             required=required,
@@ -217,7 +220,7 @@ def infer_field_name(arg: Arg, field: Field) -> str:
     return field.name
 
 
-def infer_default(arg: Arg, field: Field) -> typing.Any:
+def infer_default(arg: Arg, field: Field, annotation: type) -> typing.Any:
     if arg.default is not missing:
         return arg.default
 
@@ -227,18 +230,27 @@ def infer_default(arg: Arg, field: Field) -> typing.Any:
     if field.default_factory is not missing:
         return field.default_factory()
 
+    if is_optional_type(annotation):
+        return None
+
     return missing
 
 
 def infer_required(arg: Arg, annotation: type, default: typing.Any | MISSING):
-    if arg.required is not None:
-        return arg.required
+    if arg.required is True:
+        return True
 
     if default is missing:
-        if is_subclass(annotation, bool):
+        if is_subclass(annotation, bool) or is_optional_type(annotation):
             return False
 
-        return not is_optional_type(annotation)
+        if arg.required is False:
+            raise ValueError(
+                "When specifying `required=False`, a default value must be supplied able to be "
+                "supplied through type inference, `Arg(default=...)`, or through class-level default"
+            )
+
+        return True
 
     return False
 

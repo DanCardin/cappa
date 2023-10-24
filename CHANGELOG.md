@@ -1,9 +1,19 @@
 # Changelog
 
+## 0.10.2
+
+- Disallow explicit `required=False` in combination with the lack of a field
+  level default.
+
+## 0.10.1
+
+- Fix regression resulting from `value_name`/`field_name` split.
+
 ## 0.10.0
 
-- Split Arg `name`/`field_name`. `name` controls help/error output naming.
-  `field_name` controls the the destination field on the dataclass object.
+- Split Arg `value_name`/`field_name`. `value_name` controls help/error output
+  naming. `field_name` controls the the destination field on the dataclass
+  object.
 
 ## 0.9.3
 
