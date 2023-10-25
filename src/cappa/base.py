@@ -33,6 +33,7 @@ def parse(
     help: bool | Arg = True,
     completion: bool | Arg = True,
     theme: Theme | None = None,
+    output: Output | None = None,
 ) -> T:
     """Parse the command, returning an instance of `obj`.
 
@@ -57,8 +58,12 @@ def parse(
             (default to True), adds a --completion flag. An `Arg` can be supplied to customize
             the argument's behavior.
         theme: Optional rich theme to customized output formatting.
+        output: Optional `Output` instance. A default `Output` will constructed if one is not provided.
+            Note the `color` and `theme` arguments take precedence over manually constructed `Output`
+            attributes.
     """
-    concrete_backend = _default_backend(backend)
+    concrete_backend = _coalesce_backend(backend)
+    concrete_output = _coalesce_output(output, theme, color)
 
     command: Command[T] = collect(
         obj,
@@ -67,12 +72,11 @@ def parse(
         completion=completion,
         backend=concrete_backend,
     )
-    output = Output.from_theme(theme, color=color)
     _, _, instance = Command.parse_command(
         command,
         argv=argv,
         backend=concrete_backend,
-        output=output,
+        output=concrete_output,
     )
     return instance
 
@@ -88,6 +92,7 @@ def invoke(
     help: bool | Arg = True,
     completion: bool | Arg = True,
     theme: Theme | None = None,
+    output: Output | None = None,
 ) -> T:
     """Parse the command, and invoke the selected command or subcommand.
 
@@ -114,8 +119,12 @@ def invoke(
             (default to True), adds a --completion flag. An `Arg` can be supplied to customize
             the argument's behavior.
         theme: Optional rich theme to customized output formatting.
+        output: Optional `Output` instance. A default `Output` will constructed if one is not provided.
+            Note the `color` and `theme` arguments take precedence over manually constructed `Output`
+            attributes.
     """
-    concrete_backend = _default_backend(backend)
+    concrete_backend = _coalesce_backend(backend)
+    concrete_output = _coalesce_output(output, theme, color)
 
     command: Command = collect(
         obj,
@@ -124,14 +133,15 @@ def invoke(
         completion=completion,
         backend=concrete_backend,
     )
-    output = Output.from_theme(theme, color=color)
     command, parsed_command, instance = Command.parse_command(
         command,
         argv=argv,
         backend=concrete_backend,
-        output=output,
+        output=concrete_output,
     )
-    return invoke_callable(command, parsed_command, instance, output=output, deps=deps)
+    return invoke_callable(
+        command, parsed_command, instance, output=concrete_output, deps=deps
+    )
 
 
 @dataclass_transform()
@@ -206,7 +216,7 @@ def collect(
     command: Command[T] = Command.get(obj)
     command = Command.collect(command)
 
-    concrete_backend = _default_backend(backend)
+    concrete_backend = _coalesce_backend(backend)
     if concrete_backend is argparse.backend:
         completion = False
 
@@ -219,7 +229,21 @@ def collect(
     )
 
 
-def _default_backend(backend: typing.Callable | None = None):
+def _coalesce_backend(backend: typing.Callable | None = None):
     if backend is None:  # pragma: no cover
         return parser.backend
     return backend
+
+
+def _coalesce_output(
+    output: Output | None = None, theme: Theme | None = None, color: bool = True
+):
+    if output is None:
+        output = Output()
+
+    output.theme(theme)
+
+    if not color:
+        output.color(False)
+
+    return output

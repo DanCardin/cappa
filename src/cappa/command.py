@@ -130,15 +130,16 @@ class Command(typing.Generic[T]):
             argv = sys.argv[1:]
 
         try:
-            _, parsed_command, parsed_args = backend(command, argv)
-            result = command.map_result(command, parsed_args)
+            parser, parsed_command, parsed_args = backend(command, argv, output=output)
+            prog = parser.prog
+            result = command.map_result(command, prog, parsed_args)
         except Exit as e:
             output.exit(e)
             raise
 
         return command, parsed_command, result
 
-    def map_result(self, command: Command[T], parsed_args) -> T:
+    def map_result(self, command: Command[T], prog: str, parsed_args) -> T:
         kwargs = {}
         for arg in self.value_arguments():
             is_subcommand = isinstance(arg, Subcommand)
@@ -157,7 +158,7 @@ class Command(typing.Generic[T]):
                 value = value()
 
             if isinstance(arg, Subcommand):
-                value = arg.map_result(value)
+                value = arg.map_result(prog, value)
             else:
                 assert arg.parse
 
@@ -168,6 +169,7 @@ class Command(typing.Generic[T]):
                     raise Exit(
                         f"Invalid value for '{arg.names_str()}' with value '{value}': {exception_reason}",
                         code=2,
+                        prog=prog,
                     )
 
             kwargs[arg.field_name] = value

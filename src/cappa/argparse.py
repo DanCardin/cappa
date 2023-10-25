@@ -11,7 +11,7 @@ from cappa.arg import Arg, ArgAction, no_extra_arg_actions
 from cappa.command import Command, Subcommand
 from cappa.help import format_help, generate_arg_groups
 from cappa.invoke import fullfill_deps
-from cappa.output import Exit, HelpExit
+from cappa.output import Exit, HelpExit, Output
 from cappa.parser import RawOption, Value
 from cappa.typing import assert_type, missing
 
@@ -68,9 +68,10 @@ class _CountAction(argparse._CountAction):
 
 
 class ArgumentParser(argparse.ArgumentParser):
-    def __init__(self, *args, command: Command, **kwargs):
+    def __init__(self, *args, command: Command, output: Output, **kwargs):
         super().__init__(*args, **kwargs)
         self.command = command
+        self.output = output
 
         self.register("action", "store_true", _StoreTrueAction)
         self.register("action", "store_false", _StoreFalseAction)
@@ -78,8 +79,15 @@ class ArgumentParser(argparse.ArgumentParser):
         self.register("action", "version", _VersionAction)
         self.register("action", "count", _CountAction)
 
+    def error(self, message):
+        # Avoids argparse's error prefixing code, deferring it to Output
+        self.exit(2, message)
+
     def exit(self, status=0, message=None):
-        raise Exit(message, code=status)
+        if message:
+            message = message.capitalize()
+
+        raise Exit(message, code=status, prog=self.prog)
 
     def print_help(self):
         raise HelpExit(format_help(self.command, self.prog))
@@ -100,16 +108,16 @@ class BooleanOptionalAction(argparse.Action):
         assert isinstance(option_string, str)
         setattr(namespace, self.dest, not option_string.startswith("--no-"))
 
-    def format_usage(self):
-        return " | ".join(self.option_strings)
-
 
 def custom_action(arg: Arg, action: Callable):
     class CustomAction(argparse.Action):
-        def __call__(self, parser, namespace, values, option_string=None):
+        def __call__(
+            self, parser: ArgumentParser, namespace, values, option_string=None  # type: ignore
+        ):
             # XXX: This should ideally be able to inject parser state, but here, we dont
             #      have access to the same state as the native parser.
             fullfilled_deps: dict = {
+                Output: parser.output,
                 Value: Value(values),
                 Command: namespace.__command__,
                 Arg: arg,
@@ -143,9 +151,11 @@ class Nestedspace(argparse.Namespace):
 
 
 def backend(
-    command: Command[T], argv: list[str]
+    command: Command[T],
+    argv: list[str],
+    output: Output,
 ) -> tuple[typing.Any, Command[T], dict[str, typing.Any]]:
-    parser = create_parser(command)
+    parser = create_parser(command, output=output)
 
     try:
         version = next(
@@ -162,7 +172,7 @@ def backend(
     try:
         result_namespace = parser.parse_args(argv, ns)
     except argparse.ArgumentError as e:
-        raise Exit(str(e), code=2)
+        raise Exit(str(e), code=2, prog=command.real_name())
 
     result = to_dict(result_namespace)
     command = result.pop("__command__")
@@ -170,13 +180,14 @@ def backend(
     return parser, command, result
 
 
-def create_parser(command: Command) -> argparse.ArgumentParser:
+def create_parser(command: Command, output: Output) -> argparse.ArgumentParser:
     kwargs: dict[str, typing.Any] = {}
     if sys.version_info >= (3, 9):  # pragma: no cover
         kwargs["exit_on_error"] = False
 
     parser = ArgumentParser(
         command=command,
+        output=output,
         prog=command.real_name(),
         description=join_help(command.help, command.description),
         allow_abbrev=False,
@@ -185,12 +196,13 @@ def create_parser(command: Command) -> argparse.ArgumentParser:
     )
     parser.set_defaults(__command__=command)
 
-    add_arguments(parser, command)
-
+    add_arguments(parser, command, output=output)
     return parser
 
 
-def add_arguments(parser: argparse.ArgumentParser, command: Command, dest_prefix=""):
+def add_arguments(
+    parser: argparse.ArgumentParser, command: Command, output: Output, dest_prefix=""
+):
     arg_groups = generate_arg_groups(command, include_hidden=True)
     for group_name, args in arg_groups:
         group = parser.add_argument_group(title=group_name)
@@ -199,7 +211,9 @@ def add_arguments(parser: argparse.ArgumentParser, command: Command, dest_prefix
             if isinstance(arg, Arg):
                 add_argument(group, arg, dest_prefix=dest_prefix)
             elif isinstance(arg, Subcommand):
-                add_subcommands(parser, group_name, arg, dest_prefix=dest_prefix)
+                add_subcommands(
+                    parser, group_name, arg, output=output, dest_prefix=dest_prefix
+                )
             else:
                 assert_never(arg)
 
@@ -256,6 +270,7 @@ def add_subcommands(
     parser: argparse.ArgumentParser,
     group: str,
     subcommands: Subcommand,
+    output: Output,
     dest_prefix="",
 ):
     subcommand_dest = subcommands.field_name
@@ -274,6 +289,7 @@ def add_subcommands(
             formatter_class=parser.formatter_class,
             add_help=False,
             command=subcommand,  # type: ignore
+            output=output,
             prog=f"{parser.prog} {subcommand.real_name()}",
         )
         subparser.set_defaults(
@@ -283,6 +299,7 @@ def add_subcommands(
         add_arguments(
             subparser,
             subcommand,
+            output=output,
             dest_prefix=nested_dest_prefix,
         )
 

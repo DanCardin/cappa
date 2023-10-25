@@ -11,8 +11,8 @@ backends = pytest.mark.parametrize("backend", [None, argparse.backend])
 runner = CommandRunner(base_args=[])
 
 
-def parse(cls, *args, backend=None):
-    return runner.parse(*args, obj=cls, backend=backend)
+def parse(cls, *args, **kwargs):
+    return runner.parse(*args, obj=cls, **kwargs)
 
 
 def invoke(cls, *args, **kwargs):

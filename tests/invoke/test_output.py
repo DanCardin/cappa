@@ -20,4 +20,4 @@ def test_outputs_output(backend, capsys):
 
     outerr = capsys.readouterr()
     assert outerr.out == "woah!\n"
-    assert outerr.err == "woops!\n"
+    assert outerr.err == "Error: woops!\n"

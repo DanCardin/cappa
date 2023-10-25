@@ -38,6 +38,5 @@ def test_argument_name(capsys):
             [--completion COMPLETION]  Use `--completion generate` to print
                                        shell-specific completion source. Valid options:
                                        generate, complete.
-
         """
     )

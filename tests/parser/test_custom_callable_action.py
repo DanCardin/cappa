@@ -83,3 +83,22 @@ def test_subcommand_name(backend):
 
     args = parse(Args, "sub-b", "sub-b-sub", "-v", "one", backend=backend)
     assert args.cmd.cmd.value == "sub-b-sub"
+
+
+################################
+def custom_out(out: cappa.Output):
+    out.output("woah")
+    return 1
+
+
+@backends
+def test_custom_action_output_dep(backend, capsys):
+    @dataclass
+    class Args:
+        value: Annotated[int, cappa.Arg(action=custom_out, short=True)]
+
+    args = parse(Args, "-v", "one", backend=backend)
+    assert args.value == 1
+
+    out = capsys.readouterr().out
+    assert out == "woah\n"
