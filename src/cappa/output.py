@@ -144,7 +144,7 @@ class Output:
         if message is None:
             return
 
-        console.print(message, overflow="ignore")
+        console.print(message, overflow="ignore", crop=False)
 
 
 class TestPrompt(Prompt):
