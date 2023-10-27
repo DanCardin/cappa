@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.1
+
+- (Hopefully) Configure rich properly to deal with line overflow when printing
+  terminal escape codes.
+
 ## 0.11.0
 
 - Add option for explicit Output object, and add `error_format` option to allow
