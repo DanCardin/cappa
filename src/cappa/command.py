@@ -5,8 +5,8 @@ import inspect
 import sys
 import typing
 from collections.abc import Callable
+from types import ModuleType
 
-import docstring_parser
 from typing_extensions import get_type_hints
 
 from cappa import class_inspect
@@ -15,6 +15,13 @@ from cappa.env import Env
 from cappa.output import Exit, Output, prompt_types
 from cappa.subcommand import Subcommand
 from cappa.typing import missing
+
+try:
+    import docstring_parser as _docstring_parser
+
+    docstring_parser: ModuleType | None = _docstring_parser
+except ImportError:  # pragma: no cover
+    docstring_parser = None
 
 T = typing.TypeVar("T")
 
@@ -80,7 +87,7 @@ class Command(typing.Generic[T]):
         kwargs: CommandArgs = {}
         arg_help_map = {}
 
-        if not (command.help and command.description):
+        if not (command.help and command.description) and docstring_parser:
             doc = get_doc(command.cmd_cls)
             parsed_help = docstring_parser.parse(doc)
             for param in parsed_help.params:

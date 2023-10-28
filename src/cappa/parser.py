@@ -394,8 +394,10 @@ def parse_args(context: ParseContext) -> None:
 
         raw_values = []
         while context.peek_value():
-            raw = typing.cast(RawArg, context.next_value()).raw
-            raw_values.append(raw)
+            next_val = context.next_value()
+            if not isinstance(next_val, RawArg):
+                break
+            raw_values.append(next_val.raw)
 
         raise BadArgumentError(
             f"Unrecognized arguments: {', '.join(raw_values)}",
