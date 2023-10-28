@@ -7,8 +7,7 @@ descending order of priority:
 - A PEP-727 `Doc` annotation
 - The class docstring argument description
 
-If none of the above sources produce a docstring, no description will be
-rendered.
+If none of the above sources produce help text, no description will be rendered.
 
 ## Explicit `help=`
 
@@ -53,6 +52,11 @@ class Command:
 ```
 
 ## Class Docstring Parsing
+
+```{note}
+Docstring parsing is provided by the `docstring-parser` dependency. You can
+include this dependency through cappa with the `docstring` extra (`cappa[docstring]`).
+```
 
 In the event other sources of help text are not found, the command class'
 docstring will be parsed, supporting either Google or Numpy styles of docstring
