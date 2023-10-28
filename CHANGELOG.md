@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.2
+
+- Make docstring_parser dependency optional
+- Fix parser error if option followed unknown argument
+
 ## 0.11.1
 
 - (Hopefully) Configure rich properly to deal with line overflow when printing
