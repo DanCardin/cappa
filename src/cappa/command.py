@@ -87,17 +87,28 @@ class Command(typing.Generic[T]):
         kwargs: CommandArgs = {}
         arg_help_map = {}
 
-        if not (command.help and command.description) and docstring_parser:
+        if not (command.help and command.description):
             doc = get_doc(command.cmd_cls)
-            parsed_help = docstring_parser.parse(doc)
-            for param in parsed_help.params:
-                arg_help_map[param.arg_name] = param.description
+            if docstring_parser:
+                parsed_help = docstring_parser.parse(doc)
+                for param in parsed_help.params:
+                    arg_help_map[param.arg_name] = param.description
+                summary = parsed_help.short_description
+                body = parsed_help.long_description
+            else:
+                doc = inspect.cleandoc(doc).split("\n", 1)
+                if len(doc) == 1:
+                    summary = doc[0]
+                    body = ""
+                else:
+                    summary, body = doc
+                    body = body.strip()
 
             if not command.help:
-                kwargs["help"] = parsed_help.short_description
+                kwargs["help"] = summary
 
             if not command.description:
-                kwargs["description"] = parsed_help.long_description
+                kwargs["description"] = body
 
         if command.arguments:
             arguments: list[Arg | Subcommand] = [

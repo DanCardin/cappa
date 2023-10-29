@@ -1,3 +1,4 @@
+import contextlib
 from typing import Union
 from unittest.mock import patch
 
@@ -32,3 +33,18 @@ def parse_completion(cls, *args, location=None) -> Union[str, None]:
         if e.value.message:
             return str(e.value.message)
         return None
+
+
+@contextlib.contextmanager
+def ignore_docstring_parser(monkeypatch):
+    import importlib
+
+    cappa_command = importlib.import_module("cappa.command")
+
+    with monkeypatch.context() as m:
+        m.setattr(cappa_command, "docstring_parser", None)
+        yield
+
+
+def strip_trailing_whitespace(text):
+    return "\n".join([line.rstrip() for line in text.split("\n")])

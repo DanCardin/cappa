@@ -23,6 +23,7 @@ class RunnerArgs(typing.TypedDict, total=False):
     color: bool
     version: str | cappa.Arg
     help: bool | cappa.Arg
+    completion: bool | cappa.Arg
 
 
 @dataclass
@@ -75,6 +76,7 @@ class CommandRunner:
     color: bool = True
     version: str | cappa.Arg | None = None
     help: bool | cappa.Arg = True
+    completion: bool | cappa.Arg = True
 
     base_args: list[str] = field(default_factory=lambda: [])
 
@@ -86,7 +88,10 @@ class CommandRunner:
             "output": kwargs.get("output") or self.output,
             "color": kwargs.get("color") or self.color,
             "version": kwargs.get("version") or self.version,
-            "help": kwargs.get("help") or self.help,
+            "help": kwargs["help"] if "help" in kwargs else self.help,
+            "completion": kwargs["completion"]
+            if "completion" in kwargs
+            else self.completion,
         }
 
     def parse(self, *args: str, **kwargs: Unpack[RunnerArgs]):

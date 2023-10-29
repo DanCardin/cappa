@@ -1,10 +1,16 @@
 import re
 from dataclasses import dataclass
+from textwrap import dedent
 
 import cappa
 import pytest
 
-from tests.utils import backends, parse
+from tests.utils import (
+    backends,
+    ignore_docstring_parser,
+    parse,
+    strip_trailing_whitespace,
+)
 
 
 @dataclass
@@ -83,3 +89,58 @@ def test_docstring_with_explicit_description(backend, capsys):
 
     assert "Just a title" in result
     assert "description" in result
+
+
+@pytest.mark.help
+@backends
+def test_docstring_being_used_but_not_parsed(backend, capsys, monkeypatch):
+    @dataclass
+    class UnparsedDocstring:
+        """Summary.
+
+        Example:
+         - one
+        """
+
+    with pytest.raises(cappa.Exit), ignore_docstring_parser(monkeypatch):
+        parse(UnparsedDocstring, "--help", backend=backend, completion=False)
+
+    result = strip_trailing_whitespace(capsys.readouterr().out)
+
+    assert result == dedent(
+        """\
+        Usage: unparsed-docstring [-h]
+
+          Summary.
+        
+          Example:
+
+           • one
+
+          Help
+            [-h, --help]  Show this message and exit.
+        """
+    )
+
+
+@pytest.mark.help
+@backends
+def test_docstring_being_used_but_not_parsed_one_line(backend, capsys, monkeypatch):
+    @dataclass
+    class UnparsedDocstring:
+        """Summary."""
+
+    with pytest.raises(cappa.Exit), ignore_docstring_parser(monkeypatch):
+        parse(UnparsedDocstring, "--help", backend=backend, completion=False)
+
+    result = strip_trailing_whitespace(capsys.readouterr().out)
+    assert result == dedent(
+        """\
+        Usage: unparsed-docstring [-h]
+
+          Summary.
+
+          Help
+            [-h, --help]  Show this message and exit.
+        """
+    )

@@ -7,7 +7,7 @@ import cappa
 import pytest
 from typing_extensions import Annotated
 
-from tests.utils import parse
+from tests.utils import parse, strip_trailing_whitespace
 
 
 def test_argument_name(capsys):
@@ -21,7 +21,7 @@ def test_argument_name(capsys):
 
     assert e.value.code == 0
 
-    out = "\n".join([line.rstrip() for line in capsys.readouterr().out.split("\n")])
+    out = strip_trailing_whitespace(capsys.readouterr().out)
 
     assert out == textwrap.dedent(
         """\
