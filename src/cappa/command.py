@@ -96,13 +96,13 @@ class Command(typing.Generic[T]):
                 summary = parsed_help.short_description
                 body = parsed_help.long_description
             else:
-                doc = inspect.cleandoc(doc)
-                if "\n" in doc:
-                    summary, body = doc.split("\n", 1)
-                    body = body.strip()
-                else:
-                    summary = doc
+                doc = inspect.cleandoc(doc).split("\n", 1)
+                if len(doc) == 1:
+                    summary = doc[0]
                     body = ""
+                else:
+                    summary, body = doc
+                    body = body.strip()
 
             if not command.help:
                 kwargs["help"] = summary

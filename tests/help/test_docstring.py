@@ -1,10 +1,16 @@
 import re
 from dataclasses import dataclass
+from textwrap import dedent
 
 import cappa
 import pytest
 
-from tests.utils import backends, parse
+from tests.utils import (
+    backends,
+    ignore_docstring_parser,
+    parse,
+    strip_trailing_whitespace,
+)
 
 
 @dataclass
@@ -88,28 +94,53 @@ def test_docstring_with_explicit_description(backend, capsys):
 @pytest.mark.help
 @backends
 def test_docstring_being_used_but_not_parsed(backend, capsys, monkeypatch):
-    # Pretend docstring-parser is not installed.
-    # cappa.base.command shadows the cappa.command module,
-    # so we have to import it manually.
-    import importlib
-    cappa_command = importlib.import_module("cappa.command")
-    monkeypatch.setattr(cappa_command, "docstring_parser", None)
-
-    @cappa.command()
     @dataclass
     class UnparsedDocstring:
         """Summary.
-        
+
         Example:
+         - one
+        """
 
-        Body.
-        """  # noqa: D412
+    with pytest.raises(cappa.Exit), ignore_docstring_parser(monkeypatch):
+        parse(UnparsedDocstring, "--help", backend=backend, completion=False)
 
-    with pytest.raises(cappa.Exit):
-        parse(UnparsedDocstring, "--help", backend=backend)
+    result = strip_trailing_whitespace(capsys.readouterr().out)
 
-    result = capsys.readouterr().out
+    assert result == dedent(
+        """\
+        Usage: unparsed-docstring [-h]
 
-    assert "Summary" in result
-    assert "Example" in result
-    assert "Body" in result
+          Summary.
+        
+          Example:
+
+           • one
+
+          Help
+            [-h, --help]  Show this message and exit.
+        """
+    )
+
+
+@pytest.mark.help
+@backends
+def test_docstring_being_used_but_not_parsed_one_line(backend, capsys, monkeypatch):
+    @dataclass
+    class UnparsedDocstring:
+        """Summary."""
+
+    with pytest.raises(cappa.Exit), ignore_docstring_parser(monkeypatch):
+        parse(UnparsedDocstring, "--help", backend=backend, completion=False)
+
+    result = strip_trailing_whitespace(capsys.readouterr().out)
+    assert result == dedent(
+        """\
+        Usage: unparsed-docstring [-h]
+
+          Summary.
+
+          Help
+            [-h, --help]  Show this message and exit.
+        """
+    )
