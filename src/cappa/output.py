@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 
 from rich.console import Console, NewLine
 from rich.markdown import Markdown
+from rich.markup import escape
 from rich.padding import Padding
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
@@ -195,4 +196,4 @@ def rich_to_ansi(
         else:
             console.print(message)
 
-    return capture.get().strip()
+    return escape(capture.get().strip())
