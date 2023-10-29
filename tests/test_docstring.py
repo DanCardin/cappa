@@ -83,3 +83,33 @@ def test_docstring_with_explicit_description(backend, capsys):
 
     assert "Just a title" in result
     assert "description" in result
+
+
+@pytest.mark.help
+@backends
+def test_docstring_being_used_but_not_parsed(backend, capsys, monkeypatch):
+    # Pretend docstring-parser is not installed.
+    # cappa.base.command shadows the cappa.command module,
+    # so we have to import it manually.
+    import importlib
+    cappa_command = importlib.import_module("cappa.command")
+    monkeypatch.setattr(cappa_command, "docstring_parser", None)
+
+    @cappa.command()
+    @dataclass
+    class UnparsedDocstring:
+        """Summary.
+        
+        Example:
+
+        Body.
+        """  # noqa: D412
+
+    with pytest.raises(cappa.Exit):
+        parse(UnparsedDocstring, "--help", backend=backend)
+
+    result = capsys.readouterr().out
+
+    assert "Summary" in result
+    assert "Example" in result
+    assert "Body" in result
