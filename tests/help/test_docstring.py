@@ -144,3 +144,43 @@ def test_docstring_being_used_but_not_parsed_one_line(backend, capsys, monkeypat
             [-h, --help]  Show this message and exit.
         """
     )
+
+
+@pytest.mark.help
+@backends
+def test_escaped_markdown(backend, capsys, monkeypatch):
+    @dataclass
+    class Escaped:
+        """Blabla.
+
+        And configure `~/.pypirc`:
+
+        ```ini
+        [distutils]
+        index-servers =
+            pypi
+        ```
+        """
+
+    with pytest.raises(cappa.Exit), ignore_docstring_parser(monkeypatch):
+        parse(Escaped, "--help", backend=backend, completion=False)
+
+    result = strip_trailing_whitespace(capsys.readouterr().out)
+    assert result == dedent(
+        """\
+        Usage: escaped [-h]
+
+          Blabla.
+          
+          And configure ~/.pypirc:
+          
+          
+           [distutils]
+           index-servers =
+               pypi
+
+
+          Help
+            [-h, --help]  Show this message and exit.
+        """
+    )

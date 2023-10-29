@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.3
+
+- Continue to parse docstrings without docstring_parser extra
+- Fix rendering issue with markdown in docstrings
+
 ## 0.11.2
 
 - Make docstring_parser dependency optional
