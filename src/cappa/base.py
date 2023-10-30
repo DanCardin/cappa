@@ -82,7 +82,7 @@ def parse(
 
 
 def invoke(
-    obj: type[T] | Command[T],
+    obj: type | Command,
     *,
     deps: typing.Sequence[typing.Callable] | None = None,
     argv: list[str] | None = None,
@@ -93,7 +93,7 @@ def invoke(
     completion: bool | Arg = True,
     theme: Theme | None = None,
     output: Output | None = None,
-) -> T:
+):
     """Parse the command, and invoke the selected command or subcommand.
 
     In the event that a subcommand is selected, only the selected subcommand
