@@ -11,14 +11,15 @@ def action():
     raise cappa.Exit()
 
 
-@dataclass
-class Args:
-    kill_switch: Annotated[bool, cappa.Arg(long="--kill", action=action, num_args=0)]
-    required: str
-
-
 @backends
 def test_single_opt(backend):
+    @dataclass
+    class Args:
+        kill_switch: Annotated[
+            bool, cappa.Arg(long="--kill", action=action, num_args=0)
+        ]
+        required: str
+
     with pytest.raises(cappa.Exit) as e:
         parse(Args, "--kill", backend=backend)
 

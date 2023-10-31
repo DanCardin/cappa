@@ -8,7 +8,7 @@ does not produce the obvious result, feel free to submit a bug report. The
 intent is that it should feel natural for all supportable cases. For any cases
 where it does not make sense to build in specific behavior for a type (for
 example, third-party library types), you can instead use the correct annotation
-while providing the `parse` [Argument](./arg.md) argument.
+while providing the `parse` [Argument](./arg.md) argument, or other options.
 
 ```{note}
 Use of `Annotated` throughout the examples and docs is fairly pervasive. When using
@@ -65,12 +65,22 @@ each subcommand has a unambiguous name.
 
 ## List
 
-Lists change the "action" of the option to "append", which causes the parser to
-allow an arbitrary number of values for that option.
+A `list[...]` annotation will:
 
-For a specific number of values, you should instead use tuples
+- Cause the argument to accumulate an unbounded number of values
+- Coerce the resultant value into a list, as well as coerce the inner type, if
+  supplied.
 
-Lists coerce to whatever the inner type is.
+For a specific number of values, you should instead use a tuple.
+
+In the case of a positional argument, this implies `Arg(..., num_args=-1)`. That
+is, that the argument will consume an unbounded number of positional arguments.
+
+In the case of an "option" (e.x. `Arg(short='-t')`), this implies
+`Arg(..., action=ArgAction.append)`. That is, unbounded instances of `-t` are
+allowed, and accumulate their individual values into a list.
+
+For unbounded consumption on a single option, see [num_args](./arg.md#num-args).
 
 ## Tuple
 

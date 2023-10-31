@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.4
+
+- Fix num_args=-1 on options
+
 ## 0.11.3
 
 - Continue to parse docstrings without docstring_parser extra

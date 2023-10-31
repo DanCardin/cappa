@@ -323,8 +323,9 @@ def infer_action(
 
     is_positional = not arg.short and not long
     has_specific_num_args = arg.num_args is not None
+    unbounded_num_args = arg.num_args == -1
 
-    if arg.parse or (is_positional and not has_specific_num_args):
+    if arg.parse or unbounded_num_args or (is_positional and not has_specific_num_args):
         return ArgAction.set
 
     if is_subclass(origin, (list, set)):
