@@ -18,6 +18,7 @@ sphinx-autobuild = "^2021.3.14"
 sphinx-autodoc-typehints = "^1.18.1"
 sphinx-copybutton = "*"
 sphinx-pyproject = ">=0.3.0"
+sphinx-togglebutton = "^0.3.2"
 
 [tool.poetry.dev-dependencies]
 sphinx-autobuild = "*"

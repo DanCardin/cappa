@@ -31,6 +31,7 @@ Rich Integration <rich>
 Help Text Inference <help>
 Completions <completion>
 Parser Backends (Cappa/Argparse) <backends>
+Examples (vs click/typer/argparse) <examples>
 ```
 
 ```{toctree}

@@ -125,7 +125,35 @@ class Example:
    :noindex:
 ```
 
-## Environment Variable Fallback
+## Num Args
+
+Generally `num_args` will be inferred by [annotations](./annotation.md), and
+(hopefully) do the obvious thing. It can be manually set, if the inferred value
+is not the expected behavior.
+
+For example, in order to support an option
+(`Annotated[list[str], Arg(long='--foo')]`) which consumes an unbounded series
+of arguments (`--foo 1 2 3 4 5 ...`), you would need to specify `num_args=-1`.
+
+## Default
+
+Controls the default argument value at the CLI level. Generally, you can avoid
+direct use of cappa's default by simply using the source class' native default
+mechanism. (i.e. `foo: int = 0` or `foo: int = field(default=0)` for
+dataclasses).
+
+However it can be convenient to use cappa's default because it does not affect
+the optionality of the field in question in the resultant class constructor.
+
+### Environment Variable Fallback
+
+You can also use the default field to supply supported kinds of
+default-value-getting behaviors.
+
+`Env` is one such example, where with
+`Arg(..., default=Env("FOO", default='default value'))`, cappa will attempt to
+look up the environment variable `FOO` for the default value, if there was no
+supplied value at the CLI level.
 
 ```{eval-rst}
 .. autoapimodule:: cappa

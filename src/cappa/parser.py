@@ -203,15 +203,16 @@ class ParseContext:
         return self.arguments.popleft()
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class RawArg:
     raw: str
+    end: bool = False
 
     @classmethod
     def collect(
         cls, argv: list[str], *, provide_completions: bool = False
     ) -> deque[RawArg | RawOption]:
-        result = []
+        result: list[RawArg | RawOption] = []
 
         encountered_double_dash = False
         for arg in argv:
@@ -222,6 +223,13 @@ class RawArg:
 
             if item is None:
                 encountered_double_dash = True
+
+                # Indicate to the arg consumption loop that it should stop consuming the
+                # current argument. Irrelevant to options, whose name-argument is consumed
+                # ahead of the value.
+                if result and isinstance(result[-1], RawArg):
+                    result[-1].end = True
+
                 continue
 
             result.append(item)
@@ -459,12 +467,10 @@ def consume_arg(
     else:
         result = []
         while num_args:
-            try:
-                value = context.next_value()
-            except IndexError:
-                break
+            if isinstance(context.peek_value(), RawOption):
+                if orig_num_args < 0:
+                    break
 
-            if isinstance(value, RawOption):
                 raise BadArgumentError(
                     f"Argument requires {orig_num_args} values, "
                     f"only found {len(result)} ('{' '.join(result)}' so far)",
@@ -472,8 +478,15 @@ def consume_arg(
                     command=context.command,
                     arg=arg,
                 )
+            try:
+                next_val = typing.cast(RawArg, context.next_value())
+            except IndexError:
+                break
 
-            result.append(value.raw)
+            result.append(next_val.raw)
+
+            if next_val.end:
+                break
 
             # If num-args starts at -1, then it will always be truthy when we subtract
             # from it. I.e. it has unbounded length, like we want.
