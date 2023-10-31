@@ -227,7 +227,7 @@ class RawArg:
                 # Indicate to the arg consumption loop that it should stop consuming the
                 # current argument. Irrelevant to options, whose name-argument is consumed
                 # ahead of the value.
-                if result and isinstance(result[-1], RawArg):
+                if result:
                     result[-1].end = True
 
                 continue
@@ -252,11 +252,12 @@ class RawArg:
         return cls(arg)
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class RawOption:
     name: str
     is_long: bool
     value: str | None = None
+    end: bool = False
 
     @classmethod
     def from_str(cls, arg: str) -> RawOption:
@@ -322,6 +323,7 @@ def parse_option(context: ParseContext, raw: RawOption) -> None:
         raise BadArgumentError(message, value=raw.name, command=context.command)
 
     arg = context.options[raw.name]
+
     consume_arg(context, arg, raw)
 
 
@@ -461,10 +463,17 @@ def consume_arg(
         orig_num_args = 0
         num_args = 0
 
-    result: list[str] | str
-    if option and option.value:
-        result = [option.value]
-    else:
+    result: list[str] | str = []
+    requires_values = True
+    if option:
+        if option.value:
+            result = [option.value]
+            requires_values = False
+
+        if option.end:
+            requires_values = False
+
+    if requires_values:
         result = []
         while num_args:
             if isinstance(context.peek_value(), RawOption):
