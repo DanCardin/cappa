@@ -8,7 +8,7 @@ from collections.abc import Callable
 
 from typing_inspect import is_optional_type
 
-from cappa.annotation import detect_choices, parse_value
+from cappa.annotation import detect_choices, is_sequence_type, parse_value
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
@@ -19,6 +19,7 @@ from cappa.typing import (
     T,
     find_type_annotation,
     is_subclass,
+    is_union_type,
     missing,
 )
 
@@ -53,6 +54,10 @@ class ArgAction(enum.Enum):
     @classmethod
     def value_actions(cls) -> typing.Set[ArgAction]:
         return {cls.help, cls.version, cls.completion}
+
+    @classmethod
+    def is_custom(cls, action: ArgAction | Callable | None):
+        return action is not None and not isinstance(action, ArgAction)
 
 
 @dataclasses.dataclass
@@ -168,6 +173,7 @@ class Arg(typing.Generic[T]):
         )
         default = default if default is not missing else self.default
 
+        verify_type_compatibility(self, annotation, origin, type_args)
         short = infer_short(self, field_name)
         long = infer_long(self, origin, field_name)
         choices = infer_choices(self, origin, type_args)
@@ -211,6 +217,53 @@ class Arg(typing.Generic[T]):
             return delimiter.join(self.names(n=n))
 
         return typing.cast(str, self.value_name)
+
+
+def verify_type_compatibility(
+    arg: Arg, annotation: type, origin: type, type_args: tuple[type, ...]
+):
+    """Verify classes of annotations are compatible with one another.
+
+    Thus far:
+        * Sequence and scalar types should not be mixed, unless an explicit `parse`
+          is provided. Otherwise, they will always result in sequence-type results
+          which will not map correctly to scalar types.
+
+        * num_args!=1 should only be used with sequence types.
+        * ArgAction.append should only be used with sequence types.
+    """
+    action = arg.action
+    if arg.parse or ArgAction.is_custom(action):
+        return
+
+    if is_union_type(origin):
+        all_same_arity = {
+            is_sequence_type(ta) for ta in type_args if ta is not NoneType
+        }
+        if len(all_same_arity) > 1:
+            raise ValueError(
+                f"On field '{arg.field_name}', apparent mismatch of annotated type with `Arg` options. "
+                'Unioning "sequence" types with non-sequence types is not currently supported, '
+                "unless using `Arg(parse=...)` or `Arg(action=<callable>)`. "
+                "See [documentation](https://cappa.readthedocs.io/en/latest/annotation.html) for more details."
+            )
+        return
+
+    num_args = arg.num_args
+    if is_sequence_type(origin):
+        if num_args == 1 or action not in {ArgAction.append, None}:
+            raise ValueError(
+                f"On field '{arg.field_name}', apparent mismatch of annotated type with `Arg` options. "
+                f"'{annotation}' type produces a sequence, whereas `num_args=1`/`action={action}` do not. "
+                "See [documentation](https://cappa.readthedocs.io/en/latest/annotation.html) for more details."
+            )
+    else:
+        if num_args not in {None, 1} or action is ArgAction.append:
+            raise ValueError(
+                f"On field '{arg.field_name}', apparent mismatch of annotated type with `Arg` options. "
+                f"'{origin.__name__}' type produces a scalar, whereas `num_args={num_args}`/`action={action}` do not. "
+                "See [documentation](https://cappa.readthedocs.io/en/latest/annotation.html) for more details."
+            )
 
 
 def infer_field_name(arg: Arg, field: Field) -> str:
