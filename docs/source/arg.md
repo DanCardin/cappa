@@ -125,15 +125,53 @@ class Example:
    :noindex:
 ```
 
+```{warning}
+`ArgAction.append` and `num_args=-1` can be potentially confused, in that they can both
+produce list/sequence types as outputs. They can be used in conjunction or separately,
+but they are not the same!
+
+Given some example option `--foo`:
+
+`ArgAction` generally, affects the way the parser maps input CLI values to a given field
+overall. As such `ArgAction.append` causes the field-level value to be a sequence, and
+for multiple instances of `--foo` to accumulate into a list. e.x. `--foo 1 --foo 2` -> `[1, 2]`.
+
+`num_args` instead, affects the number of values that a single instance of `--foo` will
+consume before stopping. e.x. `--foo 1 2` -> `[1, 2]`.
+
+From an input perspective, the above examples show how they present differently at the CLI
+interface, requiring different inputs to successfully parse. From an output perspective, the
+table below shows how their parsed output will end up looking when mapped to real values.
+
+| action | num_args | result |
+| ------ | -------- | ------ |
+| set    | 1        | 1      |
+| set    | -1       | [1]    |
+| append | 1        | [1]    |
+| append | -1       | [[1]]  |
+```
+
 ## Num Args
 
-Generally `num_args` will be inferred by [annotations](./annotation.md), and
-(hopefully) do the obvious thing. It can be manually set, if the inferred value
-is not the expected behavior.
+`num_args` controls the number of arguments that the parser will consume in
+order to fullfill a specific field. `num_args=1` is the default behavior,
+meaning only one argument/value will be consumed for that field. This yields a
+scalar-type value.
 
-For example, in order to support an option
-(`Annotated[list[str], Arg(long='--foo')]`) which consumes an unbounded series
-of arguments (`--foo 1 2 3 4 5 ...`), you would need to specify `num_args=-1`.
+`num_args=3` would therefore mean that exactly 3 values would be required,
+resulting in a sequence-type output, rather than a scalar one.
+
+`num_args=-1` can be used to indicate that 0 or more (i.e. unbounded number of)
+arguments will be consumed, similarly resulting in a sequence-type output (even
+in the zero case).
+
+```{note}
+Generally `num_args` will be automatically inferred by your type annotation. For example,
+`tuple[int, int, int]` implies `num_args=3`.
+
+However, an explicitly provided value is always preferred to the inferred value.
+See [annotations](./annotation.md) for more details.
+```
 
 ## Default
 

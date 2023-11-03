@@ -4,7 +4,7 @@ import enum
 import types
 import typing
 
-from typing_inspect import is_literal_type
+from typing_inspect import get_origin, is_literal_type
 
 from cappa.typing import T, backend_type, is_none_type, is_subclass, is_union_type
 
@@ -182,3 +182,7 @@ def detect_choices(origin: type, type_args: tuple[type, ...]) -> list[str] | Non
         return [str(t) for t in type_args]
 
     return None
+
+
+def is_sequence_type(typ):
+    return is_subclass(get_origin(typ) or typ, (typing.List, typing.Tuple, typing.Set))
