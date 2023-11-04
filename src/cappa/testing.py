@@ -102,3 +102,8 @@ class CommandRunner:
         final_kwargs = self.coalesce_args(*args, **kwargs)
         deps = kwargs.get("deps") or self.deps
         return cappa.invoke(**final_kwargs, deps=deps)
+
+    async def invoke_async(self, *args: str, **kwargs: Unpack[RunnerArgs]):
+        final_kwargs = self.coalesce_args(*args, **kwargs)
+        deps = kwargs.get("deps") or self.deps
+        return await cappa.invoke_async(**final_kwargs, deps=deps)

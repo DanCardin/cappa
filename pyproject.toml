@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cappa"
-version = "0.11.6"
+version = "0.12.0"
 description = "Declarative CLI argument parser."
 
 repository = "https://github.com/dancardin/cappa"
@@ -9,8 +9,10 @@ license = "Apache-2.0"
 readme = "README.md"
 keywords = [
   "CLI",
-  "argparse",
   "parser",
+  "argparse",
+  "click",
+  "typer",
 ]
 classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",

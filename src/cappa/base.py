@@ -14,7 +14,7 @@ from cappa.help import (
     create_help_arg,
     create_version_arg,
 )
-from cappa.invoke import invoke_callable
+from cappa.invoke import resolve_callable
 from cappa.output import Output
 
 if typing.TYPE_CHECKING:
@@ -62,26 +62,82 @@ def parse(
             Note the `color` and `theme` arguments take precedence over manually constructed `Output`
             attributes.
     """
-    concrete_backend = _coalesce_backend(backend)
-    concrete_output = _coalesce_output(output, theme, color)
-
-    command: Command[T] = collect(
-        obj,
-        help=help,
-        version=version,
-        completion=completion,
-        backend=concrete_backend,
-    )
-    _, _, instance = Command.parse_command(
-        command,
+    _, _, instance, _ = parse_command(
+        obj=obj,
         argv=argv,
-        backend=concrete_backend,
-        output=concrete_output,
+        backend=backend,
+        color=color,
+        version=version,
+        help=help,
+        completion=completion,
+        theme=theme,
+        output=output,
     )
     return instance
 
 
 def invoke(
+    obj: type | Command,
+    *,
+    deps: typing.Sequence[typing.Callable] | None = None,
+    argv: list[str] | None = None,
+    backend: typing.Callable | None = None,
+    color: bool = True,
+    version: str | Arg | None = None,
+    help: bool | Arg = True,
+    completion: bool | Arg = True,
+    theme: Theme | None = None,
+    output: Output | None = None,
+):
+    """Parse the command, and invoke the selected async command or subcommand.
+
+    In the event that a subcommand is selected, only the selected subcommand
+    function is invoked.
+
+    Arguments:
+        obj: A class which can represent a CLI command chain.
+        deps: Optional extra depdnencies to load ahead of invoke processing. These
+            deps are evaulated in order and unconditionally.
+        argv: Defaults to the process argv. This command is generally only
+            necessary when testing.
+        backend: A function used to perform the underlying parsing and return a raw
+            parsed state. This defaults to the native cappa parser, but can be changed
+            to the argparse parser at `cappa.argparse.backend`.
+        color: Whether to output in color.
+        version: If a string is supplied, adds a -v/--version flag which returns the
+            given string as the version. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
+            fields to add a corresponding version argument. Note the `name` is assumed to **be**
+            the CLI's version, e.x. `Arg('1.2.3', help="Prints the version")`.
+        help: If `True` (default to True), adds a -h/--help flag. If an `Arg` is supplied,
+            uses the `short`/`long`/`help` fields to add a corresponding help argument.
+        completion: Enables completion when using the cappa `backend` option. If `True`
+            (default to True), adds a --completion flag. An `Arg` can be supplied to customize
+            the argument's behavior.
+        theme: Optional rich theme to customized output formatting.
+        output: Optional `Output` instance. A default `Output` will constructed if one is not provided.
+            Note the `color` and `theme` arguments take precedence over manually constructed `Output`
+            attributes.
+    """
+    command, parsed_command, instance, concrete_output = parse_command(
+        obj=obj,
+        argv=argv,
+        backend=backend,
+        color=color,
+        version=version,
+        help=help,
+        completion=completion,
+        theme=theme,
+        output=output,
+    )
+    resolved, global_deps = resolve_callable(
+        command, parsed_command, instance, output=concrete_output, deps=deps
+    )
+    for dep in global_deps:
+        dep.get(concrete_output)
+    return resolved.get(concrete_output)
+
+
+async def invoke_async(
     obj: type | Command,
     *,
     deps: typing.Sequence[typing.Callable] | None = None,
@@ -123,6 +179,37 @@ def invoke(
             Note the `color` and `theme` arguments take precedence over manually constructed `Output`
             attributes.
     """
+    command, parsed_command, instance, concrete_output = parse_command(
+        obj=obj,
+        argv=argv,
+        backend=backend,
+        color=color,
+        version=version,
+        help=help,
+        completion=completion,
+        theme=theme,
+        output=output,
+    )
+    resolved, global_deps = resolve_callable(
+        command, parsed_command, instance, output=concrete_output, deps=deps
+    )
+    for dep in global_deps:
+        await dep.get_async(concrete_output)
+    return await resolved.get_async(concrete_output)
+
+
+def parse_command(
+    obj: type | Command[T],
+    *,
+    argv: list[str] | None = None,
+    backend: typing.Callable | None = None,
+    color: bool = True,
+    version: str | Arg | None = None,
+    help: bool | Arg = True,
+    completion: bool | Arg = True,
+    theme: Theme | None = None,
+    output: Output | None = None,
+) -> tuple[Command, Command[T], T, Output]:
     concrete_backend = _coalesce_backend(backend)
     concrete_output = _coalesce_output(output, theme, color)
 
@@ -139,9 +226,7 @@ def invoke(
         backend=concrete_backend,
         output=concrete_output,
     )
-    return invoke_callable(
-        command, parsed_command, instance, output=concrete_output, deps=deps
-    )
+    return command, parsed_command, instance, concrete_output
 
 
 @dataclass_transform()
