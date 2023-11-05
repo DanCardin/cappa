@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.12.0
+
+- Add `invoke_async` to support async invoke functions and dependencies
+
+## 0.11.6
+
+- Disallow certain combinations of apparently incompatible annotations, i.e.
+  sequences and scalars
+
+## 0.11.5
+
+- Fix double dash following an invalid option (with num_args>0)
+
 ## 0.11.4
 
 - Fix num_args=-1 on options

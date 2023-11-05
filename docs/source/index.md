@@ -18,6 +18,7 @@ Args <arg>
 Subcommands <subcommand>
 Invoke <invoke>
 Annotations <annotation>
+Parse Vs Invoke <parse_vs_invoke>
 ```
 
 ```{toctree}
@@ -25,21 +26,21 @@ Annotations <annotation>
 :hidden:
 
 vs Click / Typer / Argparse <comparison>
-Parse Vs Invoke <parse_vs_invoke>
 Dataclasses/Pydantic/Attrs <class_compatibility>
 Rich Integration <rich>
-Help Text Inference <help>
 Completions <completion>
+Exiting and Exit Codes <exiting>
 Parser Backends (Cappa/Argparse) <backends>
-Examples (vs click/typer/argparse) <examples>
+Testing <testing>
 ```
 
 ```{toctree}
 :caption: Extra Details
 :hidden:
 
-Testing <testing>
-Exiting and Exit Codes <exiting>
+Examples (vs click/typer/argparse) <examples>
+Help Text Inference <help>
+Asyncio <asyncio>
 Manual Construction <manual_construction>
 Internals <internals>
 ```

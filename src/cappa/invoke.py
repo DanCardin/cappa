@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import contextlib
+import functools
 import importlib
 import inspect
 import typing
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
 
 from typing_extensions import get_type_hints
 
@@ -13,7 +15,7 @@ from cappa.output import Exit, Output
 from cappa.subcommand import Subcommand
 from cappa.typing import find_type_annotation
 
-T = typing.TypeVar("T", bound=HasCommand)
+C = typing.TypeVar("C", bound=HasCommand)
 
 
 class InvokeResolutionError(RuntimeError):
@@ -21,22 +23,80 @@ class InvokeResolutionError(RuntimeError):
 
 
 @dataclass(frozen=True)
-class Dep(typing.Generic[T]):
+class Dep(typing.Generic[C]):
     """Describes the callable required to fullfill a given dependency."""
 
     callable: Callable
 
 
-def invoke_callable(
+def cached_result(fn):
+    @functools.wraps(fn)
+    def wrapped(self, output: Output):
+        if self.is_resolved:
+            return self.result
+
+        result = fn(self, output)
+        self.result = result
+        self.is_resolved = True
+        return result
+
+    return wrapped
+
+
+@dataclass
+class Resolved(typing.Generic[C]):
+    callable: Callable[..., C]
+    kwargs: dict[str, typing.Any | Resolved] = field(default_factory=dict)
+    result: typing.Any = ...
+    is_resolved: bool = False
+
+    @cached_result
+    async def get_async(self, output: Output):
+        finalized_kwargs = dict(self.iter_kwargs(is_resolved=False))
+        for k, v in self.iter_kwargs(is_resolved=True):
+            finalized_kwargs[k] = await v.get_async(output)
+
+        with self.handle_exit(output):
+            result = self.callable(**finalized_kwargs)
+            if isinstance(result, typing.Coroutine):
+                result = await result
+
+        return result
+
+    @cached_result
+    def get(self, output: Output):
+        finalized_kwargs = dict(self.iter_kwargs(is_resolved=False))
+        for k, v in self.iter_kwargs(is_resolved=True):
+            finalized_kwargs[k] = v.get(output)
+
+        with self.handle_exit(output):
+            return self.callable(**finalized_kwargs)
+
+    def iter_kwargs(self, *, is_resolved):
+        for k, v in self.kwargs.items():
+            if is_resolved == isinstance(v, self.__class__):
+                yield k, v
+
+    @classmethod
+    @contextlib.contextmanager
+    def handle_exit(cls, output: Output):
+        try:
+            yield
+        except Exit as e:
+            output.exit(e)
+            raise e
+
+
+def resolve_callable(
     command: Command,
-    parsed_command: Command[T],
-    instance: T,
+    parsed_command: Command[C],
+    instance: C,
     *,
     output: Output,
     deps: typing.Sequence[Callable]
     | typing.Mapping[Callable, Dep | typing.Any]
     | None = None,
-):
+) -> tuple[Resolved[C], typing.Sequence[Resolved]]:
     try:
         implicit_deps = resolve_implicit_deps(command, instance)
         fn: Callable = resolve_invoke_handler(parsed_command, implicit_deps)
@@ -44,51 +104,50 @@ def invoke_callable(
         implicit_deps[Output] = output
         implicit_deps[Command] = parsed_command
 
-        fullfilled_deps = resolve_global_deps(deps, implicit_deps)
+        global_deps = resolve_global_deps(deps, implicit_deps)
 
+        fullfilled_deps = {**implicit_deps, **global_deps}
         kwargs = fullfill_deps(fn, fullfilled_deps)
     except InvokeResolutionError as e:
         raise InvokeResolutionError(
             f"Failed to invoke {parsed_command.cmd_cls} due to resolution failure."
         ) from e
 
-    try:
-        return fn(**kwargs)
-    except Exit as e:
-        output.exit(e)
-        raise e
+    return (Resolved(fn, kwargs), tuple(global_deps.values()))
 
 
 def resolve_global_deps(
     deps: typing.Sequence[Callable] | typing.Mapping[Callable, Dep | typing.Any] | None,
     implicit_deps: dict,
 ) -> dict:
+    result: dict[Dep, typing.Any] = {}
+
     if not deps:
-        return implicit_deps
+        return result
 
     # Coerce the sequence variant of input into the mapping equivalent.
-    if isinstance(deps, Sequence):
+    if isinstance(deps, typing.Sequence):
         deps = typing.cast(typing.Mapping, {d: Dep(d) for d in deps})
 
     for source_function, dep in deps.items():
         # Deps need to be fullfilled, whereas raw values are taken directly.
         if isinstance(dep, Dep):
-            value = dep.callable(**fullfill_deps(dep.callable, implicit_deps))
+            value = Resolved(dep.callable, fullfill_deps(dep.callable, implicit_deps))
         else:
-            value = dep
+            value = Resolved(source_function, result=dep, is_resolved=True)
 
         # We map back to the source dep, i.e. the key in the input mapping. This
         # translates to the raw function in the sequence input, or the source
         # dep being overridden in the dict input.
         source_dep: Dep = Dep(source_function)
-        implicit_deps[source_dep] = value
+        result[source_dep] = value
 
-    return implicit_deps
+    return result
 
 
 def resolve_invoke_handler(
-    command: Command[T], implicit_deps: dict
-) -> Callable[..., T]:
+    command: Command[C], implicit_deps: dict
+) -> Callable[..., C]:
     fn = command.invoke
 
     if not fn:
@@ -200,7 +259,9 @@ def fullfill_deps(fn: Callable, fullfilled_deps: dict) -> typing.Any:
             if dep in fullfilled_deps:
                 value = fullfilled_deps[dep]
             else:
-                value = dep.callable(**fullfill_deps(dep.callable, fullfilled_deps))
+                value = Resolved(
+                    dep.callable, fullfill_deps(dep.callable, fullfilled_deps)
+                )
                 fullfilled_deps[dep] = value
 
         result[name] = value

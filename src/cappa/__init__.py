@@ -1,4 +1,4 @@
-from cappa.base import collect, command, invoke, parse
+from cappa.base import collect, command, invoke, invoke_async, parse
 from cappa.command import Command
 from cappa.completion.types import Completion
 from cappa.env import Env
@@ -30,5 +30,6 @@ __all__ = [
     "collect",
     "command",
     "invoke",
+    "invoke_async",
     "parse",
 ]

@@ -20,6 +20,10 @@ def invoke(cls, *args, **kwargs):
     return runner.invoke(*args, obj=cls, **kwargs)
 
 
+def invoke_async(cls, *args, **kwargs):
+    return runner.invoke_async(*args, obj=cls, **kwargs)
+
+
 def parse_completion(cls, *args, location=None) -> Union[str, None]:
     env = {
         "COMPLETION_LINE": " ".join(["test.py", *args]),
