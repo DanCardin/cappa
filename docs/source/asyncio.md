@@ -36,6 +36,9 @@ async def handler(engine: Annotated[int, cappa.Dep(engine)]):
 @dataclass
 class Command:
     foo: str
+
+
+command = cappa.invoke_async(Command)
 ```
 
 ```{note}
