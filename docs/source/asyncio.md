@@ -38,10 +38,16 @@ class Command:
     foo: str
 
 
-command = cappa.invoke_async(Command)
+command = asyncio.run(cappa.invoke_async(Command))
 ```
 
 ```{note}
+Note the `asyncio.run` call. `invoke_async` is an async function, and as such
+must be called from an async context.
+
+If called from a synchronous context, it must be explicitly scheduled through
+something like `asyncio.run`.
+
 Since cappa defers the actual async scheduling to the caller, it should
 support all asyncio runtimes, including asyncio, trio, curio, etc.
 ```
