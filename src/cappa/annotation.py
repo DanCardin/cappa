@@ -23,10 +23,11 @@ __all__ = [
 type_priority: typing.Final = types.MappingProxyType(
     {
         None: 0,
-        float: 1,
-        int: 2,
-        bool: 3,
-        str: 4,
+        ...: 1,
+        float: 2,
+        int: 3,
+        bool: 4,
+        str: 5,
     }
 )
 
@@ -133,7 +134,7 @@ def parse_union(*type_args: type) -> typing.Callable[[typing.Any], typing.Any]:
     """Create a value parser for a Union with type-args of given `type_args`."""
 
     def type_priority_key(type_) -> int:
-        return type_priority.get(type_, 0)
+        return type_priority.get(type_, 1)
 
     mappers: list[typing.Callable] = [
         parse_value(t) for t in sorted(type_args, key=type_priority_key)
@@ -151,6 +152,18 @@ def parse_union(*type_args: type) -> typing.Callable[[typing.Any], typing.Any]:
         )
 
     return union_mapper
+
+
+def parse_optional(
+    parser: typing.Callable[[typing.Any | None], T]
+) -> typing.Callable[[typing.Any | None], T | None]:
+    def optional_mapper(value) -> T | None:
+        if value is None:
+            return None
+
+        return parser(value)
+
+    return optional_mapper
 
 
 def parse_none():

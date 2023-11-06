@@ -8,7 +8,12 @@ from collections.abc import Callable
 
 from typing_inspect import is_optional_type
 
-from cappa.annotation import detect_choices, is_sequence_type, parse_value
+from cappa.annotation import (
+    detect_choices,
+    is_sequence_type,
+    parse_optional,
+    parse_value,
+)
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
@@ -425,6 +430,8 @@ def infer_num_args(
 
 def infer_parse(arg: Arg, annotation: type) -> Callable:
     if arg.parse:
+        if is_optional_type(annotation):
+            return parse_optional(arg.parse)
         return arg.parse
 
     return parse_value(annotation)
