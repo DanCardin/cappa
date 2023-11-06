@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Union
 
 import cappa
 import pytest
@@ -44,7 +44,7 @@ def test_not_typeable_parse_function(backend):
 
 @backends
 def test_parse_failure(backend):
-    """An explicit exit takes message precedence, and do not include extra cappa text."""
+    """Optional annotations should take precedence over explicit parse."""
 
     @dataclass
     class ArgTest:
@@ -55,3 +55,24 @@ def test_parse_failure(backend):
 
     assert e.value.code == 2
     assert e.value.message == "no go amego"
+
+
+@backends
+def test_parse_optional(backend):
+    """An explicit exit takes message precedence, and do not include extra cappa text."""
+
+    @dataclass
+    class ArgTest:
+        numbers: Annotated[Union[int, None], cappa.Arg(parse=float)] = None
+
+    result = parse(ArgTest, backend=backend)
+    assert result == ArgTest()
+
+    with pytest.raises(cappa.Exit) as e:
+        parse(ArgTest, "one", backend=backend)
+
+    assert e.value.code == 2
+    assert (
+        e.value.message
+        == "Invalid value for 'numbers' with value 'one': could not convert string to float: 'one'"
+    )

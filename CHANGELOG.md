@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.12.1
+
+- When used in combination with `parse=...`, handle the "optional" part of
+  `T | None` **before** `parse`.
+
 ## 0.12.0
 
 - Add `invoke_async` to support async invoke functions and dependencies
