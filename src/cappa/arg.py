@@ -17,6 +17,7 @@ from cappa.annotation import (
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
+from cappa.env import Env
 from cappa.subcommand import Subcommand
 from cappa.typing import (
     MISSING,
@@ -280,6 +281,15 @@ def infer_field_name(arg: Arg, field: Field) -> str:
 
 def infer_default(arg: Arg, field: Field, annotation: type) -> typing.Any:
     if arg.default is not missing:
+        # Annotated[str, Env('FOO')] = "bar" should produce "bar". I.e. the field default
+        # should be used if the `Env` default is not set.
+        if (
+            isinstance(arg.default, Env)
+            and arg.default.default is None
+            and field.default is not missing
+        ):
+            return field.default
+
         return arg.default
 
     if field.default is not missing:

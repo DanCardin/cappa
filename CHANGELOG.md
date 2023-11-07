@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.1
+
+- Prefer the field default (if set), if an `Env` is used, but no default is
+  supplied.
+
 ## 0.13.0
 
 - Support `yield` in invoke dependencies to support context-manager-like

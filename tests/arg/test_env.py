@@ -48,3 +48,13 @@ def test_mapping_is_applied(backend):
 
     test = parse(ArgTest, backend=backend)
     assert test.default is True
+
+
+@backends
+def test_class_default_gets_applied_to_env_default(backend):
+    @dataclass
+    class ArgTest:
+        default: Annotated[str, cappa.Arg(default=cappa.Env("ASDF"))] = "wat"
+
+    test = parse(ArgTest, backend=backend)
+    assert test.default == "wat"
