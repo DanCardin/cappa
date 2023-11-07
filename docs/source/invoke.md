@@ -205,7 +205,7 @@ def logger(example: Example):
 
 
 # The actual invoke function, which can depend upon any/all of the above
-def invoke(
+def invoke_fn(
     example: Example,
     logger: Annotated[Logger, Dep(logger)],
     database: Annotated[Engine, Dep(database)]
@@ -219,6 +219,40 @@ def invoke(
 - Dependencies are evaluated on demand, in the order they're found, meaning they
   will not be evaluated if the specifically invoked function doesn't reference
   it.
+
+#### Yield Dependencies
+
+Generator functions can be used as implicit context managers. This can be useful
+for certain kinds of dependencies which require some kind of
+shutdown/post-action.
+
+```python
+from typing_extensions import Annotated
+from cappa import Dep
+import sqlalchemy
+
+def connection():
+    engine = sqlalchemy.create_engine(...)
+    with engine.connect() as conn:
+        yield conn
+
+def invoke_fn(connection: Annotated[sqlalchemy.Connection, Dep(connection)]):
+    ...
+```
+
+As with `contextlib.contextmanager`, the dependency's function should execute
+exactly one yield given one execution through the function. The context of any
+yield dependencies will remain "entered" up through the action of calling the
+`invoke` function.
+
+As such, it is probably **not** a good idea to return a context-managed resource
+out of your invoke functions (`invoke_fn` above)! By the time you receive the
+value (`foo = invoke(...)`) it will be exited.
+
+#### Async Dependencies
+
+Async functions can be supported as dependencies. See [asyncio](./asyncio.md)
+documentation for details.
 
 ### Global Dependencies
 
