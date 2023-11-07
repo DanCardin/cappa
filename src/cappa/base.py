@@ -133,8 +133,11 @@ def invoke(
         command, parsed_command, instance, output=concrete_output, deps=deps
     )
     for dep in global_deps:
-        dep.get(concrete_output)
-    return resolved.get(concrete_output)
+        with dep.get(concrete_output):
+            pass
+
+    with resolved.get(concrete_output) as value:
+        return value
 
 
 async def invoke_async(
@@ -194,8 +197,11 @@ async def invoke_async(
         command, parsed_command, instance, output=concrete_output, deps=deps
     )
     for dep in global_deps:
-        await dep.get_async(concrete_output)
-    return await resolved.get_async(concrete_output)
+        async with dep.get_async(concrete_output):
+            pass
+
+    async with resolved.get_async(concrete_output) as value:
+        return value
 
 
 def parse_command(

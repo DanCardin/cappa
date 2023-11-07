@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import contextlib
-import functools
 import importlib
 import inspect
 import typing
@@ -29,20 +28,6 @@ class Dep(typing.Generic[C]):
     callable: Callable
 
 
-def cached_result(fn):
-    @functools.wraps(fn)
-    def wrapped(self, output: Output):
-        if self.is_resolved:
-            return self.result
-
-        result = fn(self, output)
-        self.result = result
-        self.is_resolved = True
-        return result
-
-    return wrapped
-
-
 @dataclass
 class Resolved(typing.Generic[C]):
     callable: Callable[..., C]
@@ -50,27 +35,83 @@ class Resolved(typing.Generic[C]):
     result: typing.Any = ...
     is_resolved: bool = False
 
-    @cached_result
-    async def get_async(self, output: Output):
-        finalized_kwargs = dict(self.iter_kwargs(is_resolved=False))
-        for k, v in self.iter_kwargs(is_resolved=True):
-            finalized_kwargs[k] = await v.get_async(output)
+    @contextlib.contextmanager
+    def get(self, output: Output) -> typing.Generator[typing.Any, None, None]:
+        """Get the resolved value.
 
-        with self.handle_exit(output):
-            result = self.callable(**finalized_kwargs)
-            if isinstance(result, typing.Coroutine):
-                result = await result
+        The value itself is cached in the event it's used as a dependency to more
+        than one dependency.
+        """
+        if self.is_resolved:
+            yield self.result
+            return
 
-        return result
+        with contextlib.ExitStack() as stack:
+            # Non-resolved values are literal values that can be recorded directly.
+            finalized_kwargs = dict(self.iter_kwargs(is_resolved=False))
 
-    @cached_result
-    def get(self, output: Output):
-        finalized_kwargs = dict(self.iter_kwargs(is_resolved=False))
-        for k, v in self.iter_kwargs(is_resolved=True):
-            finalized_kwargs[k] = v.get(output)
+            # Resolved values need to be recursed into. In order to handle the
+            # wrapping context manager, we need to enter all contexts, and only
+            # exit at the end.
+            for k, v in self.iter_kwargs(is_resolved=True):
+                finalized_kwargs[k] = stack.enter_context(v.get(output))
 
-        with self.handle_exit(output):
-            return self.callable(**finalized_kwargs)
+            with self.handle_exit(output):
+                callable: Callable = self.callable
+                requires_manegement = inspect.isgeneratorfunction(callable)
+                if requires_manegement:
+                    # Yield functions are assumed to be context-maneger style generators
+                    # what we just need to wrap...
+                    callable = contextlib.contextmanager(callable)
+
+                result = callable(**finalized_kwargs)
+
+                # And then enter before producing the result.
+                if requires_manegement:
+                    result = stack.enter_context(result)
+
+            self.result = result
+            self.is_resolved = True
+            yield result
+
+    @contextlib.asynccontextmanager
+    async def get_async(
+        self, output: Output
+    ) -> typing.AsyncGenerator[typing.Any, None]:
+        """Get the resolved value, in an async context.
+
+        Note, this is the exact same process as in `get`, except with `await`,
+        `enter_async_context` and `async with`. There seems to be no way to
+        share the logic between the two methods, so they just need to be kept
+        in sync :shrug:.
+        """
+        if self.is_resolved:
+            yield self.result
+            return
+
+        async with contextlib.AsyncExitStack() as stack:
+            finalized_kwargs = dict(self.iter_kwargs(is_resolved=False))
+            for k, v in self.iter_kwargs(is_resolved=True):
+                finalized_kwargs[k] = await stack.enter_async_context(
+                    v.get_async(output)
+                )
+
+            with self.handle_exit(output):
+                callable: Callable = self.callable
+                requires_manegement = inspect.isasyncgenfunction(callable)
+                if requires_manegement:
+                    callable = contextlib.asynccontextmanager(callable)
+
+                result = callable(**finalized_kwargs)
+
+                if requires_manegement:
+                    result = await stack.enter_async_context(result)
+                elif isinstance(result, typing.Coroutine):
+                    result = await result
+
+            self.result = result
+            self.is_resolved = True
+            yield result
 
     def iter_kwargs(self, *, is_resolved):
         for k, v in self.kwargs.items():

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.0
+
+- Support `yield` in invoke dependencies to support context-manager-like
+  dependencies (for example those which require cleanup).
+
 ## 0.12.1
 
 - When used in combination with `parse=...`, handle the "optional" part of
