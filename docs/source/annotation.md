@@ -132,7 +132,7 @@ Either form of `Optional`-type annotation implies
 
 ### Unions
 
-Unions dont currently apply any specific inference behavior, but they do come
+Unions don't currently apply any specific inference behavior, but they do come
 with some restrictions.
 
 - Unioning "scalar" and "sequence" types will raise an `ValueError`.
