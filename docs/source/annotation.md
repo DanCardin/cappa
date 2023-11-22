@@ -130,6 +130,23 @@ See [Argument](./arg.md) for more details on the difference between
 Either form of `Optional`-type annotation implies
 `Arg(required=False, default=None)`.
 
+### Unions
+
+Unions don't currently apply any specific inference behavior, but they do come
+with some restrictions.
+
+- Unioning "scalar" and "sequence" types will raise an `ValueError`.
+
+  For example, `int | list[str]`. `list[str]` wants to produce a list, whereas
+  `int` wants to produce a single value, and it's unclear how the parser ought
+  to react to such an annotation.
+
+- Unioning types which would produce different inferred `num_args` values will
+  raise a `ValueError`.
+
+  For example, `foo: tuple[str, str] | list[str]`. `int` produces `num_args=2`
+  and `list[str]` will produce `num_args=-1`, which are incompatible.
+
 ### Literals and Enums
 
 Any form of explicit "choice", like `Literal["one", "two"]`,
@@ -203,6 +220,16 @@ much sense to union those types together without an explicit `parse`.
 Therefore, when unioning "other"-type types, it **may** be important to consider
 the order of the unioned types, if parsing for one or the other type would
 "succeed" incorrectly. In such cases, `parse` may be appropriate.
+
+```{note}
+It's possible for more complex value mapping to happen automatically, if the
+input types have distinct "success criteria". This amounts to something akin to
+a discriminated union.
+
+For example, take the annotation `tuple[Literal["foo"], str] | tuple[Literal["bar"], int]`.
+Supplying `foo bar` as the input value should produce `("foo", "bar")`, whereas
+`bar 4` should produce `("bar", 4)`.
+```
 
 ### List/Tuple/Set
 

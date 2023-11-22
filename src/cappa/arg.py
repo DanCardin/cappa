@@ -409,7 +409,7 @@ def infer_action(
 
 def infer_num_args(
     arg: Arg,
-    origin: type,
+    origin: typing.Any,
     type_args: tuple[type, ...],
     action: ArgAction | Callable,
     long,
@@ -422,6 +422,39 @@ def infer_num_args(
 
     if isinstance(action, ArgAction) and action in no_extra_arg_actions:
         return 0
+
+    if is_union_type(origin):
+        # Recursively determine the `num_args` value of each variant. Use the value
+        # only if they all result in the same value.
+        distinct_num_args = set()
+        num_args_variants = []
+        for type_arg in type_args:
+            type_origin = typing.get_origin(type_arg)
+
+            num_args = infer_num_args(
+                arg,
+                type_origin,
+                typing.get_args(type_arg),
+                action,
+                long,
+            )
+
+            distinct_num_args.add(num_args)
+            num_args_variants.append((type_arg, num_args))
+
+        # The ideal case, where all union variants have the same arity and can be unioned amongst.
+        if len(distinct_num_args) == 1:
+            return distinct_num_args.pop()
+
+        invalid_kinds = ", ".join(
+            [
+                f"`{type_arg}` produces `num_args={n}`"
+                for type_arg, n in num_args_variants
+            ]
+        )
+        raise ValueError(
+            f"On field '{arg.field_name}', mismatch of arity between union variants. {invalid_kinds}."
+        )
 
     is_positional = not arg.short and not long
     if is_subclass(origin, (list, set)) and is_positional:
