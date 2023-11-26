@@ -23,7 +23,7 @@ import cappa
 
 @dataclass
 class Args:
-    some_arg: Annotated[str, cappa.Arg(value_name='FOO')
+    some_arg: Annotated[str, cappa.Arg(value_name='FOO')]
 
 cappa.parse(Args)
 ```
