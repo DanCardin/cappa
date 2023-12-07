@@ -161,3 +161,28 @@ class Fail:
 
 cappa.invoke(Example)
 ```
+
+## Function-based Commands
+
+Purely functions-based can only be used for certain kinds of CLI interfaces.
+However, they **can** reduce the ceremony required to define a given CLI
+command.
+
+```python
+import cappa
+from typing_extensions import Annotated
+
+def function(foo: int, bar: bool, option: Annotated[str, cappa.Arg(long=True)] = "opt"):
+    ...
+
+
+cappa.invoke(function)
+```
+
+Such a CLI is exactly equivalent to a CLI defined as a dataclass with the
+function's arguments as the dataclass's fields.
+
+There are various downsides to using functions. Given that there is no class to
+reference, any feature which relies on being able to name the type will be
+impossible to use. For example, subcommands cannot be naturally defined as
+functions (since there is no type with which to reference the subcommand).

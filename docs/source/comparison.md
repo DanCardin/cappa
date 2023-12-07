@@ -115,3 +115,37 @@ extremely complicated.
 
 The sweet spot for Argparse's API is single-level commands with a bunch of
 options. Beyond that, it becomes difficult to understand.
+
+## Others/New Contenders
+
+I was recently made aware of a couple of other options that seem similarly
+inspired, namely:
+
+### [Tyro](https://brentyi.github.io/tyro/)
+
+At a glance, this seems most similar to Cappa of any alternatives. If we take a
+look at
+[their own comparisons](https://brentyi.github.io/tyro/goals_and_alternatives/),
+Cappa seems to check all of the boxes Tyro does.
+
+It certainly **feels** different when authoring an identical CLI with one or the
+other, but they **do** seem to mostly overlap in terms of functionality. Cappa's
+`invoke`/dependency system is probably the most standout difference maker, if
+the overall differences in their API are not important to you.
+
+It **seems** to be somewhat tailored towards
+[datascience(?) usecases by translating object shapes into cli arguments.](https://brentyi.github.io/tyro/examples/02_nesting/01_nesting/)
+By contrast Cappa is tries to be able to describe a specific/arbitrary CLI shape
+**using** objects, essentially inverting the focal point.
+
+Tyro is built on top of argparse (and we have an argparse backend, wins for
+argparse!), although Cappa's backend was specifically built because the argparse
+backend is fairly limiting in terms of ability to hook into the parser for
+things like completions, and error reporting.
+
+### [Clipstick](https://github.com/sander76/clipstick)
+
+Explicitly avoid use of Annotated, which ultimately limits its flexibly. Without
+additional configuration data, there's only so much it can support.
+
+Otherwise it seems very similarly inspired and thus looks rather nice.

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import dataclasses
+import inspect
 import typing
 from enum import Enum
 
 from typing_extensions import Self
 
-from cappa.typing import MISSING, missing
+from cappa.typing import MISSING, get_type_hints, missing
 
 if typing.TYPE_CHECKING:
     from cappa import Arg, Subcommand
@@ -159,3 +160,38 @@ def extract_dataclass_metadata(field: Field) -> Arg | Subcommand | None:
         )
 
     return field_metadata
+
+
+def get_command_capable_object(obj):
+    """Convert raw functions into a stub class.
+
+    Internally, a dataclass is constructed with a `__call__` method which **splats
+    the arguments to the dataclass into the original callable.
+    """
+    if inspect.isfunction(obj):
+
+        def call(self):
+            kwargs = dataclasses.asdict(self)
+            return obj(**kwargs)
+
+        args = get_type_hints(obj, include_extras=True)
+        parameters = inspect.signature(obj).parameters
+        fields = [
+            (
+                name,
+                annotation,
+                dataclasses.field(
+                    default=parameters[name].default
+                    if parameters[name].default is not inspect.Parameter.empty
+                    else dataclasses.MISSING
+                ),
+            )
+            for name, annotation in args.items()
+        ]
+        return dataclasses.make_dataclass(
+            obj.__name__,
+            fields,
+            namespace={"__call__": call},
+        )
+
+    return obj
