@@ -10,6 +10,19 @@ from tests.utils import backends, parse
 
 
 @backends
+def test_missing_default(backend):
+    @dataclass
+    class ArgTest:
+        default: bool
+
+    test = parse(ArgTest, backend=backend)
+    assert test.default is False
+
+    test = parse(ArgTest, "--default", backend=backend)
+    assert test.default is True
+
+
+@backends
 def test_default(backend):
     @dataclass
     class ArgTest:
