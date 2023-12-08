@@ -35,10 +35,9 @@ _%(safe_prog_name)s_completion_setup;
 
 _%(safe_prog_name)s_completion() {
     local -a completions
-    local -a response
     (( ! $+commands[%(prog_name)s] )) && return 1
 
-    response=("${(@f)$(env COMPLETION_LINE="${words[*]}" COMPLETION_LOCATION=$((CURRENT)) \
+    completions=("${(@f)$(env COMPLETION_LINE="${words[*]}" COMPLETION_LOCATION=$((CURRENT)) \
 %(prog_name)s %(completion_arg)s=complete)}")
 
     if [[ -n "$completions" ]]; then
