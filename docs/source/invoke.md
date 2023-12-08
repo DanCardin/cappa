@@ -8,8 +8,8 @@ See [Invoke Dependencies](./invoke.md#invoke-dependencies) for more information
 about providing context/dependencies to your invoked functions.
 ```
 
-You have a couple of options when choosing how to define the function that will
-be invoked for your command.
+You have a few options when choosing how to define the function that will be
+invoked for your command.
 
 1. you can simply make your dataclass callable:
 
@@ -67,6 +67,29 @@ be invoked for your command.
 
    Then at runtime, when the specific command/subcommand is chosen, only the
    relevant portions of your code need to be imported.
+
+4. In simple cases, you can forgo classes entirely in favor of functions.
+
+   ```python
+   import cappa
+
+   def cli(foo: int):
+       return foo + 1
+
+   result = cappa.invoke(cli)
+   ```
+
+   Such a CLI is exactly equivalent to a CLI defined as a dataclass with the
+   function's arguments as the dataclass's fields, but with an unnameable class.
+
+   There are various downsides to using functions. Naturally, you lose all
+   ability to reference source classes as dependencies. Subcommands cannot be
+   naturally defined as functions (since there is no type with which to
+   reference the subcommand).
+
+   As such, functions can only be used for certain kinds of CLI interfaces.
+   However, they **can** reduce the ceremony required to define a given CLI
+   command.
 
 ```{note}
 When dealing with nested subcommands, only the "invoke" function for the **actually**

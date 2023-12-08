@@ -6,9 +6,10 @@ import typing
 from dataclasses import dataclass
 from inspect import cleandoc
 
+import typing_extensions
 import typing_inspect
-from typing_extensions import Annotated, assert_never
-from typing_inspect import is_literal_type, typing_extensions
+from typing_extensions import Annotated, get_args, get_origin
+from typing_inspect import is_literal_type
 
 try:
     from typing_extensions import Doc  # type: ignore
@@ -41,7 +42,7 @@ def find_type_annotation(
     instance = None
     doc = None
 
-    if typing_extensions.get_origin(type_hint) is Annotated:
+    if get_origin(type_hint) is Annotated:
         annotations = type_hint.__metadata__
         type_hint = type_hint.__origin__
 
@@ -60,7 +61,7 @@ def find_type_annotation(
                     doc = cleandoc(annotation.documentation)  # type: ignore
                     break
         else:
-            assert_never(doc_type)  # type: ignore
+            typing_extensions.assert_never(doc_type)  # type: ignore
 
     return ObjectAnnotation(obj=instance, annotation=type_hint, doc=doc)
 
@@ -72,7 +73,7 @@ def assert_type(value: typing.Any, typ: type[T]) -> T:
 
 def backend_type(typ) -> str:
     if is_literal_type(typ):
-        return typing.get_args(typ)[0]
+        return get_args(typ)[0]
 
     return f"<{typ.__name__}>"
 
@@ -98,3 +99,25 @@ def is_subclass(typ, superclass):
         return False
 
     return issubclass(typ, superclass)
+
+
+def get_type_hints(obj, include_extras=False):
+    result = typing_extensions.get_type_hints(obj, include_extras=include_extras)
+    return fix_annotated_optional_type_hints(result)
+
+
+def fix_annotated_optional_type_hints(
+    hints: dict[str, typing.Any]
+) -> dict[str, typing.Any]:
+    """Normalize `Annotated` interacting with `get_type_hints` in versions <3.11.
+
+    https://github.com/python/cpython/issues/90353.
+    """
+    for param_name, hint in hints.items():
+        args = get_args(hint)
+        if (
+            get_origin(hint) is typing.Union
+            and get_origin(next(iter(args))) is Annotated
+        ):
+            hints[param_name] = next(iter(args))
+    return hints

@@ -71,6 +71,7 @@ class Command(typing.Generic[T]):
         if isinstance(obj, cls):
             return obj
 
+        obj = class_inspect.get_command_capable_object(obj)
         return getattr(obj, "__cappa__", cls(obj))  # type: ignore
 
     def real_name(self) -> str:
