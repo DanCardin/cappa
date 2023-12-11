@@ -301,6 +301,9 @@ def infer_default(arg: Arg, field: Field, annotation: type) -> typing.Any:
     if is_optional_type(annotation):
         return None
 
+    if is_subclass(annotation, bool):
+        return False
+
     return missing
 
 
