@@ -144,7 +144,7 @@ def parse_union(*type_args: type) -> typing.Callable[[typing.Any], typing.Any]:
         for mapper in mappers:
             try:
                 return mapper(value)
-            except ValueError:
+            except (ValueError, TypeError):
                 pass
 
         raise ValueError(
