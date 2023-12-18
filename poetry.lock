@@ -159,6 +159,17 @@ files = [
 ]
 
 [[package]]
+name = "docutils"
+version = "0.20.1"
+description = "Docutils -- Python Documentation Utilities"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "docutils-0.20.1-py3-none-any.whl", hash = "sha256:96f387a2c5562db4476f09f13bbab2192e764cac08ebbf3a34a95d9b1e4a59d6"},
+    {file = "docutils-0.20.1.tar.gz", hash = "sha256:f08a4e276c3a1583a86dce3e34aba3fe04d02bba2dd51ed16106244e8a923e3b"},
+]
+
+[[package]]
 name = "exceptiongroup"
 version = "1.1.3"
 description = "Backport of PEP 654 (exception groups)"
@@ -557,6 +568,17 @@ files = [
 ]
 
 [[package]]
+name = "types-docutils"
+version = "0.20.0.3"
+description = "Typing stubs for docutils"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-docutils-0.20.0.3.tar.gz", hash = "sha256:4928e790f42b99d5833990f99c8dd9fa9f16825f6ed30380ca981846d36870cd"},
+    {file = "types_docutils-0.20.0.3-py3-none-any.whl", hash = "sha256:a930150d8e01a9170f9bca489f46808ddebccdd8bc1e47c07968a77e49fb9321"},
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.8.0"
 description = "Backported and Experimental Type Hints for Python 3.8+"
@@ -588,4 +610,4 @@ docstring = ["docstring-parser"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<4"
-content-hash = "0d14ae3bbb5de37918963a6f8deac1140cc63519af65b1c465480cd9844eacff"
+content-hash = "929a65520b61dce6a74ff4439977ae19f347fe50b129cd3ae066da7395876b0d"

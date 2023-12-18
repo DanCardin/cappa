@@ -133,7 +133,8 @@ def add_long_args(arg_groups: list[ArgGroup]) -> list:
         for arg in args:
             if isinstance(arg, Arg):
                 table.add_row(
-                    Padding(format_arg_name(arg, ", "), left_padding), arg.help
+                    Padding(format_arg_name(arg, ", "), left_padding),
+                    Text(arg.help or "", style=""),
                 )
             else:
                 for option in arg.options.values():

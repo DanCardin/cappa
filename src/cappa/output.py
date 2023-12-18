@@ -28,7 +28,7 @@ theme: Theme = Theme(
         "cappa.arg": "cyan",
         "cappa.arg.name": "dark_cyan",
         "cappa.subcommand": "dark_cyan",
-        "cappa.help": "default",
+        "cappa.help": "",
     }
 )
 
