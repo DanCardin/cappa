@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.15.1
+
+- feat: Support explicit context managers as invoke dependencies.
+
+## 0.15.0
+
+- feat: Add docutils directive extension.
+
+## 0.14.3
+
+- fix: Handle TypeError in mapping failures
+
+## 0.14.2
+
+- fix: Default bool fields to `False` when omitted.
+
+## 0.14.1
+
+- fix: zsh completion script error
+
+## 0.14.0
+
+- feat: Support functions as interface for simple CLIs.
+
+## 0.13.2
+
+- Support "discriminated unions" (i.e. unions which have type distinctions that
+  affect how they're mapped.)
+
 ## 0.13.1
 
 - Prefer the field default (if set), if an `Env` is used, but no default is
