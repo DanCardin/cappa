@@ -58,16 +58,19 @@ class Resolved(typing.Generic[C]):
 
             with self.handle_exit(output):
                 callable: Callable = self.callable
-                requires_manegement = inspect.isgeneratorfunction(callable)
-                if requires_manegement:
+                requires_management = inspect.isgeneratorfunction(callable)
+                if requires_management:
                     # Yield functions are assumed to be context-maneger style generators
                     # what we just need to wrap...
                     callable = contextlib.contextmanager(callable)
 
                 result = callable(**finalized_kwargs)
+                is_context_manager = isinstance(
+                    result, contextlib.AbstractContextManager
+                )
 
                 # And then enter before producing the result.
-                if requires_manegement:
+                if requires_management or is_context_manager:
                     result = stack.enter_context(result)
 
             self.result = result
@@ -98,13 +101,16 @@ class Resolved(typing.Generic[C]):
 
             with self.handle_exit(output):
                 callable: Callable = self.callable
-                requires_manegement = inspect.isasyncgenfunction(callable)
-                if requires_manegement:
+                requires_management = inspect.isasyncgenfunction(callable)
+                if requires_management:
                     callable = contextlib.asynccontextmanager(callable)
 
                 result = callable(**finalized_kwargs)
+                is_context_manager = isinstance(
+                    result, contextlib.AbstractAsyncContextManager
+                )
 
-                if requires_manegement:
+                if requires_management or is_context_manager:
                     result = await stack.enter_async_context(result)
                 elif isinstance(result, typing.Coroutine):
                     result = await result
