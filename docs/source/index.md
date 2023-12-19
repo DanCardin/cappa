@@ -42,6 +42,7 @@ Examples (vs click/typer/argparse) <examples>
 Help Text Inference <help>
 Asyncio <asyncio>
 Manual Construction <manual_construction>
+Sphinx/Docutils Directive <sphinx>
 Internals <internals>
 ```
 

@@ -7,18 +7,16 @@ authors = ["Dan Cardin <ddcardin@gmail.com>"]
 [tool.poetry.dependencies]
 python = "^3.9"
 
-astroid = "<3"
-
-furo = "^2022.4.7"
+furo = ">=2022.4.7"
 linkify-it-py = "*"
-myst-parser = {version = "^0.17.2", extras = ["linkify"]}
-sphinx = "^4.5.0"
-sphinx-autoapi = "^1.8.4"
-sphinx-autobuild = "^2021.3.14"
-sphinx-autodoc-typehints = "^1.18.1"
+myst-parser = {version = ">=2", extras = ["linkify"]}
+sphinx = "^7"
+sphinx-autoapi = "^3"
+sphinx-autobuild = "*"
+sphinx-autodoc-typehints = "^1.25"
 sphinx-copybutton = "*"
 sphinx-pyproject = ">=0.3.0"
-sphinx-togglebutton = "^0.3.2"
+sphinx-togglebutton = ">=0.3.2"
 
 [tool.poetry.dev-dependencies]
 sphinx-autobuild = "*"
