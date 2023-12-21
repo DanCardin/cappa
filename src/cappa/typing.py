@@ -123,3 +123,16 @@ def fix_annotated_optional_type_hints(
         ):
             hints[param_name] = next(iter(args))
     return hints
+
+
+def is_of_type(annotation, types):
+    if typing_inspect.is_optional_type(annotation):
+        args = get_args(annotation)
+    else:
+        args = (annotation,)
+
+    for arg in args:
+        arg_annotation = get_origin(arg) or arg
+        if is_subclass(arg_annotation, types):
+            return True
+    return False
