@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Union
 
 import cappa
 from typing_extensions import Annotated
@@ -42,3 +42,23 @@ def test_list_positional(backend):
         backend=backend,
     )
     assert test.variable_number == ["one", "two", "three"]
+
+
+@backends
+def test_optional_list(backend):
+    @dataclass
+    class ArgTest:
+        value: Annotated[
+            Union[List[str], None], cappa.Arg(short=True, long=True)
+        ] = None
+
+    test = parse(
+        ArgTest,
+        "--value=one",
+        "--value=two",
+        backend=backend,
+    )
+    assert test.value == ["one", "two"]
+
+    test = parse(ArgTest, backend=backend)
+    assert test.value is None

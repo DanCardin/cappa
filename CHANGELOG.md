@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.2
+
+- fix: Process `action` inference, taking into account `Optional`/`| None`.
+
 ## 0.15.1
 
 - feat: Support explicit context managers as invoke dependencies.

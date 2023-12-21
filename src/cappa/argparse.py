@@ -248,10 +248,7 @@ def add_argument(
         kwargs["required"] = arg.required
 
     if arg.default is not missing:
-        if arg.action and arg.action is ArgAction.append:
-            kwargs["default"] = list(arg.default)  # type: ignore
-        else:
-            kwargs["default"] = arg.default
+        kwargs["default"] = argparse.SUPPRESS
 
     if num_args is not None and (arg.action and arg.action not in no_extra_arg_actions):
         kwargs["nargs"] = num_args

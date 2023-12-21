@@ -24,6 +24,7 @@ from cappa.typing import (
     NoneType,
     T,
     find_type_annotation,
+    is_of_type,
     is_subclass,
     is_union_type,
     missing,
@@ -183,7 +184,9 @@ class Arg(typing.Generic[T]):
         short = infer_short(self, field_name)
         long = infer_long(self, origin, field_name)
         choices = infer_choices(self, origin, type_args)
-        action = action or infer_action(self, origin, type_args, long, default)
+        action = action or infer_action(
+            self, annotation, origin, type_args, long, default
+        )
         num_args = infer_num_args(self, origin, type_args, action, long)
         required = infer_required(self, annotation, default)
 
@@ -377,7 +380,12 @@ def infer_choices(
 
 
 def infer_action(
-    arg: Arg, origin: type, type_args: tuple[type, ...], long, default: typing.Any
+    arg: Arg,
+    annotation: type,
+    origin: type,
+    type_args: tuple[type, ...],
+    long,
+    default: typing.Any,
 ) -> ArgAction | Callable:
     if arg.count:
         return ArgAction.count
@@ -399,10 +407,10 @@ def infer_action(
     if arg.parse or unbounded_num_args or (is_positional and not has_specific_num_args):
         return ArgAction.set
 
-    if is_subclass(origin, (list, set)):
+    if is_of_type(annotation, (typing.List, typing.Set)):
         return ArgAction.append
 
-    if is_subclass(origin, tuple):
+    if is_of_type(annotation, typing.Tuple):
         is_unbounded_tuple = len(type_args) == 2 and type_args[1] == ...
         if is_unbounded_tuple:
             return ArgAction.append
