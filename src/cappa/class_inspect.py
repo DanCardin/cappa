@@ -50,8 +50,8 @@ class ClassTypes(Enum):
         if hasattr(obj, "__attrs_attrs__"):
             return cls.attrs
 
-        raise ValueError(  # pragma: no cover
-            f"'{cls}' is not a currently supported base class. "
+        raise ValueError(
+            f"'{obj.__qualname__}' is not a currently supported kind of class. "
             "Must be one of: dataclass, pydantic, or attrs class."
         )
 

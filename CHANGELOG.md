@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.3
+
+- fix: Incorrect error message when using an invalid base class type.
+
 ## 0.15.2
 
 - fix: Process `action` inference, taking into account `Optional`/`| None`.
