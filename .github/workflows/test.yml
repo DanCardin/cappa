@@ -60,15 +60,6 @@ jobs:
         with:
           path: coverage.xml
 
-      - name: Coveralls
-        env:
-          COVERALLS_FLAG_NAME: run-${{ inputs.working-directory }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COVERALLS_PARALLEL: true
-        run: |
-          pip install tomli coveralls
-          coveralls --service=github
-
       - uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -80,9 +71,5 @@ jobs:
       - test
     runs-on: ubuntu-latest
     steps:
-      - name: Coveralls Finished
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          pip install tomli coveralls
-          coveralls --service=github --finish
+      - name: Join
+        run: echo Done
