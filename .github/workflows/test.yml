@@ -19,6 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        pydantic-version: ["1.0", "2.0"]
 
     steps:
       - uses: actions/checkout@v3
@@ -45,6 +46,9 @@ jobs:
       - name: Install dependencies
         run: make install
 
+      - name: Install pydantic matrix version
+        run: poetry run pip install 'pydantic~=${{ matrix.pydantic-version }}'
+
       - name: Run Linters
         run: poetry run make lint
 
@@ -64,6 +68,12 @@ jobs:
         run: |
           pip install tomli coveralls
           coveralls --service=github
+
+      - uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          name: python=${{ matrix.python-version }}-pydantic=${{matrix.pydantic-version}}
+          files: coverage.xml
 
   finish:
     needs:
