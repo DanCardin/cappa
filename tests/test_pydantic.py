@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import cappa
 from pydantic import BaseModel, dataclasses
 from typing_extensions import Annotated
@@ -28,3 +30,23 @@ class DataclassCommand:
 def test_dataclass(backend):
     result = parse(DataclassCommand, "meow", "-f", "4", backend=backend)
     assert result == DataclassCommand(name="meow", foo=4)
+
+
+class OptSub(BaseModel):
+    name: Optional[str] = None
+
+
+class OptionalSubcommand(BaseModel):
+    sub: cappa.Subcommands[Optional[OptSub]] = None
+
+
+@backends
+def test_optional_subcommand(backend):
+    result = parse(OptionalSubcommand, backend=backend)
+    assert result == OptionalSubcommand(sub=None)
+
+    result = parse(OptionalSubcommand, "opt-sub", backend=backend)
+    assert result == OptionalSubcommand(sub=OptSub(name=None))
+
+    result = parse(OptionalSubcommand, "opt-sub", "foo", backend=backend)
+    assert result == OptionalSubcommand(sub=OptSub(name="foo"))

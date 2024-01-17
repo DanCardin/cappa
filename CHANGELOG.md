@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.4
+
+- feat: Support pydantic v1.
+
 ## 0.15.3
 
 - fix: Incorrect error message when using an invalid base class type.

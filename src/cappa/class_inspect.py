@@ -5,7 +5,8 @@ import inspect
 import typing
 from enum import Enum
 
-from typing_extensions import Self
+import typing_inspect
+from typing_extensions import Self, get_args
 
 from cappa.typing import MISSING, get_type_hints, missing
 
@@ -26,26 +27,36 @@ def detect(cls: type) -> bool:
 
 
 class ClassTypes(Enum):
-    dataclass = "dataclass"
-    pydantic = "pydantic"
-    pydantic_dataclass = "pydantic_dataclass"
     attrs = "attrs"
+    dataclass = "dataclass"
+    pydantic_v1 = "pydantic_v1"
+    pydantic_v2 = "pydantic_v2"
+    pydantic_v2_dataclass = "pydantic_v2_dataclass"
 
     @classmethod
     def from_cls(cls, obj: type) -> ClassTypes:
         if hasattr(obj, "__pydantic_fields__"):
-            return cls.pydantic_dataclass
+            return cls.pydantic_v2_dataclass
 
         if dataclasses.is_dataclass(obj):
             return cls.dataclass
 
         try:
-            from pydantic import BaseModel
+            import pydantic
         except ImportError:  # pragma: no cover
             pass
         else:
-            if issubclass(obj, BaseModel):
-                return cls.pydantic
+            try:
+                is_base_model = isinstance(obj, type) and issubclass(
+                    obj, pydantic.BaseModel
+                )
+            except TypeError:  # pragma: no cover
+                is_base_model = False
+
+            if is_base_model:
+                if pydantic.__version__.startswith("1."):
+                    return cls.pydantic_v1
+                return cls.pydantic_v2
 
         if hasattr(obj, "__attrs_attrs__"):
             return cls.attrs
@@ -81,7 +92,25 @@ class Field:
         return fields
 
     @classmethod
-    def from_pydantic(cls, typ: type) -> list[Self]:
+    def from_pydantic_v1(cls, typ) -> list[Self]:
+        fields = []
+        type_hints = get_type_hints(typ, include_extras=True)
+        for name, f in typ.__fields__.items():
+            annotation = get_type(type_hints[name])
+
+            field = cls(
+                name=name,
+                annotation=annotation,
+                default=f.default
+                if f.default.__repr__() != "PydanticUndefined"
+                else missing,
+                default_factory=f.default_factory or missing,
+            )
+            fields.append(field)
+        return fields
+
+    @classmethod
+    def from_pydantic_v2(cls, typ: type) -> list[Self]:
         fields = []
         for name, f in typ.model_fields.items():  # type: ignore
             field = cls(
@@ -96,7 +125,7 @@ class Field:
         return fields
 
     @classmethod
-    def from_pydantic_dataclass(cls, typ: type) -> list[Self]:
+    def from_pydantic_v2_dataclass(cls, typ: type) -> list[Self]:
         fields = []
         for name, f in typ.__pydantic_fields__.items():  # type: ignore
             field = cls(
@@ -134,11 +163,14 @@ def fields(cls: type):
     if class_type == ClassTypes.dataclass:
         return Field.from_dataclass(cls)
 
-    if class_type == ClassTypes.pydantic:
-        return Field.from_pydantic(cls)
+    if class_type == ClassTypes.pydantic_v1:
+        return Field.from_pydantic_v1(cls)
 
-    if class_type == ClassTypes.pydantic_dataclass:
-        return Field.from_pydantic_dataclass(cls)
+    if class_type == ClassTypes.pydantic_v2:
+        return Field.from_pydantic_v2(cls)
+
+    if class_type == ClassTypes.pydantic_v2_dataclass:
+        return Field.from_pydantic_v2_dataclass(cls)
 
     if class_type == ClassTypes.attrs:
         return Field.from_attrs(cls)
@@ -195,3 +227,9 @@ def get_command_capable_object(obj):
         )
 
     return obj
+
+
+def get_type(typ):
+    if typing_inspect.is_optional_type(typ):
+        return get_args(typ)[0]
+    return typ
