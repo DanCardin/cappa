@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 import types
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from inspect import cleandoc
 
 import typing_extensions
@@ -34,6 +34,7 @@ class ObjectAnnotation(typing.Generic[T]):
     obj: T | None
     annotation: typing.Type
     doc: str | None = None
+    other_annotations: list[typing.Type] = field(default_factory=list)
 
 
 def find_type_annotation(
@@ -42,18 +43,22 @@ def find_type_annotation(
     instance = None
     doc = None
 
+    other_annotations = []
     if get_origin(type_hint) is Annotated:
         annotations = type_hint.__metadata__
         type_hint = type_hint.__origin__
 
         for annotation in annotations:
-            if isinstance(annotation, kind):
-                instance = annotation
-                break
+            is_instance = isinstance(annotation, kind)
+            is_kind = isinstance(annotation, type) and issubclass(annotation, kind)
 
-            if isinstance(annotation, type) and issubclass(annotation, kind):
-                instance = annotation()
-                break
+            if instance is None and (is_instance or is_kind):
+                instance = annotation
+                if is_kind:
+                    instance = typing.cast(type, annotation)()
+                    break
+            else:
+                other_annotations.append(annotation)
 
         if doc_type:
             for annotation in annotations:
@@ -63,7 +68,9 @@ def find_type_annotation(
         else:
             typing_extensions.assert_never(doc_type)  # type: ignore
 
-    return ObjectAnnotation(obj=instance, annotation=type_hint, doc=doc)
+    return ObjectAnnotation(
+        obj=instance, annotation=type_hint, doc=doc, other_annotations=other_annotations
+    )
 
 
 def assert_type(value: typing.Any, typ: type[T]) -> T:

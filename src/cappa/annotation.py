@@ -6,6 +6,7 @@ import typing
 
 from typing_inspect import get_origin, is_literal_type
 
+from cappa.file_io import FileMode
 from cappa.typing import T, backend_type, is_none_type, is_subclass, is_union_type
 
 __all__ = [
@@ -32,7 +33,9 @@ type_priority: typing.Final = types.MappingProxyType(
 )
 
 
-def parse_value(annotation: type) -> typing.Callable:
+def parse_value(
+    annotation: type, extra_annotations: typing.Iterable[type] = ()
+) -> typing.Callable:
     """Create a value parser for the given annotation.
 
     Examples:
@@ -64,6 +67,9 @@ def parse_value(annotation: type) -> typing.Callable:
 
     if is_subclass(origin, tuple):
         return parse_tuple(*type_args)
+
+    if is_subclass(origin, (typing.TextIO, typing.BinaryIO)):
+        return parse_file_io(origin, extra_annotations)
 
     return origin
 
@@ -176,6 +182,27 @@ def parse_none():
         raise ValueError(value)
 
     return map_none
+
+
+def parse_file_io(
+    annotation: type, extra_annotations: typing.Iterable[type]
+) -> typing.Callable:
+    def file_io_mapper(value: str):
+        try:
+            file_mode: FileMode = next(
+                typing.cast(FileMode, f)
+                for f in extra_annotations
+                if isinstance(f, FileMode)
+            )
+        except StopIteration:
+            file_mode = FileMode()
+
+            if issubclass(annotation, typing.BinaryIO):
+                file_mode.mode += "b"
+
+        return file_mode(value)
+
+    return file_io_mapper
 
 
 def detect_choices(origin: type, type_args: tuple[type, ...]) -> list[str] | None:

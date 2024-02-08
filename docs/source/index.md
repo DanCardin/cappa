@@ -52,4 +52,5 @@ Internals <internals>
 
 GitHub Repository <https://github.com/dancardin/cappa>
 PyPI <https://pypi.org/project/cappa>
+Changelog <changelog>
 ```

@@ -134,6 +134,8 @@ class Arg(typing.Generic[T]):
 
     field_name: str | MISSING = missing
 
+    annotations: list[typing.Type] = dataclasses.field(default_factory=list)
+
     @classmethod
     def collect(
         cls, field: Field, type_hint: type, fallback_help: str | None = None
@@ -159,7 +161,12 @@ class Arg(typing.Generic[T]):
         field_name = infer_field_name(arg, field)
         default = infer_default(arg, field, annotation)
 
-        arg = dataclasses.replace(arg, field_name=field_name, default=default)
+        arg = dataclasses.replace(
+            arg,
+            field_name=field_name,
+            default=default,
+            annotations=object_annotation.other_annotations,
+        )
         return arg.normalize(annotation, fallback_help=fallback_help)
 
     def normalize(
@@ -488,7 +495,7 @@ def infer_parse(arg: Arg, annotation: type) -> Callable:
             return parse_optional(arg.parse)
         return arg.parse
 
-    return parse_value(annotation)
+    return parse_value(annotation, extra_annotations=arg.annotations)
 
 
 def infer_help(
