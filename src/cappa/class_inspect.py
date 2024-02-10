@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import functools
 import inspect
 import typing
 from enum import Enum
@@ -8,7 +9,7 @@ from enum import Enum
 import typing_inspect
 from typing_extensions import Self, get_args
 
-from cappa.typing import MISSING, get_type_hints, missing
+from cappa.typing import MISSING, find_type_annotation, get_type_hints, missing
 
 if typing.TYPE_CHECKING:
     from cappa import Arg, Subcommand
@@ -201,28 +202,44 @@ def get_command_capable_object(obj):
     the arguments to the dataclass into the original callable.
     """
     if inspect.isfunction(obj):
+        from cappa import Dep
 
-        def call(self):
+        function_args = []
+
+        @functools.wraps(obj)
+        def call(self, **deps):
             kwargs = dataclasses.asdict(self)
-            return obj(**kwargs)
+            return obj(**kwargs, **deps)
+
+        # We need to create a fake signature for the above callable, which does
+        # not retain the `Arg` annotations
+        sig = inspect.signature(obj)
+        sig_params: dict = dict(sig.parameters)
+        sig._parameters = sig_params  # type: ignore
+        call.__signature__ = sig  # type: ignore
 
         args = get_type_hints(obj, include_extras=True)
         parameters = inspect.signature(obj).parameters
-        fields = [
-            (
-                name,
-                annotation,
-                dataclasses.field(
-                    default=parameters[name].default
-                    if parameters[name].default is not inspect.Parameter.empty
-                    else dataclasses.MISSING
-                ),
+        for name, annotation in args.items():
+            if find_type_annotation(annotation, Dep).obj:
+                continue
+
+            sig_params.pop(name, None)
+            function_args.append(
+                (
+                    name,
+                    annotation,
+                    dataclasses.field(
+                        default=parameters[name].default
+                        if parameters[name].default is not inspect.Parameter.empty
+                        else dataclasses.MISSING
+                    ),
+                )
             )
-            for name, annotation in args.items()
-        ]
+
         return dataclasses.make_dataclass(
             obj.__name__,
-            fields,
+            function_args,
             namespace={"__call__": call},
         )
 
