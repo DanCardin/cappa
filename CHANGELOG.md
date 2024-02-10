@@ -2,6 +2,10 @@
 
 ## 0.16
 
+### 0.16.1
+
+- feat: Support `Dep` on function based commands.
+
 ### 0.16.0
 
 - feat: Add support for `BinaryIO` and `TextIO` for representing preconfigured

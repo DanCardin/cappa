@@ -73,3 +73,22 @@ def test_subcommand(backend):
 
     result = invoke(function, "sub", "--bar", "34", backend=backend)
     assert result == 35
+
+
+def foo():
+    return 5
+
+
+@backends
+def test_invoke_partial_arg_partial_dep(backend):
+    def function(
+        dep: Annotated[int, cappa.Dep(foo)],
+        foo: Annotated[int, cappa.Arg(long=True)] = 15,
+    ):
+        return dep + foo
+
+    result = invoke(function, backend=backend)
+    assert result == 20
+
+    result = invoke(function, "--foo", "53", backend=backend)
+    assert result == 58

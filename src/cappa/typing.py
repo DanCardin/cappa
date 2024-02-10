@@ -111,8 +111,9 @@ def is_subclass(typ, superclass):
 def get_type_hints(obj, include_extras=False):
     result = typing_extensions.get_type_hints(obj, include_extras=include_extras)
     if sys.version_info < (3, 11):  # pragma: no cover
-        return fix_annotated_optional_type_hints(result)
-    return result
+        result = fix_annotated_optional_type_hints(result)
+
+    return {k: v for k, v in result.items() if k not in {"return"}}
 
 
 def fix_annotated_optional_type_hints(

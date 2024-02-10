@@ -264,7 +264,7 @@ def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
 def fullfill_deps(fn: Callable, fullfilled_deps: dict) -> typing.Any:
     result = {}
 
-    signature = inspect.signature(fn)
+    signature = getattr(fn, "__signature__", None) or inspect.signature(fn)
     try:
         annotations = get_type_hints(fn, include_extras=True)
     except NameError as e:  # pragma: no cover
