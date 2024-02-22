@@ -25,7 +25,9 @@ def test_required_implicit(backend):
     with pytest.raises(cappa.Exit) as e:
         parse(Command)
     assert e.value.code == 2
-    assert "are required: {a}" in str(e.value.message)
+    assert "A command is required: {[cappa.subcommand]a[/cappa.subcommand]}" in str(
+        e.value.message
+    )
 
     result = parse(Command, "a", backend=backend)
     assert result == Command(subcmd=A())

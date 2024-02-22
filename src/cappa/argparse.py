@@ -154,8 +154,9 @@ def backend(
     command: Command[T],
     argv: list[str],
     output: Output,
+    prog: str,
 ) -> tuple[typing.Any, Command[T], dict[str, typing.Any]]:
-    parser = create_parser(command, output=output)
+    parser = create_parser(command, output=output, prog=prog)
 
     try:
         version = next(
@@ -172,7 +173,7 @@ def backend(
     try:
         result_namespace = parser.parse_args(argv, ns)
     except argparse.ArgumentError as e:
-        raise Exit(str(e), code=2, prog=command.real_name())
+        raise Exit(str(e), code=2, prog=prog)
 
     result = to_dict(result_namespace)
     command = result.pop("__command__")
@@ -180,7 +181,9 @@ def backend(
     return parser, command, result
 
 
-def create_parser(command: Command, output: Output) -> argparse.ArgumentParser:
+def create_parser(
+    command: Command, output: Output, prog: str
+) -> argparse.ArgumentParser:
     kwargs: dict[str, typing.Any] = {}
     if sys.version_info >= (3, 9):  # pragma: no cover
         kwargs["exit_on_error"] = False
@@ -188,7 +191,7 @@ def create_parser(command: Command, output: Output) -> argparse.ArgumentParser:
     parser = ArgumentParser(
         command=command,
         output=output,
-        prog=command.real_name(),
+        prog=prog,
         description=join_help(command.help, command.description),
         allow_abbrev=False,
         add_help=False,

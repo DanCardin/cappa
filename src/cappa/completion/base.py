@@ -27,6 +27,7 @@ def execute(command: Command, prog: str, action: str, arg: Arg, output: Output):
         command,
         command_args,
         output=output,
+        prog=prog,
         provide_completions=True,
     )
 

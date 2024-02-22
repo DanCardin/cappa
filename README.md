@@ -148,7 +148,7 @@ def print_cmd(print: Print):
     else:
         print("printing!")
 
-@cappa.invoke(invoke=print_cmd)
+@cappa.command(invoke=print_cmd)
 class Print:
     loudly: bool
 
