@@ -148,12 +148,21 @@ class Command(typing.Generic[T]):
         if argv is None:  # pragma: no cover
             argv = sys.argv[1:]
 
+        prog = command.real_name()
         try:
-            parser, parsed_command, parsed_args = backend(command, argv, output=output)
+            parser, parsed_command, parsed_args = backend(
+                command, argv, output=output, prog=prog
+            )
             prog = parser.prog
             result = command.map_result(command, prog, parsed_args)
         except Exit as e:
-            output.exit(e)
+            from cappa.help import format_help, format_short_help
+
+            output.exit(
+                e,
+                help=format_help(command, e.prog or prog),
+                short_help=format_short_help(command, e.prog or prog),
+            )
             raise
 
         return command, parsed_command, result

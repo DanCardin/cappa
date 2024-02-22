@@ -7,7 +7,7 @@ from collections import deque
 from cappa.arg import Arg, ArgAction, no_extra_arg_actions
 from cappa.command import Command, Subcommand
 from cappa.completion.types import Completion, FileCompletion
-from cappa.help import format_help
+from cappa.help import format_help, format_subcommand_names
 from cappa.invoke import fullfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.typing import T, assert_type
@@ -68,10 +68,9 @@ def backend(
     command: Command[T],
     argv: list[str],
     output: Output,
+    prog: str,
     provide_completions: bool = False,
 ) -> tuple[typing.Any, Command[T], dict[str, typing.Any]]:
-    prog = command.real_name()
-
     args = RawArg.collect(argv, provide_completions=provide_completions)
 
     context = ParseContext.from_command(args, [command], output)
@@ -424,7 +423,7 @@ def consume_subcommand(context: ParseContext, arg: Subcommand) -> typing.Any:
             return
 
         raise BadArgumentError(
-            f"The following arguments are required: {{{arg.names_str()}}}",
+            f"A command is required: {{{format_subcommand_names(arg.names())}}}",
             value="",
             command=context.command,
             arg=arg,
@@ -432,8 +431,16 @@ def consume_subcommand(context: ParseContext, arg: Subcommand) -> typing.Any:
 
     assert isinstance(value, RawArg), value
     if value.raw not in arg.options:
+        message = f"Invalid command '{value.raw}'"
+        possible_values = [name for name in arg.names() if name.startswith(value.raw)]
+        if possible_values:
+            message += f" (Did you mean: {format_subcommand_names(possible_values)})"
+
         raise BadArgumentError(
-            "invalid subcommand", value=value.raw, command=context.command, arg=arg
+            message,
+            value=value.raw,
+            command=context.command,
+            arg=arg,
         )
 
     command = arg.options[value.raw]

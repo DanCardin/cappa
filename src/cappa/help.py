@@ -98,6 +98,11 @@ def format_help(command: Command, prog: str) -> list[Displayable]:
     return lines
 
 
+def format_short_help(command: Command, prog: str) -> Displayable:
+    arg_groups = generate_arg_groups(command)
+    return add_short_args(prog, arg_groups)
+
+
 def generate_arg_groups(command: Command, include_hidden=False) -> list[ArgGroup]:
     def by_group(arg: Arg | Subcommand) -> tuple[int, str]:
         assert isinstance(arg.group, tuple)
@@ -176,3 +181,7 @@ def format_subcommand(command: Command):
         ),
         command.help,
     )
+
+
+def format_subcommand_names(names: list[str]):
+    return ", ".join(f"[cappa.subcommand]{a}[/cappa.subcommand]" for a in names)

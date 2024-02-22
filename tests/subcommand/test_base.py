@@ -25,10 +25,15 @@ def test_required_missing(backend):
     with pytest.raises(cappa.Exit) as e:
         parse(RequiredMissing, backend=backend)
     assert isinstance(e.value.message, str)
-    assert (
-        "the following arguments are required: {required-missing-one}"
-        in e.value.message.lower()
-    )
+
+    message = e.value.message.lower()
+    if backend:
+        assert "the following arguments are required: {required-missing-one}" in message
+    else:
+        assert (
+            "a command is required: {[cappa.subcommand]required-missing-one[/cappa.subcommand]}"
+            in message
+        )
 
 
 @dataclass

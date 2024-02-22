@@ -29,7 +29,7 @@ vs Click / Typer / Argparse <comparison>
 Dataclasses/Pydantic/Attrs <class_compatibility>
 Rich Integration <rich>
 Completions <completion>
-Exiting and Exit Codes <exiting>
+Output, Exiting, and Exit Codes <exiting>
 Parser Backends (Cappa/Argparse) <backends>
 Testing <testing>
 ```
@@ -43,7 +43,6 @@ Help Text Inference <help>
 Asyncio <asyncio>
 Manual Construction <manual_construction>
 Sphinx/Docutils Directive <sphinx>
-Internals <internals>
 ```
 
 ```{toctree}
