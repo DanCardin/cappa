@@ -111,8 +111,12 @@ class BooleanOptionalAction(argparse.Action):
 
 def custom_action(arg: Arg, action: Callable):
     class CustomAction(argparse.Action):
-        def __call__(
-            self, parser: ArgumentParser, namespace, values, option_string=None  # type: ignore
+        def __call__(  # type: ignore
+            self,
+            parser: ArgumentParser,
+            namespace,
+            values,
+            option_string=None,
         ):
             # XXX: This should ideally be able to inject parser state, but here, we dont
             #      have access to the same state as the native parser.

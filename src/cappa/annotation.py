@@ -161,7 +161,7 @@ def parse_union(*type_args: type) -> typing.Callable[[typing.Any], typing.Any]:
 
 
 def parse_optional(
-    parser: typing.Callable[[typing.Any | None], T]
+    parser: typing.Callable[[typing.Any | None], T],
 ) -> typing.Callable[[typing.Any | None], T | None]:
     def optional_mapper(value) -> T | None:
         if value is None:

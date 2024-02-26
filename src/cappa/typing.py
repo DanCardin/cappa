@@ -115,7 +115,7 @@ def get_type_hints(obj, include_extras=False):
 
 
 def fix_annotated_optional_type_hints(
-    hints: dict[str, typing.Any]
+    hints: dict[str, typing.Any],
 ) -> dict[str, typing.Any]:  # pragma: no cover
     """Normalize `Annotated` interacting with `get_type_hints` in versions <3.11.
 

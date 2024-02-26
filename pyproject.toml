@@ -39,12 +39,11 @@ docstring = ["docstring-parser"]
 
 [tool.poetry.group.dev.dependencies]
 attrs = "*"
-black = "^23.7.0"
 coverage = "^7.3.0"
 mypy = ">=1.0"
 pydantic = "*"
 pytest = "^7.4.0"
-ruff = "^0.0.286"
+ruff = "^0.2.2"
 docutils = "*"
 typing-extensions = ">=4.8.0"
 types-docutils = "^0.20.0.3"
@@ -56,6 +55,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff]
 target-version = "py38"
 
+[tool.ruff.lint]
 select = ["C", "D", "E", "F", "I", "N", "Q", "RET", "RUF", "S", "T", "UP", "YTT"]
 ignore = [
     "C901",
@@ -71,11 +71,11 @@ ignore = [
     "D413",
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*" = ["T201"]
 "src/cappa/parser.py" = ["N818"]
 
-[tool.ruff.pyupgrade]
+[tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true
 
 [tool.coverage.report]

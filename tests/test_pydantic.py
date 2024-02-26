@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import cappa
 from pydantic import BaseModel, dataclasses
-from typing_extensions import Annotated, Optional
+from typing_extensions import Annotated
 
 from tests.utils import backends, parse
 
