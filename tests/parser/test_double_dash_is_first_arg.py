@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Union
 
 import cappa
-from typing_extensions import Annotated
+from typing_extensions import Annotated, Union
 
 from tests.utils import backends, parse
 
@@ -14,7 +13,7 @@ def test_(backend):
     @dataclass
     class Args:
         foo: Annotated[bool, cappa.Arg(long=True)] = False
-        raw: Annotated[Union[List[str], None], cappa.Arg(num_args=-1)] = None
+        raw: Annotated[Union[list[str], None], cappa.Arg(num_args=-1)] = None
 
     test = parse(Args, "--foo", "--", "value", backend=backend)
     assert test.foo is True

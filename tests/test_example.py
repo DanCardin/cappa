@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass, field
-from typing import Tuple
 
 import cappa
 
@@ -43,7 +42,7 @@ def test_bool(backend):
 def test_tuple(backend):
     @dataclass
     class ArgTest:
-        exact_num_args: Tuple[str, int] = field(
+        exact_num_args: tuple[str, int] = field(
             default=("a", 0), metadata={"cappa": cappa.Arg(long=True)}
         )
 
@@ -61,7 +60,7 @@ def test_tuple(backend):
 def test_missing_value_defaults(backend):
     @dataclass
     class ArgTest:
-        exact_num_args: Tuple[str, int] = field(
+        exact_num_args: tuple[str, int] = field(
             default=("a", 0), metadata={"cappa": cappa.Arg(long=True)}
         )
 

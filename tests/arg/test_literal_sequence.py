@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Literal, Set, Tuple, Union
 
 import cappa
 import pytest
-from typing_extensions import Annotated
+from typing_extensions import Annotated, Literal, Union
 
 from tests.utils import backends, parse
 
@@ -13,15 +12,15 @@ from tests.utils import backends, parse
 @dataclass
 class ArgTest:
     list: Annotated[
-        List[Union[Literal["one"], Literal["two"], Literal["three"], Literal[4]]],
+        list[Union[Literal["one"], Literal["two"], Literal["three"], Literal[4]]],
         cappa.Arg(short=True, default=[]),
     ]
     tuple: Annotated[
-        Tuple[Union[Literal["one"], Literal["two"], Literal["three"], Literal[4]], ...],
+        tuple[Union[Literal["one"], Literal["two"], Literal["three"], Literal[4]], ...],
         cappa.Arg(short=True, default=()),
     ]
     set: Annotated[
-        Set[Union[Literal["one"], Literal["two"], Literal["three"], Literal[4]]],
+        set[Union[Literal["one"], Literal["two"], Literal["three"], Literal[4]]],
         cappa.Arg(short=True, default=set()),
     ]
 

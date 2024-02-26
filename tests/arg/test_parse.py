@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple, Union
 
 import cappa
 import pytest
-from typing_extensions import Annotated
+from typing_extensions import Annotated, Union
 
 from tests.utils import backends, parse
 
@@ -36,7 +35,7 @@ def test_explicit_parse_function(backend):
 def test_not_typeable_parse_function(backend):
     @dataclass
     class ArgTest:
-        numbers: Annotated[Tuple[int, int], cappa.Arg(parse=split)]
+        numbers: Annotated[tuple[int, int], cappa.Arg(parse=split)]
 
     test = parse(ArgTest, "1,3", backend=backend)
     assert test.numbers == (1, 3)

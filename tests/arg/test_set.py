@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Set
 
 import cappa
 from typing_extensions import Annotated
@@ -13,7 +12,7 @@ from tests.utils import backends, parse
 def test_list_option(backend):
     @dataclass
     class ArgTest:
-        variable_number: Annotated[Set[str], cappa.Arg(short=True, long=True)] = field(
+        variable_number: Annotated[set[str], cappa.Arg(short=True, long=True)] = field(
             default_factory=set
         )
 
@@ -36,7 +35,7 @@ def test_list_option(backend):
 def test_list_positional(backend):
     @dataclass
     class ArgTest:
-        variable_number: Set[int] = field(default_factory=set)
+        variable_number: set[int] = field(default_factory=set)
 
     test = parse(
         ArgTest,

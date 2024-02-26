@@ -1,9 +1,8 @@
 from dataclasses import dataclass
-from typing import Union
 
 import cappa
 import pytest
-from typing_extensions import Annotated
+from typing_extensions import Annotated, Union
 
 from tests.utils import backends, parse
 

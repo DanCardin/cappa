@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 import cappa
 import pytest
@@ -15,7 +14,7 @@ from tests.utils import backends, parse
 def test_invalid_choice_help(backend):
     @dataclass
     class Args:
-        arg: Tuple[str, str]
+        arg: tuple[str, str]
         option: Annotated[str, cappa.Arg(long=True)]
 
     with pytest.raises(cappa.Exit) as e:
