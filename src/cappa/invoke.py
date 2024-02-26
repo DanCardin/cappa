@@ -7,12 +7,10 @@ import typing
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from typing_extensions import get_type_hints
-
 from cappa.command import Command, HasCommand
 from cappa.output import Exit, Output
 from cappa.subcommand import Subcommand
-from cappa.typing import find_type_annotation
+from cappa.typing import find_type_annotation, get_type_hints
 
 C = typing.TypeVar("C", bound=HasCommand)
 

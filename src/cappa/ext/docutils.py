@@ -139,7 +139,7 @@ def render_to_docutils(command: cappa.Command, document):
         ]
         if command_subcommands:
             for subcmd in command_subcommands:
-                for option in subcmd.options.values():
-                    section += render_to_docutils(option, document)
+                for o in subcmd.options.values():
+                    section += render_to_docutils(o, document)
 
     return [section]
