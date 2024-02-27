@@ -3,11 +3,12 @@ from __future__ import annotations
 import io
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import BinaryIO, TextIO
 from unittest.mock import mock_open, patch
 
 import cappa
 import pytest
-from typing_extensions import Annotated, BinaryIO, TextIO
+from typing_extensions import Annotated
 
 from tests.utils import backends, parse
 
