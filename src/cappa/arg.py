@@ -134,7 +134,7 @@ class Arg(typing.Generic[T]):
 
     field_name: str | MISSING = missing
 
-    annotations: list[typing.Type] = dataclasses.field(default_factory=list)
+    annotations: list[type] = dataclasses.field(default_factory=list)
 
     @classmethod
     def collect(

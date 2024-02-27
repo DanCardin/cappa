@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Tuple, Union
+from typing import Literal, Union
 
 import pytest
 
@@ -13,9 +13,9 @@ def test_valid_tagged_unions(backend):
     @dataclass
     class ArgTest:
         name: Union[
-            Tuple[Literal["one"], str],
-            Tuple[Literal["two"], int],
-            Tuple[
+            tuple[Literal["one"], str],
+            tuple[Literal["two"], int],
+            tuple[
                 Literal["three"],
                 float,
             ],
@@ -35,7 +35,7 @@ def test_valid_tagged_unions(backend):
 def test_disallowed_different_arity_variants(backend):
     @dataclass
     class ArgTest:
-        name: Union[Tuple[str, str], Tuple[str, str, str]]
+        name: Union[tuple[str, str], tuple[str, str, str]]
 
     with pytest.raises(ValueError) as e:
         parse(ArgTest, "one", "string", backend=backend)

@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import List
 
 import cappa
 import pytest
@@ -12,7 +13,7 @@ from tests.utils import backends, parse
 @dataclass
 class Foo:
     bar: str
-    baz: List[int]
+    baz: list[int]
 
 
 command = cappa.Command(

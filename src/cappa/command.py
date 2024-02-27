@@ -7,14 +7,12 @@ import typing
 from collections.abc import Callable
 from types import ModuleType
 
-from typing_extensions import get_type_hints
-
 from cappa import class_inspect
 from cappa.arg import Arg, ArgAction
 from cappa.env import Env
 from cappa.output import Exit, Output, prompt_types
 from cappa.subcommand import Subcommand
-from cappa.typing import missing
+from cappa.typing import get_type_hints, missing
 
 try:
     import docstring_parser as _docstring_parser
@@ -57,7 +55,7 @@ class Command(typing.Generic[T]):
             and the referenced function invoked.
     """
 
-    cmd_cls: typing.Type[T]
+    cmd_cls: type[T]
     arguments: list[Arg | Subcommand] = dataclasses.field(default_factory=list)
     name: str | None = None
     help: str | None = None
@@ -67,7 +65,7 @@ class Command(typing.Generic[T]):
     _collected: bool = False
 
     @classmethod
-    def get(cls, obj: typing.Type[T] | Command[T]) -> Command[T]:
+    def get(cls, obj: type[T] | Command[T]) -> Command[T]:
         if isinstance(obj, cls):
             return obj
 

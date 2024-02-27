@@ -7,7 +7,7 @@ from typing import Literal, Union
 import cappa
 import pytest
 from cappa.output import Exit
-from typing_extensions import Annotated, Doc  # type: ignore
+from typing_extensions import Annotated, Doc
 
 from tests.utils import backends, parse
 

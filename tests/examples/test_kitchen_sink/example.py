@@ -6,7 +6,7 @@ import enum
 import logging
 import sqlite3
 from dataclasses import dataclass, field
-from typing import List, Literal, Union
+from typing import Literal, Union
 
 import cappa
 from typing_extensions import Annotated
@@ -39,7 +39,7 @@ class Example:
 
     subcommand: Annotated[Union[MeowCommand, BarkCommand], cappa.Subcommand]
 
-    flags: Annotated[List[str], cappa.Arg(short=True, long=True)] = field(
+    flags: Annotated[list[str], cappa.Arg(short=True, long=True)] = field(
         default_factory=list
     )
     flag: bool = False  # --flag
