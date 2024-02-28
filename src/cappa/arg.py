@@ -24,6 +24,7 @@ from cappa.typing import (
     NoneType,
     T,
     find_type_annotation,
+    get_optional_type,
     is_of_type,
     is_subclass,
     is_union_type,
@@ -388,8 +389,8 @@ def infer_choices(
 
 def infer_action(
     arg: Arg,
-    annotation: type,
-    origin: type,
+    annotation: typing.Any,
+    origin: typing.Any,
     type_args: tuple[type, ...],
     long,
     default: typing.Any,
@@ -399,6 +400,10 @@ def infer_action(
 
     if arg.action is not None:
         return arg.action
+
+    if is_optional_type(annotation):
+        annotation = get_optional_type(annotation)
+        origin = typing.get_origin(annotation) or annotation
 
     # Coerce raw `bool` into flags by default
     if is_subclass(origin, bool):

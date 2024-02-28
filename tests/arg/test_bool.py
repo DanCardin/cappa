@@ -94,3 +94,51 @@ def test_true_false_option(backend):
 
     assert e.value.code == 2
     assert "unrecognized arguments: --garbage" in str(e.value.message).lower()
+
+
+@backends
+def test_optional_bool(backend):
+    """Optional bool with default should still infer store_true/false action."""
+
+    @dataclass
+    class ArgTest:
+        true_false: Annotated[bool | None, cappa.Arg(long="--true/--no-true")] = None
+
+    test = parse(ArgTest, backend=backend)
+    assert test.true_false is None
+
+    test = parse(ArgTest, "--true", backend=backend)
+    assert test.true_false is True
+
+    test = parse(ArgTest, "--no-true", backend=backend)
+    assert test.true_false is False
+
+
+@backends
+def test_optional_bool_no_default(backend):
+    """Optional bool should default to None rather than bool."""
+
+    @dataclass
+    class ArgTest:
+        true_false: Annotated[bool | None, cappa.Arg(long="--true/--no-true")]
+
+    test = parse(ArgTest, backend=backend)
+    assert test.true_false is None
+
+
+@backends
+def test_optional_bool_and_int(backend):
+    """Union of multiple types, including bool does not infer bool action."""
+
+    @dataclass
+    class ArgTest:
+        true_false: Annotated[bool | int | None, cappa.Arg(short=True)]
+
+    test = parse(ArgTest, backend=backend)
+    assert test.true_false is None
+
+    test = parse(ArgTest, "-t", "4", backend=backend)
+    assert test.true_false == 4
+
+    test = parse(ArgTest, "-t", "asdf", backend=backend)
+    assert test.true_false is True

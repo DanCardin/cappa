@@ -2,6 +2,18 @@
 
 ## 0.16
 
+### 0.16.4
+
+- fix: Ensure optional bool retains bool action inference.
+
+### 0.16.3
+
+- fix: Use eval_type_backport to allow new syntax in python 3.8/9.
+
+### 0.16.2
+
+- feat: Improve parse error formatting. Include short help by default.
+
 ### 0.16.1
 
 - feat: Support `Dep` on function based commands.
