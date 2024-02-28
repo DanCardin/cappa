@@ -106,6 +106,17 @@ def is_subclass(typ, superclass):
     return issubclass(typ, superclass)
 
 
+def get_optional_type(typ: typing.Optional[T]):
+    if typ is NoneType:
+        return typ
+
+    args = get_args(typ)
+    if len(args) == 2:
+        return args[0]
+
+    return typing.Union[args]
+
+
 def get_type_hints(obj, include_extras=False):
     result = _get_type_hints(obj, include_extras=include_extras)
     if sys.version_info < (3, 11):  # pragma: no cover
