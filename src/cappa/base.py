@@ -14,7 +14,7 @@ from cappa.help import (
     create_help_arg,
     create_version_arg,
 )
-from cappa.invoke import resolve_callable
+from cappa.invoke import Dep, resolve_callable
 from cappa.output import Output
 
 if typing.TYPE_CHECKING:
@@ -79,7 +79,9 @@ def parse(
 def invoke(
     obj: type | Command,
     *,
-    deps: typing.Sequence[typing.Callable] | None = None,
+    deps: typing.Sequence[typing.Callable]
+    | typing.Mapping[typing.Callable, Dep | typing.Any]
+    | None = None,
     argv: list[str] | None = None,
     backend: typing.Callable | None = None,
     color: bool = True,
@@ -143,7 +145,9 @@ def invoke(
 async def invoke_async(
     obj: type | Command,
     *,
-    deps: typing.Sequence[typing.Callable] | None = None,
+    deps: typing.Sequence[typing.Callable]
+    | typing.Mapping[typing.Callable, Dep | typing.Any]
+    | None = None,
     argv: list[str] | None = None,
     backend: typing.Callable | None = None,
     color: bool = True,

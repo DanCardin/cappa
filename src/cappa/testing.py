@@ -17,7 +17,9 @@ class RunnerArgs(typing.TypedDict, total=False):
     """Available kwargs for `parse` and `invoke` function, to match `CommandRunner` fields."""
 
     obj: type
-    deps: typing.Sequence[typing.Callable]
+    deps: typing.Sequence[typing.Callable] | typing.Mapping[
+        typing.Callable, cappa.Dep | typing.Any
+    ] | None
     backend: typing.Callable | None
     output: cappa.Output | None
     color: bool
@@ -70,7 +72,9 @@ class CommandRunner:
     """
 
     obj: type | None = None
-    deps: typing.Sequence[typing.Callable] | None = None
+    deps: typing.Sequence[typing.Callable] | typing.Mapping[
+        typing.Callable, cappa.Dep | typing.Any
+    ] | None = None
     backend: typing.Callable | None = None
     output: cappa.Output | None = None
     color: bool = True
