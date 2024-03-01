@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cappa"
-version = "0.16.5"
+version = "0.16.6"
 description = "Declarative CLI argument parser."
 
 repository = "https://github.com/dancardin/cappa"

@@ -2,6 +2,14 @@
 
 ## 0.16
 
+### 0.16.6
+
+- fix: Correct the testing.CommandRunner deps signature.
+
+### 0.16.5
+
+- fix: Error short help should be contextual to the failing command.
+
 ### 0.16.4
 
 - fix: Ensure optional bool retains bool action inference.
