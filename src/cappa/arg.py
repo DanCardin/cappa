@@ -285,6 +285,10 @@ class Arg(typing.Generic[T]):
 
         return typing.cast(str, self.value_name)
 
+    @property
+    def multiple(self):
+        return self.action == ArgAction.append
+
 
 def verify_type_compatibility(arg: Arg, field_name: str, type_view: TypeView):
     """Verify classes of annotations are compatible with one another.
