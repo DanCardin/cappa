@@ -34,6 +34,8 @@ dependencies = [
 
 [project.optional-dependencies]
 docstring = ["docstring-parser >= 0.15"]
+ui = ["textual"]
+web = ["textual", "textual-serve"]
 
 [tool.uv]
 dev-dependencies = [

@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 import dataclasses
+from functools import lru_cache
 import sys
 import typing
 from collections.abc import Callable
 
 from cappa import class_inspect
-from cappa.arg import Arg, Group
+from cappa.arg import Arg, Group, ArgAction
 from cappa.docstring import ClassHelpText
 from cappa.env import Env
 from cappa.help import HelpFormatable, HelpFormatter, format_short_help
 from cappa.output import Exit, Output, prompt_types
 from cappa.subcommand import Subcommand
 from cappa.type_view import CallableView, Empty
+from cappa.typing import assert_type
 
 T = typing.TypeVar("T")
 
@@ -62,7 +64,9 @@ class Command(typing.Generic[T]):
     """
 
     cmd_cls: type[T]
-    arguments: list[Arg | Subcommand] = dataclasses.field(default_factory=list)
+    arguments: typing.Sequence[Arg | Subcommand] = dataclasses.field(
+        default_factory=list
+    )
     name: str | None = None
     help: str | None = None
     description: str | None = None
@@ -232,12 +236,34 @@ class Command(typing.Generic[T]):
 
         return command.cmd_cls(**kwargs)
 
-    def value_arguments(self):
+    @property
+    def subcommand(self) -> Subcommand | None:
+        try:
+            return next(iter(a for a in self.arguments if isinstance(a, Subcommand)))
+        except StopIteration:
+            return None
+
+    @typing.overload
+    def value_arguments(self, exclude_subcommand: typing.Literal[True]) -> typing.Iterator[Arg]: ...
+
+    @typing.overload
+    def value_arguments(self, exclude_subcommand: typing.Literal[False] = False) -> typing.Iterator[Arg | Subcommand]: ...
+
+    def value_arguments(self, exclude_subcommand: bool = False) -> typing.Iterator:
         for arg in self.arguments:
             if isinstance(arg, Arg) and not arg.has_value:
                 continue
+            
+            if exclude_subcommand and isinstance(arg, Subcommand):
+                continue
 
             yield arg
+
+    def version(self) -> str | None:
+        for arg in self.arguments:
+            if isinstance(arg, Arg) and arg.action is ArgAction.version:
+                return assert_type(arg.value_name, str)
+        return None
 
     def add_meta_actions(
         self,
