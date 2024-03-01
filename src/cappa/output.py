@@ -15,6 +15,9 @@ from rich.text import Text
 from rich.theme import Theme
 from typing_extensions import TypeAlias
 
+if typing.TYPE_CHECKING:
+    from cappa.command import Command
+
 __all__ = [
     "output_format",
     "error_format",
@@ -192,11 +195,13 @@ class Exit(SystemExit):
         self,
         message: list[Displayable] | Displayable | None = None,
         *,
+        command: Command | None = None,
         code: str | int | None = 0,
         prog: str | None = None,
     ):
         self.message = message
         self.prog = prog
+        self.command = command
         super().__init__(code)
 
 

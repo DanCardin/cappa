@@ -156,10 +156,12 @@ class Command(typing.Generic[T]):
         except Exit as e:
             from cappa.help import format_help, format_short_help
 
+            command = e.command or command
+            prog = e.prog or prog
             output.exit(
                 e,
-                help=format_help(command, e.prog or prog),
-                short_help=format_short_help(command, e.prog or prog),
+                help=format_help(command, prog),
+                short_help=format_short_help(command, prog),
             )
             raise
 
