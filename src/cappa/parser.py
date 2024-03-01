@@ -90,7 +90,7 @@ def backend(
                 completions = e.arg.completion(e.value) if e.arg.completion else []
                 raise CompletionAction(*completions)
 
-            raise Exit(str(e), code=2, prog=context.prog)
+            raise Exit(str(e), code=2, prog=context.prog, command=e.command)
     except CompletionAction as e:
         from cappa.completion.base import execute, format_completions
 
