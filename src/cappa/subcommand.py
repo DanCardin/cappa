@@ -87,8 +87,11 @@ class Subcommand:
         option = self.options[option_name]
         return option.map_result(option, prog, parsed_args)
 
+    def available_options(self) -> list[Command]:
+        return [o for o in self.options.values() if not o.hidden]
+
     def names(self) -> list[str]:
-        return list(self.options.keys())
+        return [n for n, o in self.options.items() if not o.hidden]
 
     def names_str(self, delimiter: str = ", ") -> str:
         return f"{delimiter.join(self.names())}"

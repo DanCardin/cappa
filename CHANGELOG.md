@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.17
+
+### 0.17.0
+
+- feat: Add `hidden=True/False` option to Command, which allows hiding
+  individual subcommands options.
+
 ## 0.16
 
 ### 0.16.6
