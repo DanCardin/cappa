@@ -142,7 +142,7 @@ def add_long_args(arg_groups: list[ArgGroup]) -> list:
                     Text(arg.help or "", style=""),
                 )
             else:
-                for option in arg.options.values():
+                for option in arg.available_options():
                     table.add_row(*format_subcommand(option))
 
         table.add_row()

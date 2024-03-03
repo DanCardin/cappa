@@ -31,6 +31,7 @@ class CommandArgs(typing.TypedDict, total=False):
     help: str | None
     description: str | None
     invoke: Callable | str | None
+    hidden: bool
 
 
 @dataclasses.dataclass
@@ -53,6 +54,8 @@ class Command(typing.Generic[T]):
             a string. When the value is a string it will be interpreted as
             `module.submodule.function`; the module will be dynamically imported,
             and the referenced function invoked.
+        hidden: If `True`, the command will not be included in the help output.
+            This option is only relevant to subcommands.
     """
 
     cmd_cls: type[T]
@@ -60,6 +63,7 @@ class Command(typing.Generic[T]):
     name: str | None = None
     help: str | None = None
     description: str | None = None
+    hidden: bool = False
     invoke: Callable | str | None = None
 
     _collected: bool = False

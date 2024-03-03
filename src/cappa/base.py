@@ -247,6 +247,7 @@ def command(
     help: str | None = None,
     description: str | None = None,
     invoke: typing.Callable | str | None = None,
+    hidden: bool = False,
 ):
     """Register a cappa CLI command/subcomment.
 
@@ -262,6 +263,8 @@ def command(
         invoke: Optional command to be called in the event parsing is successful.
             In the case of subcommands, it will only call the parsed/selected
             function to invoke.
+        hidden: If `True`, the command will not be included in the help output.
+            This option is only relevant to subcommands.
     """
 
     def wrapper(_decorated_cls):
@@ -274,6 +277,7 @@ def command(
             name=name,
             help=help,
             description=description,
+            hidden=hidden,
         )
         _decorated_cls.__cappa__ = instance
         return _decorated_cls
