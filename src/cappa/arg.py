@@ -176,19 +176,15 @@ class Arg(typing.Generic[T]):
         fallback_help: str | None = None,
         action: ArgAction | Callable | None = None,
         default: typing.Any = missing,
-        value_name: str | None = None,
         field_name: str | None = None,
     ) -> Arg:
         origin = typing.get_origin(annotation) or annotation
         type_args = typing.get_args(annotation)
 
         field_name = typing.cast(str, field_name or self.field_name)
-        value_name = value_name or (
-            self.value_name if self.value_name is not missing else field_name
-        )
         default = default if default is not missing else self.default
 
-        verify_type_compatibility(self, annotation, origin, type_args)
+        verify_type_compatibility(self, field_name, annotation, origin, type_args)
         short = infer_short(self, field_name)
         long = infer_long(self, origin, field_name)
         choices = infer_choices(self, origin, type_args)
@@ -203,6 +199,8 @@ class Arg(typing.Generic[T]):
         completion = infer_completion(self, choices)
 
         group = infer_group(self, short, long)
+
+        value_name = infer_value_name(self, field_name, num_args)
 
         return dataclasses.replace(
             self,
@@ -237,7 +235,11 @@ class Arg(typing.Generic[T]):
 
 
 def verify_type_compatibility(
-    arg: Arg, annotation: type, origin: type, type_args: tuple[type, ...]
+    arg: Arg,
+    field_name: str,
+    annotation: type,
+    origin: type,
+    type_args: tuple[type, ...],
 ):
     """Verify classes of annotations are compatible with one another.
 
@@ -259,7 +261,7 @@ def verify_type_compatibility(
         }
         if len(all_same_arity) > 1:
             raise ValueError(
-                f"On field '{arg.field_name}', apparent mismatch of annotated type with `Arg` options. "
+                f"On field '{field_name}', apparent mismatch of annotated type with `Arg` options. "
                 'Unioning "sequence" types with non-sequence types is not currently supported, '
                 "unless using `Arg(parse=...)` or `Arg(action=<callable>)`. "
                 "See [documentation](https://cappa.readthedocs.io/en/latest/annotation.html) for more details."
@@ -267,17 +269,19 @@ def verify_type_compatibility(
         return
 
     num_args = arg.num_args
+    # print(is_sequence_type(origin), num_args, action)
+    # print(f"  {num_args not in {0, 1} or action is ArgAction.append}")
     if is_sequence_type(origin):
-        if num_args == 1 or action not in {ArgAction.append, None}:
+        if num_args in {0, 1} and action not in {ArgAction.append, None}:
             raise ValueError(
-                f"On field '{arg.field_name}', apparent mismatch of annotated type with `Arg` options. "
+                f"On field '{field_name}', apparent mismatch of annotated type with `Arg` options. "
                 f"'{annotation}' type produces a sequence, whereas `num_args=1`/`action={action}` do not. "
                 "See [documentation](https://cappa.readthedocs.io/en/latest/annotation.html) for more details."
             )
     else:
-        if num_args not in {None, 1} or action is ArgAction.append:
+        if num_args not in {None, 0, 1} or action is ArgAction.append:
             raise ValueError(
-                f"On field '{arg.field_name}', apparent mismatch of annotated type with `Arg` options. "
+                f"On field '{field_name}', apparent mismatch of annotated type with `Arg` options. "
                 f"'{origin.__name__}' type produces a scalar, whereas `num_args={num_args}`/`action={action}` do not. "
                 "See [documentation](https://cappa.readthedocs.io/en/latest/annotation.html) for more details."
             )
@@ -350,7 +354,7 @@ def infer_short(arg: Arg, name: str) -> list[str] | typing.Literal[False]:
     else:
         short = arg.short
 
-    return [item if item.startswith("-") else f"-{item[0]}" for item in short]
+    return [item if item.startswith("-") else f"-{item}" for item in short]
 
 
 def infer_long(arg: Arg, origin: type, name: str) -> list[str] | typing.Literal[False]:
@@ -416,7 +420,12 @@ def infer_action(
     has_specific_num_args = arg.num_args is not None
     unbounded_num_args = arg.num_args == -1
 
-    if arg.parse or unbounded_num_args or (is_positional and not has_specific_num_args):
+    if (
+        arg.parse
+        or unbounded_num_args
+        or (is_positional and not has_specific_num_args)
+        or (has_specific_num_args and arg.num_args != 1)
+    ):
         return ArgAction.set
 
     if is_of_type(annotation, (typing.List, typing.Set)):
@@ -436,7 +445,7 @@ def infer_num_args(
     type_args: tuple[type, ...],
     action: ArgAction | Callable,
     long,
-) -> int | None:
+) -> int:
     if arg.num_args is not None:
         return arg.num_args
 
@@ -549,6 +558,19 @@ def infer_group(
         return (1, group_name or "Arguments")
 
     return typing.cast(typing.Tuple[int, str], group)
+
+
+def infer_value_name(arg: Arg, field_name: str, num_args: int | None) -> str:
+    if arg.value_name is not missing:
+        return arg.value_name
+
+    if num_args == -1:
+        return f"{field_name} ..."
+
+    if num_args and num_args > 1:
+        return " ".join([field_name] * num_args)
+
+    return field_name
 
 
 no_extra_arg_actions = {

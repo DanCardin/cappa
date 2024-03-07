@@ -484,16 +484,8 @@ def consume_arg(
         result = []
         while num_args:
             if isinstance(context.peek_value(), RawOption):
-                if orig_num_args < 0:
-                    break
+                break
 
-                raise BadArgumentError(
-                    f"Argument requires {orig_num_args} values, "
-                    f"only found {len(result)} ('{' '.join(result)}' so far)",
-                    value=result,
-                    command=context.command,
-                    arg=arg,
-                )
             try:
                 next_val = typing.cast(RawArg, context.next_value())
             except IndexError:
@@ -535,6 +527,20 @@ def consume_arg(
             raise BadArgumentError(
                 f"Option '{arg.value_name}' requires an argument",
                 value="",
+                command=context.command,
+                arg=arg,
+            )
+    else:
+        if orig_num_args > 0 and len(result) != orig_num_args:
+            quoted_result = [f"'{r}'" for r in result]
+            names_str = arg.names_str("/")
+
+            message = f"Argument '{names_str}' requires {orig_num_args} values, found {len(result)}"
+            if quoted_result:
+                message += f" ({', '.join(quoted_result)} so far)"
+            raise BadArgumentError(
+                message,
+                value=result,
                 command=context.command,
                 arg=arg,
             )

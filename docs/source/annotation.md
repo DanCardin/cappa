@@ -122,6 +122,12 @@ Annotations like `list[...]`, `set[...]`, `tuple[...]`, etc are what we call
   assert prog == Prog(foo=['foo', 'bar', 'baz'])
   ```
 
+  ```{note}
+  You can specify `Annotated[list[str], Arg(short=True, num_args=n)]` where
+  `n` would yield a sequence (`-1` or > 1). In such a case, `action` would instead
+  be inferred as `ArgAction.set`.
+  ```
+
 See [Argument](./arg.md) for more details on the difference between
 `ArgAction.append` and `num_args=-1`.
 

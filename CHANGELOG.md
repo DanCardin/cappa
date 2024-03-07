@@ -2,6 +2,16 @@
 
 ## 0.17
 
+### 0.17.1
+
+- Fixes bounded-tuple options like `tuple[str, str]` to infer as `num_args=2`
+- Fixes bounded-tuple options to fail parsing if you give it a different number
+  of values
+- Fixes "double sequence" inference on explicit `num_args=N` values which would
+  produce sequences. I.e. infer `action=ArgAction.set` in such cases to avoid
+  e.x. `num_args=3, action=ArgAction.append`; resulting in nonsensical nested
+  sequence `["[]"]`
+
 ### 0.17.0
 
 - feat: Add `hidden=True/False` option to Command, which allows hiding
