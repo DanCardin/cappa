@@ -2,6 +2,10 @@
 
 ## 0.17
 
+### 0.17.2
+
+- Increase minimum typing_extensions bound to reflect actual dependency.
+
 ### 0.17.1
 
 - Fixes bounded-tuple options like `tuple[str, str]` to infer as `num_args=2`
