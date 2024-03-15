@@ -2,6 +2,11 @@
 
 ## 0.17
 
+### 0.17.3
+
+- fix: Ensure class default combined with `default=Env(...)` still attempts to
+  read env var (rather than just unconditionally taking the class default).
+
 ### 0.17.2
 
 - Increase minimum typing_extensions bound to reflect actual dependency.
