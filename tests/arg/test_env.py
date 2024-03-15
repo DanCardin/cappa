@@ -58,3 +58,14 @@ def test_class_default_gets_applied_to_env_default(backend):
 
     test = parse(ArgTest, backend=backend)
     assert test.default == "wat"
+
+
+@backends
+def test_class_default_still_abides_env_var(backend):
+    @dataclass
+    class ArgTest:
+        default: Annotated[str, cappa.Arg(default=cappa.Env("ASDF"))] = "wat"
+
+    with patch("os.environ", new={"ASDF": "foo"}):
+        test = parse(ArgTest, backend=backend)
+    assert test.default == "foo"

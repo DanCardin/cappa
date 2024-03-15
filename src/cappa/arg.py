@@ -297,13 +297,14 @@ def infer_field_name(arg: Arg, field: Field) -> str:
 def infer_default(arg: Arg, field: Field, annotation: type) -> typing.Any:
     if arg.default is not missing:
         # Annotated[str, Env('FOO')] = "bar" should produce "bar". I.e. the field default
-        # should be used if the `Env` default is not set.
+        # should be used if the `Env` default is not set, but still attempt to read the
+        # `Env` if it **is** set.
         if (
             isinstance(arg.default, Env)
             and arg.default.default is None
             and field.default is not missing
         ):
-            return field.default
+            return Env(*arg.default.env_vars, default=field.default)
 
         return arg.default
 
