@@ -31,7 +31,10 @@ class CommandArgs(typing.TypedDict, total=False):
     help: str | None
     description: str | None
     invoke: Callable | str | None
+
     hidden: bool
+    default_short: bool
+    default_long: bool
 
 
 @dataclasses.dataclass
@@ -56,6 +59,10 @@ class Command(typing.Generic[T]):
             and the referenced function invoked.
         hidden: If `True`, the command will not be included in the help output.
             This option is only relevant to subcommands.
+        default_short: If `True`, all arguments will be treated as though annotated
+            with `Annotated[T, Arg(short=True)]`, unless otherwise annotated.
+        default_true: If `True`, all arguments will be treated as though annotated
+            with `Annotated[T, Arg(long=True)]`, unless otherwise annotated.
     """
 
     cmd_cls: type[T]
@@ -63,8 +70,11 @@ class Command(typing.Generic[T]):
     name: str | None = None
     help: str | None = None
     description: str | None = None
-    hidden: bool = False
     invoke: Callable | str | None = None
+
+    hidden: bool = False
+    default_short: bool = False
+    default_long: bool = False
 
     _collected: bool = False
 
@@ -115,7 +125,13 @@ class Command(typing.Generic[T]):
 
         if command.arguments:
             arguments: list[Arg | Subcommand] = [
-                a.normalize() for a in command.arguments
+                a.normalize(
+                    default_short=command.default_short,
+                    default_long=command.default_long,
+                )
+                if isinstance(a, Arg)
+                else a.normalize()
+                for a in command.arguments
             ]
         else:
             fields = class_inspect.fields(command.cmd_cls)
@@ -131,7 +147,13 @@ class Command(typing.Generic[T]):
                 if maybe_subcommand:
                     arguments.append(maybe_subcommand)
                 else:
-                    arg_def: Arg = Arg.collect(field, type_hint, fallback_help=arg_help)
+                    arg_def: Arg = Arg.collect(
+                        field,
+                        type_hint,
+                        fallback_help=arg_help,
+                        default_short=command.default_short,
+                        default_long=command.default_long,
+                    )
                     arguments.append(arg_def)
 
         kwargs["arguments"] = arguments

@@ -116,8 +116,8 @@ class Arg(typing.Generic[T]):
     """
 
     value_name: str | MISSING = missing
-    short: bool | str | list[str] = False
-    long: bool | str | list[str] = False
+    short: bool | str | list[str] | None = False
+    long: bool | str | list[str] | None = False
     count: bool = False
     default: T | None | MISSING = missing
     help: str | None = None
@@ -139,7 +139,12 @@ class Arg(typing.Generic[T]):
 
     @classmethod
     def collect(
-        cls, field: Field, type_hint: type, fallback_help: str | None = None
+        cls,
+        field: Field,
+        type_hint: type,
+        fallback_help: str | None = None,
+        default_short: bool = False,
+        default_long: bool = False,
     ) -> Arg:
         object_annotation = find_type_annotation(type_hint, cls)
         annotation = object_annotation.annotation
@@ -168,7 +173,12 @@ class Arg(typing.Generic[T]):
             default=default,
             annotations=object_annotation.other_annotations,
         )
-        return arg.normalize(annotation, fallback_help=fallback_help)
+        return arg.normalize(
+            annotation,
+            fallback_help=fallback_help,
+            default_short=default_short,
+            default_long=default_long,
+        )
 
     def normalize(
         self,
@@ -177,6 +187,8 @@ class Arg(typing.Generic[T]):
         action: ArgAction | Callable | None = None,
         default: typing.Any = missing,
         field_name: str | None = None,
+        default_short: bool = False,
+        default_long: bool = False,
     ) -> Arg:
         origin = typing.get_origin(annotation) or annotation
         type_args = typing.get_args(annotation)
@@ -185,8 +197,8 @@ class Arg(typing.Generic[T]):
         default = default if default is not missing else self.default
 
         verify_type_compatibility(self, field_name, annotation, origin, type_args)
-        short = infer_short(self, field_name)
-        long = infer_long(self, origin, field_name)
+        short = infer_short(self, field_name, default_short)
+        long = infer_long(self, origin, field_name, default_long)
         choices = infer_choices(self, origin, type_args)
         action = action or infer_action(
             self, annotation, origin, type_args, long, default
@@ -342,24 +354,29 @@ def infer_required(arg: Arg, annotation: type, default: typing.Any | MISSING):
     return False
 
 
-def infer_short(arg: Arg, name: str) -> list[str] | typing.Literal[False]:
-    if not arg.short:
+def infer_short(
+    arg: Arg, name: str, default: bool = False
+) -> list[str] | typing.Literal[False]:
+    short = arg.short or default
+    if not short:
         return False
 
-    if isinstance(arg.short, bool):
+    if isinstance(short, bool):
         short_name = name[0]
         return [f"-{short_name}"]
 
-    if isinstance(arg.short, str):
-        short = arg.short.split("/")
+    if isinstance(short, str):
+        short = short.split("/")
     else:
-        short = arg.short
+        short = short
 
     return [item if item.startswith("-") else f"-{item}" for item in short]
 
 
-def infer_long(arg: Arg, origin: type, name: str) -> list[str] | typing.Literal[False]:
-    long = arg.long
+def infer_long(
+    arg: Arg, origin: type, name: str, default: bool
+) -> list[str] | typing.Literal[False]:
+    long = arg.long or default
 
     if not long:
         # bools get automatically coerced into flags, otherwise stay off.
