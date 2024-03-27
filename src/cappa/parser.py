@@ -154,13 +154,15 @@ class ParseContext:
                     unique_names.add(arg.field_name)
                 result[arg.field_name] = arg
 
-            assert arg.short is not True
-            for short in arg.short or []:
-                result[short] = arg
+            for opts in (arg.short, arg.long):
+                if not opts:
+                    continue
 
-            assert arg.long is not True
-            for long in arg.long or []:
-                result[long] = arg
+                for key in typing.cast(typing.List[str], opts):
+                    if key in result:
+                        raise ValueError(f"Conflicting option string: {key}")
+
+                    result[key] = arg
 
         return result, unique_names
 

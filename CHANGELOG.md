@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18
+
+### 0.18.0
+
+- feat: Add `default_short=False` and `default_long=False` options to command
+  for ease of definining option-heavy commands.
+
 ## 0.17
 
 ### 0.17.3

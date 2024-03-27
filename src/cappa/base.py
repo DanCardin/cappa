@@ -248,6 +248,8 @@ def command(
     description: str | None = None,
     invoke: typing.Callable | str | None = None,
     hidden: bool = False,
+    default_short: bool = False,
+    default_long: bool = False,
 ):
     """Register a cappa CLI command/subcomment.
 
@@ -265,6 +267,10 @@ def command(
             function to invoke.
         hidden: If `True`, the command will not be included in the help output.
             This option is only relevant to subcommands.
+        default_short: If `True`, all arguments will be treated as though annotated
+            with `Annotated[T, Arg(short=True)]`, unless otherwise annotated.
+        default_long: If `True`, all arguments will be treated as though annotated
+            with `Annotated[T, Arg(long=True)]`, unless otherwise annotated.
     """
 
     def wrapper(_decorated_cls):
@@ -278,6 +284,8 @@ def command(
             help=help,
             description=description,
             hidden=hidden,
+            default_short=default_short,
+            default_long=default_long,
         )
         _decorated_cls.__cappa__ = instance
         return _decorated_cls

@@ -22,7 +22,7 @@ def test_line_wraps_correctly_with_terminal_escape_codes(capsys):
         e: Annotated[str, cappa.Arg(short=True)]
         f: Annotated[str, cappa.Arg(short=True)]
         g: Annotated[str, cappa.Arg(short=True)]
-        h: Annotated[str, cappa.Arg(short=True)]
+        i: Annotated[str, cappa.Arg(short=True)]
 
     columns = 80
     env = {
@@ -38,6 +38,6 @@ def test_line_wraps_correctly_with_terminal_escape_codes(capsys):
     out = capsys.readouterr().out
     plain, *_ = Text.from_ansi(out).plain.splitlines()
 
-    expected = "Usage: args -a A -b B -c C -d D -e E -f F -g G -h H [-h] [--completion"
+    expected = "Usage: args -a A -b B -c C -d D -e E -f F -g G -i I [-h] [--completion"
     assert len(expected) < columns
     assert plain == expected
