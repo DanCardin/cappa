@@ -1,4 +1,5 @@
 """Define the external facing argument definition types provided by a user."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -105,14 +106,15 @@ class Arg(typing.Generic[T]):
         choices: Generally automatically inferred from the data type. This allows to
             override the default.
         completion: Used to provide custom completions. If specified, should be a function
-            which acccepts a partial string value and returns a list of
+            which accepts a partial string value and returns a list of
             [cappa.Completion](cappa.Completion) objects.
-
         required: Defaults to automatically inferring requiredness, based on whether the
             class's value has a default. By setting this, you can force a particular value.
-
         field_name: The name of the class field to populate with this arg. In most usecases,
             this field should be left unspecified and automatically inferred.
+        deprecated: If supplied, the argument will be marked as deprecated. If given `True`,
+            a default message will be generated, otherwise a supplied string will be
+            used as the deprecation message.
     """
 
     value_name: str | MISSING = missing
@@ -130,10 +132,9 @@ class Arg(typing.Generic[T]):
     num_args: int | None = None
     choices: list[str] | None = None
     completion: Callable[..., list[Completion]] | None = None
-
     required: bool | None = None
-
     field_name: str | MISSING = missing
+    deprecated: bool | str = False
 
     annotations: list[type] = dataclasses.field(default_factory=list)
 
@@ -157,7 +158,7 @@ class Arg(typing.Generic[T]):
         if object_annotation.doc:
             fallback_help = object_annotation.doc
 
-        # Dataclass field metatdata takes precedence if it exists.
+        # Dataclass field metadata takes precedence if it exists.
         field_metadata = extract_dataclass_metadata(field)
         assert not isinstance(field_metadata, Subcommand)
 

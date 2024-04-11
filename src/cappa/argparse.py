@@ -140,7 +140,7 @@ class Nestedspace(argparse.Namespace):
     """Write each . separated section as a nested `Nestedspace` instance.
 
     By default, argparse write everything to a flat namespace so there's no
-    obvious way to distinguish between mulitple unrelated subcommands once
+    obvious way to distinguish between multiple unrelated subcommands once
     once has been chosen.
     """
 
@@ -265,6 +265,8 @@ def add_argument(
     if arg.choices:
         kwargs["choices"] = arg.choices
 
+    deprecated_kwarg = add_deprecated_kwarg(arg)
+    kwargs.update(deprecated_kwarg)
     kwargs.update(extra_kwargs)
 
     parser.add_argument(*names, **kwargs)
@@ -285,6 +287,8 @@ def add_subcommands(
     )
 
     for name, subcommand in subcommands.options.items():
+        deprecated_kwarg = add_deprecated_kwarg(subcommand)
+
         nested_dest_prefix = f"{dest_prefix}{subcommand_dest}."
         subparser = subparsers.add_parser(
             name=subcommand.real_name(),
@@ -295,6 +299,7 @@ def add_subcommands(
             command=subcommand,  # type: ignore
             output=output,
             prog=f"{parser.prog} {subcommand.real_name()}",
+            **deprecated_kwarg,
         )
         subparser.set_defaults(
             __command__=subcommand, **{nested_dest_prefix + "__name__": name}
@@ -344,3 +349,10 @@ def get_action(arg: Arg) -> argparse.Action | type[argparse.Action] | str:
 
     action = typing.cast(Callable, action)
     return custom_action(arg, action)
+
+
+def add_deprecated_kwarg(arg: Arg | Command) -> dict[str, typing.Any]:
+    if sys.version_info < (3, 13) or not arg.deprecated:
+        return {}
+
+    return {"deprecated": arg.deprecated}

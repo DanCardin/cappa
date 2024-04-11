@@ -63,6 +63,9 @@ class Command(typing.Generic[T]):
             with `Annotated[T, Arg(short=True)]`, unless otherwise annotated.
         default_true: If `True`, all arguments will be treated as though annotated
             with `Annotated[T, Arg(long=True)]`, unless otherwise annotated.
+        deprecated: If supplied, the argument will be marked as deprecated. If given `True`,
+            a default message will be generated, otherwise a supplied string will be
+            used as the deprecation message.
     """
 
     cmd_cls: type[T]
@@ -75,6 +78,7 @@ class Command(typing.Generic[T]):
     hidden: bool = False
     default_short: bool = False
     default_long: bool = False
+    deprecated: bool | str = False
 
     _collected: bool = False
 
