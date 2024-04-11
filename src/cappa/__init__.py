@@ -8,7 +8,7 @@ from cappa.output import Exit, HelpExit, Output
 from cappa.subcommand import Subcommand, Subcommands
 
 # isort: split
-from cappa.arg import Arg, ArgAction
+from cappa.arg import Arg, ArgAction, Group
 
 # isort: split
 from cappa import argparse
@@ -23,6 +23,7 @@ __all__ = [
     "Env",
     "Exit",
     "FileMode",
+    "Group",
     "HelpExit",
     "Output",
     "Subcommand",

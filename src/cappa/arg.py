@@ -19,7 +19,6 @@ from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
 from cappa.env import Env
-from cappa.subcommand import Subcommand
 from cappa.typing import (
     MISSING,
     NoneType,
@@ -69,6 +68,13 @@ class ArgAction(enum.Enum):
         return action is not None and not isinstance(action, ArgAction)
 
 
+@dataclasses.dataclass(order=True)
+class Group:
+    order: int = 0
+    name: str = ""
+    exclusive: bool = False
+
+
 @dataclasses.dataclass
 class Arg(typing.Generic[T]):
     """Describe a CLI argument.
@@ -96,7 +102,9 @@ class Arg(typing.Generic[T]):
             complex types that the type system's built-in parsing cannot handle.
 
         group: Optional group names for the argument. This affects how they're displayed
-            in the backended help text.
+            in the backend's help text.
+        exclusive_group: Indicates two args are mutually exclusive to one another.
+            Note this **also** implies `group` with the same value.
         hidden: Whether the argument should be hidden in help text. Defaults to False.
 
         action: Generally automatically inferred from the data type. This allows to
@@ -125,9 +133,9 @@ class Arg(typing.Generic[T]):
     help: str | None = None
     parse: Callable[[typing.Any], T] | None = None
 
-    group: str | tuple[int, str] | MISSING = missing
-    hidden: bool = False
+    group: str | tuple[int, str] | Group | None = None
 
+    hidden: bool = False
     action: ArgAction | Callable | None = None
     num_args: int | None = None
     choices: list[str] | None = None
@@ -146,40 +154,46 @@ class Arg(typing.Generic[T]):
         fallback_help: str | None = None,
         default_short: bool = False,
         default_long: bool = False,
-    ) -> Arg:
+    ) -> list[Arg]:
         object_annotation = find_type_annotation(type_hint, cls)
         annotation = object_annotation.annotation
 
-        if object_annotation.obj is None:
-            arg = cls()
-        else:
-            arg = typing.cast(Arg, object_annotation.obj)
+        result = []
 
-        if object_annotation.doc:
-            fallback_help = object_annotation.doc
+        args = object_annotation.obj
+        if not args:
+            args = [cls()]
 
-        # Dataclass field metadata takes precedence if it exists.
-        field_metadata = extract_dataclass_metadata(field)
-        assert not isinstance(field_metadata, Subcommand)
+        exclusive = len(args) > 1
 
-        if field_metadata:
-            arg = field_metadata
+        for arg in args:
+            if object_annotation.doc:
+                fallback_help = object_annotation.doc
 
-        field_name = infer_field_name(arg, field)
-        default = infer_default(arg, field, annotation)
+            # Dataclass field metadata takes precedence if it exists.
+            field_metadata = extract_dataclass_metadata(field, Arg)
+            if field_metadata:
+                arg = field_metadata
 
-        arg = dataclasses.replace(
-            arg,
-            field_name=field_name,
-            default=default,
-            annotations=object_annotation.other_annotations,
-        )
-        return arg.normalize(
-            annotation,
-            fallback_help=fallback_help,
-            default_short=default_short,
-            default_long=default_long,
-        )
+            field_name = infer_field_name(arg, field)
+            default = infer_default(arg, field, annotation)
+
+            arg = dataclasses.replace(
+                arg,
+                field_name=field_name,
+                default=default,
+                annotations=object_annotation.other_annotations,
+            )
+            normalized_arg = arg.normalize(
+                annotation,
+                fallback_help=fallback_help,
+                default_short=default_short,
+                default_long=default_long,
+                exclusive=exclusive,
+            )
+            result.append(normalized_arg)
+
+        return result
 
     def normalize(
         self,
@@ -190,6 +204,7 @@ class Arg(typing.Generic[T]):
         field_name: str | None = None,
         default_short: bool = False,
         default_long: bool = False,
+        exclusive: bool = False,
     ) -> Arg:
         origin = typing.get_origin(annotation) or annotation
         type_args = typing.get_args(annotation)
@@ -211,7 +226,7 @@ class Arg(typing.Generic[T]):
         help = infer_help(self, choices, fallback_help)
         completion = infer_completion(self, choices)
 
-        group = infer_group(self, short, long)
+        group = infer_group(self, short, long, exclusive)
 
         value_name = infer_value_name(self, field_name, num_args)
 
@@ -562,21 +577,30 @@ def infer_completion(
 
 
 def infer_group(
-    arg: Arg, short: list[str] | bool, long: list[str] | bool
-) -> str | tuple[int, str]:
-    group = arg.group
-    group_name = None
-    if isinstance(group, str):
-        group_name = group
-        group = missing
+    arg: Arg, short: list[str] | bool, long: list[str] | bool, exclusive: bool = False
+) -> Group:
+    order = 0
+    name = None
 
-    if group is missing:
+    if isinstance(arg.group, Group):
+        name = arg.group.name
+        order = arg.group.order
+        exclusive = arg.group.exclusive
+
+    if isinstance(arg.group, str):
+        name = arg.group
+
+    if isinstance(arg.group, tuple):
+        order, name = arg.group
+
+    if name is None:
         if short or long:
-            return (0, group_name or "Options")
+            name = "Options"
+        else:
+            name = "Arguments"
+            order = 1
 
-        return (1, group_name or "Arguments")
-
-    return typing.cast(typing.Tuple[int, str], group)
+    return Group(name=name, order=order, exclusive=exclusive)
 
 
 def infer_value_name(arg: Arg, field_name: str, num_args: int | None) -> str:

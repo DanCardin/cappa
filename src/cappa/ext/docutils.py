@@ -103,10 +103,10 @@ def render_to_docutils(command: cappa.Command, document):
 
     section += nodes.paragraph(text="\n\n".join(description))
 
-    for group_name, group in sorted(generate_arg_groups(command)):
-        command_options = [arg for arg in group if isinstance(arg, cappa.Arg)]
+    for group, args in generate_arg_groups(command):
+        command_options = [arg for arg in args if isinstance(arg, cappa.Arg)]
         if command_options:
-            section += nodes.subtitle(text=group_name)
+            section += nodes.subtitle(text=group.name)
 
             option = nodes.bullet_list()
             section += option
@@ -134,9 +134,7 @@ def render_to_docutils(command: cappa.Command, document):
                 if arg.help:
                     option_content += nodes.inline(text=f": {arg.help}")
 
-        command_subcommands = [
-            arg for arg in group if isinstance(arg, cappa.Subcommand)
-        ]
+        command_subcommands = [arg for arg in args if isinstance(arg, cappa.Subcommand)]
         if command_subcommands:
             for subcmd in command_subcommands:
                 for o in subcmd.options.values():
