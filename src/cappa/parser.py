@@ -446,6 +446,8 @@ def consume_subcommand(context: ParseContext, arg: Subcommand) -> typing.Any:
         )
 
     command = arg.options[value.raw]
+    check_deprecated(context, command)
+
     context.command_stack.append(command)
 
     nested_context = ParseContext.from_command(
@@ -570,6 +572,32 @@ def consume_arg(
 
     kwargs = fullfill_deps(action_handler, fullfilled_deps)
     context.result[arg.field_name] = action_handler(**kwargs)
+
+    check_deprecated(context, arg, option)
+
+
+def check_deprecated(
+    context: ParseContext, arg: Arg | Command, option: RawOption | None = None
+) -> None:
+    if not arg.deprecated:
+        return
+
+    if option:
+        kind = "Option"
+        name = option.name
+    else:
+        if isinstance(arg, Command):
+            kind = "Command"
+            name = arg.real_name()
+        else:
+            kind = "Argument"
+            name = arg.names_str("/")
+
+    message = f"{kind} `{name}` is deprecated"
+    if isinstance(arg.deprecated, str):
+        message += f": {arg.deprecated}"
+
+    context.output.error(message)
 
 
 @dataclasses.dataclass

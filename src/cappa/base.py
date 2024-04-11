@@ -99,7 +99,7 @@ def invoke(
     Arguments:
         obj: A class which can represent a CLI command chain.
         deps: Optional extra depdnencies to load ahead of invoke processing. These
-            deps are evaulated in order and unconditionally.
+            deps are evaluated in order and unconditionally.
         argv: Defaults to the process argv. This command is generally only
             necessary when testing.
         backend: A function used to perform the underlying parsing and return a raw
@@ -165,7 +165,7 @@ async def invoke_async(
     Arguments:
         obj: A class which can represent a CLI command chain.
         deps: Optional extra depdnencies to load ahead of invoke processing. These
-            deps are evaulated in order and unconditionally.
+            deps are evaluated in order and unconditionally.
         argv: Defaults to the process argv. This command is generally only
             necessary when testing.
         backend: A function used to perform the underlying parsing and return a raw
@@ -250,6 +250,7 @@ def command(
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
+    deprecated: bool = False,
 ):
     """Register a cappa CLI command/subcomment.
 
@@ -271,6 +272,9 @@ def command(
             with `Annotated[T, Arg(short=True)]`, unless otherwise annotated.
         default_long: If `True`, all arguments will be treated as though annotated
             with `Annotated[T, Arg(long=True)]`, unless otherwise annotated.
+        deprecated: If supplied, the argument will be marked as deprecated. If given `True`,
+            a default message will be generated, otherwise a supplied string will be
+            used as the deprecation message.
     """
 
     def wrapper(_decorated_cls):
@@ -286,6 +290,7 @@ def command(
             hidden=hidden,
             default_short=default_short,
             default_long=default_long,
+            deprecated=deprecated,
         )
         _decorated_cls.__cappa__ = instance
         return _decorated_cls
