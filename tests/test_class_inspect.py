@@ -1,5 +1,5 @@
 import pytest
-from cappa.class_inspect import ClassTypes
+from cappa.class_inspect import fields
 
 
 def test_invalid_class_base():
@@ -7,7 +7,7 @@ def test_invalid_class_base():
         ...
 
     with pytest.raises(ValueError) as e:
-        ClassTypes.from_cls(Random)
+        fields(Random)
     assert (
         "'test_invalid_class_base.<locals>.Random' is not a currently supported kind of class."
         in str(e.value)

@@ -1,6 +1,16 @@
 # Changelog
 
+## 0.19
+
+### 0.19.0
+
+- feat: Add support for `msgspec` based class definitions.
+
 ## 0.18
+
+### 0.18.1
+
+- feat: Add deprecated option to command/arg.
 
 ### 0.18.0
 

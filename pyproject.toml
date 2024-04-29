@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cappa"
-version = "0.18.1"
+version = "0.19.0"
 description = "Declarative CLI argument parser."
 
 repository = "https://github.com/dancardin/cappa"
@@ -40,11 +40,12 @@ docstring = ["docstring-parser"]
 [tool.poetry.group.dev.dependencies]
 attrs = "*"
 coverage = "^7.3.0"
+msgspec = "*"
 mypy = ">=1.0"
 pydantic = "*"
 pytest = "^7.4.0"
 ruff = "^0.2.2"
-docutils = "*"
+docutils = "0.20.0"
 typing-extensions = ">=4.8.0"
 types-docutils = "^0.20.0.3"
 
