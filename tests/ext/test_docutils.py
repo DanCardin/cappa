@@ -36,7 +36,7 @@ def create_directive(*, style, cls_name="Foo", terminal_width=0):
         "cappa",
         [f"tests.ext.test_docutils.{cls_name}"],
         {"style": style, "terminal-width": terminal_width},
-        [],
+        [],  # type: ignore
         0,
         0,
         "",

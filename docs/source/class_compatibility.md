@@ -4,10 +4,12 @@ All of the documentation uses `dataclasses` specifically, because it is built
 into the standard library since python 3.7.
 
 With that said, any dataclass-like class description pattern should be able to
-be supported with relatively little effort. Today Cappa ships with adapters for
-[dataclasses](https://docs.python.org/3/library/dataclasses.html),
-[Pydantic](https://pydantic-docs.helpmanual.io/), and
-[attrs](https://www.attrs.org).
+be supported with relatively little effort. Today Cappa ships with adapters for:
+
+- [dataclasses](https://docs.python.org/3/library/dataclasses.html),
+- [Pydantic](https://pydantic-docs.helpmanual.io/) (v1/v2)
+- [attrs](https://www.attrs.org)
+- [msgspec](jcristharif.com/msgspec)
 
 Additionally the `default` and/or `default_factory` options defined by each of
 the above libraries is used to infer CLI defaults.
