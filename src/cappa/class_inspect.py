@@ -186,15 +186,13 @@ class ClassTypes(Enum):
             return cls.msgspec
 
         try:
-            from pydantic import BaseModel
             import pydantic
+            from pydantic import BaseModel
         except ImportError:  # pragma: no cover
             pass
         else:
             try:
-                is_base_model = isinstance(obj, type) and issubclass(
-                    obj, BaseModel
-                )
+                is_base_model = isinstance(obj, type) and issubclass(obj, BaseModel)
             except TypeError:  # pragma: no cover
                 is_base_model = False
 
