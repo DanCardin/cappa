@@ -2,6 +2,10 @@
 
 ## 0.19
 
+### 0.19.1
+
+- fix: Eagerly attempt pydantic BaseModel import to ensure its skipped if unavailable.
+
 ### 0.19.0
 
 - feat: Add support for `msgspec` based class definitions.
