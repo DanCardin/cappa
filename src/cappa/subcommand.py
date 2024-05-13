@@ -3,18 +3,17 @@ from __future__ import annotations
 import dataclasses
 import typing
 
+from type_lens import TypeView
 from typing_extensions import Annotated, Self, TypeAlias
-from typing_inspect import is_optional_type, is_union_type
 
 from cappa.arg import Group
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.types import Completion
 from cappa.typing import (
     MISSING,
-    NoneType,
     T,
     assert_type,
-    find_type_annotation,
+    find_annotations,
     missing,
 )
 
@@ -46,34 +45,39 @@ class Subcommand:
 
     @classmethod
     def collect(
-        cls, field: Field, type_hint: type, help_formatter: HelpFormatable | None = None
+        cls,
+        field: Field,
+        type_view: TypeView,
+        help_formatter: HelpFormatable | None = None,
     ) -> Subcommand | None:
-        object_annotation = find_type_annotation(type_hint, Subcommand)
-        subcommand = object_annotation.obj
+        subcommand = find_annotations(type_view, Subcommand) or None
 
         field_metadata = extract_dataclass_metadata(field, Subcommand)
         if field_metadata:
-            subcommand = [field_metadata]
+            subcommand = field_metadata
 
         if not subcommand:
             return None
 
         assert len(subcommand) == 1
         return subcommand[0].normalize(
-            object_annotation.annotation,
+            type_view,
             field_name=field.name,
             help_formatter=help_formatter,
         )
 
     def normalize(
         self,
-        annotation=NoneType,
+        type_view: TypeView | None = None,
         field_name: str | None = None,
         help_formatter: HelpFormatable | None = None,
     ) -> Self:
+        if type_view is None:
+            type_view = TypeView(...)
+
         field_name = field_name or assert_type(self.field_name, str)
-        types = infer_types(self, annotation)
-        required = infer_required(self, annotation)
+        types = infer_types(self, type_view)
+        required = infer_required(self, type_view)
         options = infer_options(self, types, help_formatter=help_formatter)
         group = infer_group(self)
 
@@ -104,22 +108,23 @@ class Subcommand:
         return [Completion(o) for o in self.options if partial in o]
 
 
-def infer_types(arg: Subcommand, annotation: type) -> typing.Iterable[type]:
+def infer_types(arg: Subcommand, type_view: TypeView) -> typing.Iterable[type]:
     if arg.types is not missing:
         return typing.cast(typing.Iterable[type], arg.types)
 
-    if is_union_type(annotation):
-        types = typing.get_args(annotation)
-        return tuple([t for t in types if not is_optional_type(t)])
+    if type_view.is_union:
+        return tuple(
+            [t.annotation for t in type_view.inner_types if not t.is_none_type]
+        )
 
-    return (annotation,)
+    return (type_view.annotation,)
 
 
-def infer_required(arg: Subcommand, annotation: type) -> bool:
+def infer_required(arg: Subcommand, annotation: TypeView) -> bool:
     if arg.required is not None:
         return arg.required
 
-    return not is_optional_type(annotation)
+    return not annotation.is_optional
 
 
 def infer_options(
@@ -162,3 +167,4 @@ def infer_group(arg: Subcommand) -> Group:
 
 
 Subcommands: TypeAlias = Annotated[T, Subcommand]
+DEFAULT_SUBCOMMAND = Subcommand()

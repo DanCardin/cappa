@@ -31,7 +31,11 @@ dependencies = [
   "typing-inspect >= 0.9.0",
   "rich",
   "eval_type_backport; python_version < '3.10'",
+  "type-lens",
 ]
+
+[tool.uv.sources]
+type-lens = { git = "https://github.com/dancardin/type-lens", branch = "dc/subclass_of"}
 
 [project.optional-dependencies]
 docstring = ["docstring-parser >= 0.15"]

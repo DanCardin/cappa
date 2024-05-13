@@ -28,11 +28,12 @@ wheels = [
 
 [[package]]
 name = "cappa"
-version = "0.22.4"
+version = "0.22.5"
 source = { editable = "." }
 dependencies = [
     { name = "eval-type-backport", marker = "python_full_version < '3.10'" },
     { name = "rich" },
+    { name = "type-lens" },
     { name = "typing-extensions" },
     { name = "typing-inspect" },
 ]
@@ -61,6 +62,7 @@ requires-dist = [
     { name = "docstring-parser", marker = "extra == 'docstring'", specifier = ">=0.15" },
     { name = "eval-type-backport", marker = "python_full_version < '3.10'" },
     { name = "rich" },
+    { name = "type-lens", git = "https://github.com/dancardin/type-lens?branch=dc%2Fbackport-typing-syntax" },
     { name = "typing-extensions", specifier = ">=4.8.0" },
     { name = "typing-inspect", specifier = ">=0.9.0" },
 ]
@@ -527,6 +529,14 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c0/3f/d7af728f075fb08564c5949a9c95e44352e23dee646869fa104a3b2060a3/tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f", size = 15164 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/97/75/10a9ebee3fd790d20926a90a2547f0bf78f371b2f13aa822c759680ca7b9/tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc", size = 12757 },
+]
+
+[[package]]
+name = "type-lens"
+version = "0.1.0a1"
+source = { git = "https://github.com/dancardin/type-lens?branch=dc%2Fbackport-typing-syntax#bfc1e4e99ee5967526001137403bcc2f9358f389" }
+dependencies = [
+    { name = "eval-type-backport", marker = "python_full_version < '3.10'" },
 ]
 
 [[package]]

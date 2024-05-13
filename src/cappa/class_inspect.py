@@ -6,10 +6,10 @@ import inspect
 import typing
 from enum import Enum
 
-import typing_inspect
-from typing_extensions import Self, get_args
+from type_lens import CallableView, TypeView
+from typing_extensions import Self
 
-from cappa.typing import MISSING, T, find_type_annotation, get_type_hints, missing
+from cappa.typing import MISSING, find_annotations, missing, T
 
 if typing.TYPE_CHECKING:
     pass
@@ -104,9 +104,9 @@ class PydanticV1Field(Field):
     @classmethod
     def collect(cls, typ) -> list[Self]:
         fields = []
-        type_hints = get_type_hints(typ, include_extras=True)
+        type_hints = CallableView.from_callable(typ, include_extras=True)
         for name, f in typ.__fields__.items():
-            annotation = get_type(type_hints[name])
+            annotation = TypeView(type_hints[name]).strip_optional().annotation
 
             field = cls(
                 name=name,
@@ -207,15 +207,15 @@ class ClassTypes(Enum):
         return None
 
 
-def extract_dataclass_metadata(field: Field, cls: type[T]) -> T | None:
+def extract_dataclass_metadata(field: Field, cls: type[T]) -> list[T]:
     field_metadata = field.metadata.get("cappa")
     if not field_metadata:
-        return None
+        return []
 
     if not isinstance(field_metadata, cls):
-        return None
+        return []
 
-    return field_metadata
+    return [field_metadata]
 
 
 def get_command_capable_object(obj):
@@ -241,20 +241,19 @@ def get_command_capable_object(obj):
         sig._parameters = sig_params  # type: ignore
         call.__signature__ = sig  # type: ignore
 
-        args = get_type_hints(obj, include_extras=True)
-        parameters = inspect.signature(obj).parameters
-        for name, annotation in args.items():
-            if find_type_annotation(annotation, Dep).obj:
+        function_view = CallableView.from_callable(obj, include_extras=True)
+        for param_view in function_view.parameters:
+            if find_annotations(param_view.type_view, Dep):
                 continue
 
-            sig_params.pop(name, None)
+            sig_params.pop(param_view.name, None)
             function_args.append(
                 (
-                    name,
-                    annotation,
+                    param_view.name,
+                    param_view.type_view.raw,
                     dataclasses.field(
-                        default=parameters[name].default
-                        if parameters[name].default is not inspect.Parameter.empty
+                        default=param_view.default
+                        if param_view.has_default
                         else dataclasses.MISSING
                     ),
                 )
@@ -267,9 +266,3 @@ def get_command_capable_object(obj):
         )
 
     return obj
-
-
-def get_type(typ):
-    if typing_inspect.is_optional_type(typ):
-        return get_args(typ)[0]
-    return typ

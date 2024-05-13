@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import functools
 import types
 import typing
 from datetime import date, datetime, time
 
-from typing_inspect import is_literal_type
+from type_lens import TypeView
 
 from cappa.file_io import FileMode
-from cappa.typing import T, is_none_type, is_subclass, is_union_type, repr_type
+from cappa.typing import T
 
 __all__ = [
     "parse_value",
@@ -32,9 +33,18 @@ type_priority: typing.Final = types.MappingProxyType(
 )
 
 
-def parse_value(
-    annotation: type, extra_annotations: typing.Iterable[type] = ()
-) -> typing.Callable:
+def wrap_type_view(fn):
+    @functools.wraps(fn)
+    def wrapper(annotation: T | TypeView[T]):
+        if not isinstance(annotation, TypeView):
+            annotation = TypeView(annotation)
+        return fn(annotation)
+
+    return wrapper
+
+
+@wrap_type_view
+def parse_value(annotation: TypeView[T]) -> typing.Callable[[typing.Any], T]:
     """Create a value parser for the given annotation.
 
     Examples:
@@ -43,48 +53,46 @@ def parse_value(
         >>> tuple_parser = parse_value(Tuple[int, ...])
         >>> literal_parser = parse_literal(Literal["foo"])
     """
-    origin = typing.get_origin(annotation) or annotation
-    type_args = typing.get_args(annotation)
+    if annotation.is_literal:
+        return parse_literal(annotation)
 
-    if is_literal_type(origin):
-        return parse_literal(*type_args)
+    if annotation.is_union:
+        return parse_union(annotation)
 
-    if is_union_type(origin):
-        return parse_union(*type_args)
+    if annotation.is_subclass_of((str, bool, int, float)):
+        return annotation.annotation
 
-    if is_subclass(origin, (str, bool, int, float)):
-        return origin
+    if annotation.is_none_type:
+        return parse_none(annotation)
 
-    if is_subclass(origin, datetime):
+    if annotation.is_subclass_of(datetime):
         return datetime.fromisoformat
 
-    if is_subclass(origin, date):
+    if annotation.is_subclass_of(date):
         return date.fromisoformat
 
-    if is_subclass(origin, time):
+    if annotation.is_subclass_of(time):
         return time.fromisoformat
 
-    if is_none_type(origin):
-        return parse_none
+    if annotation.is_subclass_of(list):
+        return parse_list(annotation)
 
-    if is_subclass(origin, list):
-        return parse_list(*type_args)
+    if annotation.is_subclass_of(set):
+        return parse_set(annotation)
 
-    if is_subclass(origin, set):
-        return parse_set(*type_args)
+    if annotation.is_subclass_of(tuple):
+        return parse_tuple(annotation)
 
-    if is_subclass(origin, tuple):
-        return parse_tuple(*type_args)
+    if annotation.is_subclass_of((typing.TextIO, typing.BinaryIO)):
+        return parse_file_io(annotation)
 
-    if is_subclass(origin, (typing.TextIO, typing.BinaryIO)):
-        return parse_file_io(origin, extra_annotations)
-
-    return origin
+    return annotation.annotation
 
 
-def parse_literal(*type_args: T) -> typing.Callable[[typing.Any], T]:
+@wrap_type_view
+def parse_literal(annotation: TypeView[T]) -> typing.Callable[[typing.Any], T]:
     """Create a value parser for a given literal value."""
-    unique_type_args = set(type_args)
+    unique_type_args = set(annotation.args)
 
     def literal_mapper(value):
         if value in unique_type_args:
@@ -95,7 +103,7 @@ def parse_literal(*type_args: T) -> typing.Callable[[typing.Any], T]:
             if raw_value == value:
                 return type_arg
 
-        options = ", ".join(f"'{t}'" for t in type_args)
+        options = ", ".join(f"'{t}'" for t in annotation.args)
         raise ValueError(
             f"Invalid choice: '{value}' (choose from literal values {options})"
         )
@@ -103,31 +111,35 @@ def parse_literal(*type_args: T) -> typing.Callable[[typing.Any], T]:
     return literal_mapper
 
 
-def parse_list(of_type: type[T]) -> typing.Callable[[typing.Any], list[T]]:
+@wrap_type_view
+def parse_list(annotation: TypeView[list[T]]) -> typing.Callable[[typing.Any], list[T]]:
     """Create a value parser for a list of given type `of_type`."""
-    inner_mapper = parse_value(of_type)
+    inner_mapper = parse_value(annotation.inner_types[0])
 
-    def list_mapper(value: list):
+    def list_mapper(value: list[typing.Any]) -> list[T]:
         return [inner_mapper(v) for v in value]
 
     return list_mapper
 
 
-def parse_set(of_type: type[T]) -> typing.Callable[[typing.Any], set[T]]:
+@wrap_type_view
+def parse_set(annotation: TypeView[list[T]]) -> typing.Callable[[typing.Any], set[T]]:
     """Create a value parser for a list of given type `of_type`."""
-    inner_mapper = parse_value(of_type)
+    inner_mapper = parse_value(annotation.inner_types[0])
 
-    def set_mapper(value: list):
+    def set_mapper(value: list[typing.Any]) -> set[T]:
         return {inner_mapper(v) for v in value}
 
     return set_mapper
 
 
-def parse_tuple(*type_args: type) -> typing.Callable[[typing.Any], tuple]:
+@wrap_type_view
+def parse_tuple(annotation: TypeView[T]) -> typing.Callable[[typing.Any], tuple[T]]:
     """Create a value parser for a tuple with type-args of given `type_args`."""
-    if len(type_args) == 2 and type_args[1] == ...:
-        inner_type: type = type_args[0]
-        list_mapper = parse_value(typing.List[inner_type])  # type: ignore
+    if annotation.is_variadic_tuple:
+        assert annotation.args
+        inner_type = annotation.args[0]
+        list_mapper = parse_list(typing.List[inner_type])  # type: ignore
 
         def unbounded_tuple_mapper(value: list):
             return tuple(list_mapper(value))
@@ -136,7 +148,7 @@ def parse_tuple(*type_args: type) -> typing.Callable[[typing.Any], tuple]:
 
     def tuple_mapper(value: list):
         result = []
-        for inner_type, inner_value in zip(type_args, value):
+        for inner_type, inner_value in zip(annotation.inner_types, value):
             inner_mapper = parse_value(inner_type)
             inner_value = inner_mapper(inner_value)
             result.append(inner_value)
@@ -145,26 +157,28 @@ def parse_tuple(*type_args: type) -> typing.Callable[[typing.Any], tuple]:
     return tuple_mapper
 
 
-def parse_union(*type_args: type) -> typing.Callable[[typing.Any], typing.Any]:
+@wrap_type_view
+def parse_union(annotation: TypeView[T]) -> typing.Callable[[typing.Any], T]:
     """Create a value parser for a Union with type-args of given `type_args`."""
 
-    def type_priority_key(type_) -> int:
-        return type_priority.get(type_, 1)
+    def type_priority_key(type_type_view: TypeView) -> int:
+        return type_priority.get(type_type_view.annotation, 1)
 
-    mappers: list[tuple[type, typing.Callable]] = [
-        (t, parse_value(t)) for t in sorted(type_args, key=type_priority_key)
+    mappers: list[tuple[TypeView[T], typing.Callable]] = [
+        (t, parse_value(t))
+        for t in sorted(annotation.inner_types, key=type_priority_key)
     ]
 
     def union_mapper(value):
         exceptions = []
-        for type_arg, mapper in mappers:
+        for mapper_type_view, mapper in mappers:
             try:
                 return mapper(value)
             except (ValueError, TypeError) as e:
                 if mapper is parse_none:
                     err = " - <no value>"
                 else:
-                    err = f" - {repr_type(type_arg)}: {e}"
+                    err = f" - {mapper_type_view.repr_type}: {e}"
                 exceptions.append(err)
 
         # Perhaps we should be showing all failed mappings at some point. As-is,
@@ -188,28 +202,32 @@ def parse_optional(
     return optional_mapper
 
 
-def parse_none(value):
+@wrap_type_view
+def parse_none(_: TypeView[T]) -> typing.Callable[[typing.Any], T]:
     """Create a value parser for None."""
-    if value is None:
-        return
 
-    raise ValueError(value)
+    def map_none(value: typing.Any) -> None:
+        if value is None:
+            return
+
+        raise ValueError(value)
+
+    return map_none
 
 
-def parse_file_io(
-    annotation: type, extra_annotations: typing.Iterable[type]
-) -> typing.Callable:
+@wrap_type_view
+def parse_file_io(annotation: TypeView) -> typing.Callable:
     def file_io_mapper(value: str):
         try:
             file_mode: FileMode = next(
                 typing.cast(FileMode, f)
-                for f in extra_annotations
+                for f in annotation.metadata
                 if isinstance(f, FileMode)
             )
         except StopIteration:
             file_mode = FileMode()
 
-            if issubclass(annotation, typing.BinaryIO):
+            if annotation.is_subclass_of(typing.BinaryIO):
                 file_mode.mode += "b"
 
         return file_mode(value)

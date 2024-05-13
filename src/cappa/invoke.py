@@ -7,10 +7,12 @@ import typing
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from type_lens import CallableView
+
 from cappa.command import Command, HasCommand
 from cappa.output import Exit, Output
 from cappa.subcommand import Subcommand
-from cappa.typing import find_type_annotation, get_type_hints
+from cappa.typing import find_annotations
 
 C = typing.TypeVar("C", bound=HasCommand)
 
@@ -262,44 +264,42 @@ def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
 def fulfill_deps(fn: Callable, fulfilled_deps: dict) -> typing.Any:
     result = {}
 
-    signature = getattr(fn, "__signature__", None) or inspect.signature(fn)
     try:
-        annotations = get_type_hints(fn, include_extras=True)
+        function_view = CallableView.from_callable(fn, include_extras=True)
     except NameError as e:  # pragma: no cover
         name = getattr(e, "name") or str(e)
         raise InvokeResolutionError(
             f"Could not collect resolve reference to {name} for Dep({fn.__name__})"
         )
 
-    for name, param in signature.parameters.items():
-        annotation = annotations.get(name)
+    for param_view in function_view.parameters:
+        type_view = param_view.type_view
+        deps = find_annotations(type_view, Dep)
 
-        if annotation is None:
-            dep = None
-        else:
-            object_annotation = find_type_annotation(annotation, Dep)
-            annotation = object_annotation.annotation
-            objs = object_annotation.obj
-            dep = objs[0] if objs else None
-
-        annotation = typing.get_origin(annotation) or annotation
-
-        if dep is None:
+        if not deps:
             # Non-annotated args are either implicit dependencies (and thus already fulfilled),
             # or arguments that we cannot fulfill
-            if annotation not in fulfilled_deps:
-                if param.default is param.empty:
-                    annotation_name = annotation.__name__ if annotation else "<empty>"
+            if type_view.fallback_origin not in fulfilled_deps:
+                if not param_view.has_default:
+                    annotation_name = (
+                        type_view.annotation.__name__
+                        if type_view.annotation
+                        else "<empty>"
+                    )
                     raise InvokeResolutionError(
-                        f"`{name}: {annotation_name}` is not a valid dependency for Dep({fn.__name__})."
+                        f"`{param_view.name}: {annotation_name}` "
+                        f"is not a valid dependency for Dep({fn.__name__})."
                     )
 
                 # if there's a default, we can just skip it and let the default fulfill the value.
                 continue
 
-            value = fulfilled_deps[annotation]
+            value = fulfilled_deps[type_view.fallback_origin]
 
         else:
+            assert len(deps) == 1
+            dep = deps[0]
+
             # Whereas everything else should be a resolvable explicit Dep, which might have either
             # already been fullfullfilled, or yet need to be.
             if dep in fulfilled_deps:
@@ -310,6 +310,6 @@ def fulfill_deps(fn: Callable, fulfilled_deps: dict) -> typing.Any:
                 )
                 fulfilled_deps[dep] = value
 
-        result[name] = value
+        result[param_view.name] = value
 
     return result
