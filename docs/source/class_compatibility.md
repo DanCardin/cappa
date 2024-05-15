@@ -9,7 +9,7 @@ be supported with relatively little effort. Today Cappa ships with adapters for:
 - [dataclasses](https://docs.python.org/3/library/dataclasses.html),
 - [Pydantic](https://pydantic-docs.helpmanual.io/) (v1/v2)
 - [attrs](https://www.attrs.org)
-- [msgspec](jcristharif.com/msgspec)
+- [msgspec](https://jcristharif.com/msgspec/)
 
 Additionally the `default` and/or `default_factory` options defined by each of
 the above libraries is used to infer CLI defaults.
