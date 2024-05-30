@@ -7,11 +7,10 @@ import typing
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from type_lens import CallableView
-
 from cappa.command import Command, HasCommand
 from cappa.output import Exit, Output
 from cappa.subcommand import Subcommand
+from cappa.type_view import CallableView, optional_repr_type
 from cappa.typing import find_annotations
 
 C = typing.TypeVar("C", bound=HasCommand)
@@ -245,7 +244,7 @@ def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
             # Args do not produce dependencies themselves.
             continue
 
-        option_instance = getattr(instance, arg.field_name)
+        option_instance = getattr(instance, typing.cast(str, arg.field_name))
         if option_instance is None:
             # None is a valid subcommand instance value, but it won't exist as a dependency
             # where an actual command has been selected.
@@ -281,13 +280,8 @@ def fulfill_deps(fn: Callable, fulfilled_deps: dict) -> typing.Any:
             # or arguments that we cannot fulfill
             if type_view.fallback_origin not in fulfilled_deps:
                 if not param_view.has_default:
-                    annotation_name = (
-                        type_view.annotation.__name__
-                        if type_view.annotation
-                        else "<empty>"
-                    )
                     raise InvokeResolutionError(
-                        f"`{param_view.name}: {annotation_name}` "
+                        f"`{param_view.name}: {optional_repr_type(type_view)}` "
                         f"is not a valid dependency for Dep({fn.__name__})."
                     )
 

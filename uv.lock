@@ -31,11 +31,9 @@ name = "cappa"
 version = "0.22.5"
 source = { editable = "." }
 dependencies = [
-    { name = "eval-type-backport", marker = "python_full_version < '3.10'" },
     { name = "rich" },
     { name = "type-lens" },
     { name = "typing-extensions" },
-    { name = "typing-inspect" },
 ]
 
 [package.optional-dependencies]
@@ -54,17 +52,14 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
     { name = "types-docutils" },
-    { name = "typing-extensions" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "docstring-parser", marker = "extra == 'docstring'", specifier = ">=0.15" },
-    { name = "eval-type-backport", marker = "python_full_version < '3.10'" },
     { name = "rich" },
-    { name = "type-lens", git = "https://github.com/dancardin/type-lens?branch=dc%2Fbackport-typing-syntax" },
+    { name = "type-lens", specifier = ">=0.2.2" },
     { name = "typing-extensions", specifier = ">=4.8.0" },
-    { name = "typing-inspect", specifier = ">=0.9.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -78,7 +73,6 @@ dev = [
     { name = "pytest", specifier = ">=8.1.1,<9" },
     { name = "ruff", specifier = ">=0.6.2" },
     { name = "types-docutils", specifier = ">=0.20.0" },
-    { name = "typing-extensions", specifier = ">=4.8.0" },
 ]
 
 [[package]]
@@ -533,10 +527,15 @@ wheels = [
 
 [[package]]
 name = "type-lens"
-version = "0.1.0a1"
-source = { git = "https://github.com/dancardin/type-lens?branch=dc%2Fbackport-typing-syntax#bfc1e4e99ee5967526001137403bcc2f9358f389" }
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "eval-type-backport", marker = "python_full_version < '3.10'" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/13/23/e985fc964ee0c3e4648ca24e0bd600827ced58647c7cca60fe225221ba8c/type_lens-0.2.2.tar.gz", hash = "sha256:29c0b29e56de5b48c8bad6bd25ae964e2ef00d8985c286ed29d8c1df833a05e6", size = 361534 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dc/cd/c94200e5413e2cd3f0faba0ba764951a0a973aafa516d19fcfe263aebe86/type_lens-0.2.2-py3-none-any.whl", hash = "sha256:09d1af2a37ada0732b4568146fe78183fb131727bebaea08b761d445acd8de23", size = 14147 },
 ]
 
 [[package]]
@@ -555,17 +554,4 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/df/db/f35a00659bc03fec321ba8bce9420de607a1d37f8342eee1863174c69557/typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8", size = 85321 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/26/9f/ad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0/typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d", size = 37438 },
-]
-
-[[package]]
-name = "typing-inspect"
-version = "0.9.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "mypy-extensions" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/dc/74/1789779d91f1961fa9438e9a8710cdae6bd138c80d7303996933d117264a/typing_inspect-0.9.0.tar.gz", hash = "sha256:b23fc42ff6f6ef6954e4852c1fb512cdd18dbea03134f91f856a95ccc9461f78", size = 13825 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/f3/107a22063bf27bdccf2024833d3445f4eea42b2e598abfbd46f6a63b6cb0/typing_inspect-0.9.0-py3-none-any.whl", hash = "sha256:9ee6fc59062311ef8547596ab6b955e1b8aa46242d854bfc78f4f6b0eff35f9f", size = 8827 },
 ]

@@ -7,20 +7,17 @@ import enum
 import typing
 from collections.abc import Callable
 
-from type_lens import TypeView
-
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
 from cappa.env import Env
 from cappa.parse import parse_optional, parse_value
+from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import (
-    MISSING,
     Doc,
     T,
     detect_choices,
     find_annotations,
-    missing,
 )
 
 
@@ -123,15 +120,15 @@ class Arg(typing.Generic[T]):
             used as the deprecation message.
     """
 
-    value_name: str | MISSING = missing
+    value_name: str | EmptyType = Empty
     short: bool | str | list[str] | None = False
     long: bool | str | list[str] | None = False
     count: bool = False
-    default: T | None | MISSING = missing
+    default: T | None | EmptyType = Empty
     help: str | None = None
     parse: Callable[[typing.Any], T] | None = None
 
-    group: str | tuple[int, str] | Group | None = None
+    group: str | tuple[int, str] | Group | EmptyType = Empty
 
     hidden: bool = False
     action: ArgAction | Callable | None = None
@@ -139,7 +136,7 @@ class Arg(typing.Generic[T]):
     choices: list[str] | None = None
     completion: Callable[..., list[Completion]] | None = None
     required: bool | None = None
-    field_name: str | MISSING = missing
+    field_name: str | EmptyType = Empty
     deprecated: bool | str = False
 
     annotations: list[type] = dataclasses.field(default_factory=list)
@@ -189,32 +186,30 @@ class Arg(typing.Generic[T]):
 
     def normalize(
         self,
-        annotation: TypeView | None = None,
+        type_view: TypeView | None = None,
         fallback_help: str | None = None,
         action: ArgAction | Callable | None = None,
-        default: typing.Any = missing,
+        default: typing.Any = Empty,
         field_name: str | None = None,
         default_short: bool = False,
         default_long: bool = False,
         exclusive: bool = False,
     ) -> Arg:
-        if annotation is None:
-            annotation = TypeView(...)
+        if type_view is None:
+            type_view = TypeView(...)
 
         field_name = typing.cast(str, field_name or self.field_name)
-        default = default if default is not missing else self.default
+        default = default if default is not Empty else self.default
 
-        verify_type_compatibility(self, field_name, annotation)
+        verify_type_compatibility(self, field_name, type_view)
         short = infer_short(self, field_name, default_short)
-        long = infer_long(self, annotation, field_name, default_long)
-        choices = infer_choices(self, annotation)
-        action = action or infer_action(self, annotation, long, default)
-        num_args = infer_num_args(self, annotation, action, long)
-        print("num_args", field_name, num_args)
-        print("num_args", field_name, action)
-        required = infer_required(self, annotation, default)
+        long = infer_long(self, type_view, field_name, default_long)
+        choices = infer_choices(self, type_view)
+        action = action or infer_action(self, type_view, long, default)
+        num_args = infer_num_args(self, type_view, action, long)
+        required = infer_required(self, type_view, default)
 
-        parse = infer_parse(self, annotation)
+        parse = infer_parse(self, type_view)
         help = infer_help(self, fallback_help)
         completion = infer_completion(self, choices)
 
@@ -254,7 +249,7 @@ class Arg(typing.Generic[T]):
         return typing.cast(str, self.value_name)
 
 
-def verify_type_compatibility(arg: Arg, field_name: str, annotation: TypeView):
+def verify_type_compatibility(arg: Arg, field_name: str, type_view: TypeView):
     """Verify classes of annotations are compatible with one another.
 
     Thus far:
@@ -269,10 +264,10 @@ def verify_type_compatibility(arg: Arg, field_name: str, annotation: TypeView):
     if arg.parse or ArgAction.is_custom(action):
         return
 
-    if annotation.is_union:
+    if type_view.is_union:
         all_same_arity = {
             ta.is_subclass_of((list, tuple, set))
-            for ta in annotation.strip_optional().inner_types
+            for ta in type_view.strip_optional().inner_types
         }
         if len(all_same_arity) > 1:
             raise ValueError(
@@ -284,64 +279,64 @@ def verify_type_compatibility(arg: Arg, field_name: str, annotation: TypeView):
         return
 
     num_args = arg.num_args
-    if annotation.is_subclass_of((list, tuple, set)):
+    if type_view.is_subclass_of((list, tuple, set)):
         if num_args in {0, 1} and action not in {ArgAction.append, None}:
             raise ValueError(
                 f"On field '{field_name}', apparent mismatch of annotated type with `Arg` options. "
-                f"'{annotation.annotation}' type produces a sequence, whereas `num_args=1`/`action={action}` do not. "
+                f"'{type_view.repr_type}' type produces a sequence, whereas `num_args=1`/`action={action}` do not. "
                 "See [documentation](https://cappa.readthedocs.io/en/latest/annotation.html) for more details."
             )
     else:
         if num_args not in {None, 0, 1} or action is ArgAction.append:
             raise ValueError(
                 f"On field '{field_name}', apparent mismatch of annotated type with `Arg` options. "
-                f"'{annotation.annotation.__name__}' type produces a scalar, whereas `num_args={num_args}`/`action={action}` do not. "
+                f"'{type_view.repr_type}' type produces a scalar, whereas `num_args={num_args}`/`action={action}` do not. "
                 "See [documentation](https://cappa.readthedocs.io/en/latest/annotation.html) for more details."
             )
 
 
 def infer_field_name(arg: Arg, field: Field) -> str:
-    if not isinstance(arg.field_name, MISSING):
+    if arg.field_name is not Empty:
         raise ValueError("Arg 'name' cannot be set when using automatic inference.")
 
     return field.name
 
 
-def infer_default(arg: Arg, field: Field, annotation: TypeView) -> typing.Any:
-    if arg.default is not missing:
+def infer_default(arg: Arg, field: Field, type_view: TypeView) -> typing.Any:
+    if arg.default is not Empty:
         # Annotated[str, Env('FOO')] = "bar" should produce "bar". I.e. the field default
         # should be used if the `Env` default is not set, but still attempt to read the
         # `Env` if it **is** set.
         if (
             isinstance(arg.default, Env)
             and arg.default.default is None
-            and field.default is not missing
+            and field.default is not Empty
         ):
             return Env(*arg.default.env_vars, default=field.default)
 
         return arg.default
 
-    if field.default is not missing:
+    if field.default is not Empty:
         return field.default
 
-    if field.default_factory is not missing:
+    if field.default_factory is not Empty:
         return field.default_factory()
 
-    if annotation.is_optional:
+    if type_view.is_optional:
         return None
 
-    if annotation.is_subclass_of(bool):
+    if type_view.is_subclass_of(bool):
         return False
 
-    return missing
+    return Empty
 
 
-def infer_required(arg: Arg, annotation: TypeView, default: typing.Any | MISSING):
+def infer_required(arg: Arg, type_view: TypeView, default: typing.Any | EmptyType):
     if arg.required is True:
         return True
 
-    if default is missing:
-        if annotation.is_subclass_of(bool) or annotation.is_optional:
+    if default is Empty:
+        if type_view.is_subclass_of(bool) or type_view.is_optional:
             return False
 
         if arg.required is False:
@@ -375,13 +370,13 @@ def infer_short(
 
 
 def infer_long(
-    arg: Arg, annotation: TypeView, name: str, default: bool
+    arg: Arg, type_view: TypeView, name: str, default: bool
 ) -> list[str] | typing.Literal[False]:
     long = arg.long or default
 
     if not long:
         # bools get automatically coerced into flags, otherwise stay off.
-        if not annotation.is_subclass_of(bool):
+        if not type_view.is_subclass_of(bool):
             return False
 
         long = True
@@ -409,7 +404,7 @@ def infer_choices(arg: Arg, type_view: TypeView) -> list[str] | None:
 
 
 def infer_action(
-    arg: Arg, annotation: TypeView, long, default: typing.Any
+    arg: Arg, type_view: TypeView, long, default: typing.Any
 ) -> ArgAction | Callable:
     if arg.count:
         return ArgAction.count
@@ -417,14 +412,14 @@ def infer_action(
     if arg.action is not None:
         return arg.action
 
-    annotation = annotation.strip_optional()
+    type_view = type_view.strip_optional()
 
     # Coerce raw `bool` into flags by default
-    if annotation.is_subclass_of(bool):
+    if type_view.is_subclass_of(bool):
         if isinstance(default, Env):
             default = default.default
 
-        if default is not missing and bool(default):
+        if default is not Empty and bool(default):
             return ArgAction.store_false
 
         return ArgAction.store_true
@@ -433,7 +428,6 @@ def infer_action(
     has_specific_num_args = arg.num_args is not None
     unbounded_num_args = arg.num_args == -1
 
-    breakpoint()
     if (
         arg.parse
         or unbounded_num_args
@@ -442,10 +436,10 @@ def infer_action(
     ):
         return ArgAction.set
 
-    if annotation.is_subclass_of((list, set)):
+    if type_view.is_subtype_of((list, set)):
         return ArgAction.append
 
-    if annotation.is_variadic_tuple:
+    if type_view.is_variadic_tuple:
         return ArgAction.append
 
     return ArgAction.set
@@ -453,7 +447,7 @@ def infer_action(
 
 def infer_num_args(
     arg: Arg,
-    annotation: TypeView,
+    type_view: TypeView,
     action: ArgAction | Callable,
     long,
 ) -> int:
@@ -466,12 +460,12 @@ def infer_num_args(
     if isinstance(action, ArgAction) and action in no_extra_arg_actions:
         return 0
 
-    if annotation.is_union:
+    if type_view.is_union:
         # Recursively determine the `num_args` value of each variant. Use the value
         # only if they all result in the same value.
         distinct_num_args = set()
         num_args_variants = []
-        for type_arg in annotation.inner_types:
+        for type_arg in type_view.inner_types:
             num_args = infer_num_args(
                 arg,
                 type_arg,
@@ -497,24 +491,24 @@ def infer_num_args(
         )
 
     is_positional = not arg.short and not long
-    if annotation.is_subclass_of((list, set)) and is_positional:
+    if type_view.is_subclass_of((list, set)) and is_positional:
         return -1
 
-    if annotation.is_tuple and not annotation.is_variadic_tuple:
-        return len(annotation.args)
+    if type_view.is_tuple and not type_view.is_variadic_tuple:
+        return len(type_view.args)
 
-    if annotation.is_variadic_tuple and is_positional:
+    if type_view.is_variadic_tuple and is_positional:
         return -1
     return 1
 
 
-def infer_parse(arg: Arg, annotation: TypeView) -> Callable:
+def infer_parse(arg: Arg, type_view: TypeView) -> Callable:
     if arg.parse:
-        if annotation.is_optional:
+        if type_view.is_optional:
             return parse_optional(arg.parse)
         return arg.parse
 
-    return parse_value(annotation)
+    return parse_value(type_view)
 
 
 def infer_help(arg: Arg, fallback_help: str | None) -> str | None:
@@ -565,7 +559,7 @@ def infer_group(
 
 
 def infer_value_name(arg: Arg, field_name: str, num_args: int | None) -> str:
-    if arg.value_name is not missing:
+    if arg.value_name is not Empty:
         return arg.value_name
 
     if num_args == -1:

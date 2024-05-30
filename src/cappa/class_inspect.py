@@ -6,17 +6,17 @@ import inspect
 import typing
 from enum import Enum
 
-from type_lens import CallableView, TypeView
 from typing_extensions import Self
 
-from cappa.typing import MISSING, find_annotations, missing, T
+from cappa.type_view import CallableView, Empty, EmptyType
+from cappa.typing import T, find_annotations
 
 if typing.TYPE_CHECKING:
     pass
 
 __all__ = [
-    "fields",
     "detect",
+    "fields",
 ]
 
 
@@ -28,8 +28,8 @@ def detect(cls: type) -> bool:
 class Field:
     name: str
     annotation: type
-    default: typing.Any | MISSING = missing
-    default_factory: typing.Any | MISSING = missing
+    default: typing.Any | EmptyType = Empty
+    default_factory: typing.Any | EmptyType = Empty
     metadata: dict = dataclasses.field(default_factory=dict)
 
 
@@ -42,10 +42,10 @@ class DataclassField(Field):
             field = cls(
                 name=f.name,
                 annotation=f.type,
-                default=f.default if f.default is not dataclasses.MISSING else missing,
+                default=f.default if f.default is not dataclasses.MISSING else Empty,
                 default_factory=f.default_factory
                 if f.default_factory is not dataclasses.MISSING
-                else missing,
+                else Empty,
                 metadata=f.metadata,
             )
             fields.append(field)
@@ -67,8 +67,8 @@ class AttrsField(Field):
             field = cls(
                 name=f.name,
                 annotation=f.type,
-                default=default or missing,
-                default_factory=default_factory or missing,
+                default=default or Empty,
+                default_factory=default_factory or Empty,
                 metadata=f.metadata,
             )
             fields.append(field)
@@ -83,11 +83,11 @@ class MsgspecField(Field):
 
         fields = []
         for f in msgspec.structs.fields(typ):
-            default = f.default if f.default is not msgspec.NODEFAULT else missing
+            default = f.default if f.default is not msgspec.NODEFAULT else Empty
             default_factory = (
                 f.default_factory
                 if f.default_factory is not msgspec.NODEFAULT
-                else missing
+                else Empty
             )
             field = cls(
                 name=f.name,
@@ -104,17 +104,19 @@ class PydanticV1Field(Field):
     @classmethod
     def collect(cls, typ) -> list[Self]:
         fields = []
-        type_hints = CallableView.from_callable(typ, include_extras=True)
-        for name, f in typ.__fields__.items():
-            annotation = TypeView(type_hints[name]).strip_optional().annotation
+        callable_view = CallableView.from_callable(typ, include_extras=True)
+        for param in callable_view.parameters:
+            name = param.name
+            f = typ.__fields__[name]
+            annotation = param.type_view.strip_optional().annotation
 
             field = cls(
                 name=name,
                 annotation=annotation,
                 default=f.default
                 if f.default.__repr__() != "PydanticUndefined"
-                else missing,
-                default_factory=f.default_factory or missing,
+                else Empty,
+                default_factory=f.default_factory or Empty,
             )
             fields.append(field)
         return fields
@@ -131,8 +133,8 @@ class PydanticV2Field(Field):
                 annotation=f.annotation,
                 default=f.default
                 if f.default.__repr__() != "PydanticUndefined"
-                else missing,
-                default_factory=f.default_factory or missing,
+                else Empty,
+                default_factory=f.default_factory or Empty,
             )
             fields.append(field)
         return fields
@@ -147,8 +149,8 @@ class PydanticV2DataclassField(Field):
             field = cls(
                 name=name,
                 annotation=f.annotation,
-                default=f.default or missing,
-                default_factory=f.default_factory or missing,
+                default=f.default or Empty,
+                default_factory=f.default_factory or Empty,
             )
             fields.append(field)
         return fields
@@ -234,15 +236,16 @@ def get_command_capable_object(obj):
             kwargs = dataclasses.asdict(self)
             return obj(**kwargs, **deps)
 
+        callable_view = CallableView.from_callable(obj, include_extras=True)
+
         # We need to create a fake signature for the above callable, which does
         # not retain the `Arg` annotations
-        sig = inspect.signature(obj)
-        sig_params: dict = dict(sig.parameters)
-        sig._parameters = sig_params  # type: ignore
-        call.__signature__ = sig  # type: ignore
+        signature = callable_view.signature
+        sig_params: dict = dict(signature.parameters)
+        signature._parameters = sig_params  # type: ignore
+        call.__signature__ = signature  # type: ignore
 
-        function_view = CallableView.from_callable(obj, include_extras=True)
-        for param_view in function_view.parameters:
+        for param_view in callable_view.parameters:
             if find_annotations(param_view.type_view, Dep):
                 continue
 

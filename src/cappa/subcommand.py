@@ -3,19 +3,13 @@ from __future__ import annotations
 import dataclasses
 import typing
 
-from type_lens import TypeView
 from typing_extensions import Annotated, Self, TypeAlias
 
 from cappa.arg import Group
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.types import Completion
-from cappa.typing import (
-    MISSING,
-    T,
-    assert_type,
-    find_annotations,
-    missing,
-)
+from cappa.type_view import Empty, EmptyType, TypeView
+from cappa.typing import T, assert_type, find_annotations
 
 if typing.TYPE_CHECKING:
     from cappa.command import Command
@@ -35,12 +29,12 @@ class Subcommand:
         hidden: Whether the argument should be hidden in help text. Defaults to False.
     """
 
-    field_name: str | MISSING = ...
+    field_name: str | EmptyType = Empty
     required: bool | None = None
     group: str | tuple[int, str] | Group = (3, "Subcommands")
     hidden: bool = False
 
-    types: typing.Iterable[type] | MISSING = ...
+    types: typing.Iterable[type] | EmptyType = Empty
     options: dict[str, Command] = dataclasses.field(default_factory=dict)
 
     @classmethod
@@ -109,7 +103,7 @@ class Subcommand:
 
 
 def infer_types(arg: Subcommand, type_view: TypeView) -> typing.Iterable[type]:
-    if arg.types is not missing:
+    if arg.types is not Empty:
         return typing.cast(typing.Iterable[type], arg.types)
 
     if type_view.is_union:

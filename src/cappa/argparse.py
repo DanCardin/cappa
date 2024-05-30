@@ -5,15 +5,14 @@ import sys
 import typing
 from collections.abc import Callable
 
-from typing_extensions import assert_never
-
 from cappa.arg import Arg, ArgAction, no_extra_arg_actions
 from cappa.command import Command, Subcommand
 from cappa.help import generate_arg_groups
 from cappa.invoke import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.parser import RawOption, Value
-from cappa.typing import assert_type, missing
+from cappa.type_view import Empty
+from cappa.typing import assert_never, assert_type
 
 if sys.version_info < (3, 9):  # pragma: no cover
     # Backport https://github.com/python/cpython/pull/3680
@@ -240,7 +239,7 @@ def add_argument(
     if not is_positional and arg.required:
         kwargs["required"] = arg.required
 
-    if arg.default is not missing:
+    if arg.default is not Empty:
         kwargs["default"] = argparse.SUPPRESS
 
     if num_args is not None and (arg.action and arg.action not in no_extra_arg_actions):

@@ -36,7 +36,7 @@ def test_sequence_with_scalar_action(backend):
     with pytest.raises(ValueError) as e:
         parse(Args, "--help", backend=backend)
 
-    result = str(e.value).replace("typing.List", "list")
+    result = str(e.value).replace("List", "list")
     assert result == (
         "On field 'foo', apparent mismatch of annotated type with `Arg` options. "
         "'list[str]' type produces a sequence, whereas `num_args=1`/`action=ArgAction.set` do not. "
@@ -62,7 +62,7 @@ def test_sequence_with_scalar_num_args(backend):
     with pytest.raises(ValueError) as e:
         parse(ArgsBad, "--help", backend=backend)
 
-    result = str(e.value).replace("typing.List", "list")
+    result = str(e.value).replace("List", "list")
     assert result == (
         "On field 'foo', apparent mismatch of annotated type with `Arg` options. "
         "'list[str]' type produces a sequence, whereas `num_args=1`/`action=ArgAction.set` do not. "

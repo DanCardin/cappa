@@ -5,8 +5,6 @@ import sys
 import typing
 from collections.abc import Callable
 
-from type_lens import CallableView
-
 from cappa import class_inspect
 from cappa.arg import Arg, ArgAction, Group
 from cappa.docstring import ClassHelpText
@@ -14,7 +12,7 @@ from cappa.env import Env
 from cappa.help import HelpFormatable, HelpFormatter, format_short_help
 from cappa.output import Exit, Output, prompt_types
 from cappa.subcommand import Subcommand
-from cappa.typing import missing
+from cappa.type_view import CallableView, Empty
 
 T = typing.TypeVar("T")
 
@@ -201,7 +199,7 @@ class Command(typing.Generic[T]):
                 if is_subcommand:
                     continue
 
-                assert arg.default is not missing
+                assert arg.default is not Empty
                 value = arg.default
 
             else:

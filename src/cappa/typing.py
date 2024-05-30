@@ -4,7 +4,9 @@ import enum
 import typing
 from dataclasses import dataclass
 
-from type_lens import TypeView
+from typing_extensions import assert_never
+
+from cappa.type_view import TypeView
 
 try:
     from typing_extensions import Doc
@@ -17,10 +19,16 @@ except ImportError:  # pragma: no cover
         documentation: str
 
 
-T = typing.TypeVar("T")
+__all__ = [
+    "T",
+    "assert_never",
+    "assert_type",
+    "detect_choices",
+    "find_annotations",
+]
 
-missing = ...
-MISSING: typing.TypeAlias = type(missing)  # type: ignore
+
+T = typing.TypeVar("T")
 
 
 def find_annotations(type_view: TypeView, kind: type[T]) -> list[T]:
@@ -47,8 +55,6 @@ def detect_choices(type_view: TypeView) -> list[str] | None:
     if type_view.is_optional:
         type_view = type_view.strip_optional()
 
-    # origin = typing.get_origin(annotation) or annotation
-    # type_args = typing.get_args(annotation)
     if type_view.is_subclass_of(enum.Enum):
         return [v.value for v in type_view.annotation]
 
@@ -57,7 +63,6 @@ def detect_choices(type_view: TypeView) -> list[str] | None:
 
     if type_view.is_union:
         if all(t.is_literal for t in type_view.inner_types):
-            print(type_view.inner_types)
             return [str(t.args[0]) for t in type_view.inner_types]
 
     if type_view.is_literal:

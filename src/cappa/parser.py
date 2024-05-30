@@ -86,7 +86,9 @@ def backend(
                 prog=context.prog,
             )
         except VersionAction as e:
-            raise Exit(e.version.value_name, code=0, prog=context.prog)
+            raise Exit(
+                typing.cast(str, e.version.value_name), code=0, prog=context.prog
+            )
         except BadArgumentError as e:
             if context.provide_completions and e.arg:
                 completions = e.arg.completion(e.value) if e.arg.completion else []
@@ -149,13 +151,14 @@ class ParseContext:
         result = {}
         unique_names = set()
         for arg in command.arguments:
+            field_name = typing.cast(str, arg.field_name)
             if not isinstance(arg, Arg):
                 continue
 
             if arg.short or arg.long:
                 if arg.action not in ArgAction.value_actions():
-                    unique_names.add(arg.field_name)
-                result[arg.field_name] = arg
+                    unique_names.add(field_name)
+                result[field_name] = arg
 
             for opts in (arg.short, arg.long):
                 if not opts:
@@ -470,6 +473,8 @@ def consume_subcommand(context: ParseContext, arg: Subcommand) -> typing.Any:
 def consume_arg(
     context: ParseContext, arg: Arg, option: RawOption | None = None
 ) -> typing.Any:
+    field_name = typing.cast(str, arg.field_name)
+
     orig_num_args = arg.num_args if arg.num_args is not None else 1
     num_args = orig_num_args
 
@@ -568,8 +573,8 @@ def consume_arg(
 
         context.exclusive_args[group_name] = arg
 
-    if option and arg.field_name in context.missing_options:
-        context.missing_options.remove(arg.field_name)
+    if option and field_name in context.missing_options:
+        context.missing_options.remove(field_name)
 
     action = arg.action
     assert action
@@ -590,7 +595,7 @@ def consume_arg(
         fulfilled_deps[RawOption] = option
 
     kwargs = fulfill_deps(action_handler, fulfilled_deps)
-    context.result[arg.field_name] = action_handler(**kwargs)
+    context.result[field_name] = action_handler(**kwargs)
 
     check_deprecated(context, arg, option)
 
@@ -633,7 +638,7 @@ def store_false():
 
 
 def store_count(context: ParseContext, arg: Arg):
-    return context.result.get(arg.field_name, 0) + 1
+    return context.result.get(typing.cast(str, arg.field_name), 0) + 1
 
 
 def store_set(value: Value[typing.Any]):
@@ -641,7 +646,7 @@ def store_set(value: Value[typing.Any]):
 
 
 def store_append(context: ParseContext, arg: Arg, value: Value[typing.Any]):
-    result = context.result.setdefault(arg.field_name, [])
+    result = context.result.setdefault(typing.cast(str, arg.field_name), [])
     result.append(value.value)
     return result
 

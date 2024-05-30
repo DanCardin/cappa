@@ -5,19 +5,18 @@ import types
 import typing
 from datetime import date, datetime, time
 
-from type_lens import TypeView
-
 from cappa.file_io import FileMode
+from cappa.type_view import TypeView
 from cappa.typing import T
 
 __all__ = [
-    "parse_value",
-    "parse_literal",
     "parse_list",
-    "parse_set",
-    "parse_union",
-    "parse_tuple",
+    "parse_literal",
     "parse_none",
+    "parse_set",
+    "parse_tuple",
+    "parse_union",
+    "parse_value",
 ]
 
 
@@ -35,7 +34,7 @@ type_priority: typing.Final = types.MappingProxyType(
 
 def wrap_type_view(fn):
     @functools.wraps(fn)
-    def wrapper(annotation: T | TypeView[T]):
+    def wrapper(annotation: T | TypeView[T]) -> T:
         if not isinstance(annotation, TypeView):
             annotation = TypeView(annotation)
         return fn(annotation)
@@ -63,25 +62,25 @@ def parse_value(annotation: TypeView[T]) -> typing.Callable[[typing.Any], T]:
         return annotation.annotation
 
     if annotation.is_none_type:
-        return parse_none(annotation)
+        return parse_none  # type: ignore
 
     if annotation.is_subclass_of(datetime):
-        return datetime.fromisoformat
+        return datetime.fromisoformat  # type: ignore
 
     if annotation.is_subclass_of(date):
-        return date.fromisoformat
+        return date.fromisoformat  # type: ignore
 
     if annotation.is_subclass_of(time):
-        return time.fromisoformat
+        return time.fromisoformat  # type: ignore
 
     if annotation.is_subclass_of(list):
-        return parse_list(annotation)
+        return parse_list(annotation)  # pyright: ignore
 
     if annotation.is_subclass_of(set):
-        return parse_set(annotation)
+        return parse_set(annotation)  # pyright: ignore
 
     if annotation.is_subclass_of(tuple):
-        return parse_tuple(annotation)
+        return parse_tuple(annotation)  # pyright: ignore
 
     if annotation.is_subclass_of((typing.TextIO, typing.BinaryIO)):
         return parse_file_io(annotation)
@@ -202,17 +201,12 @@ def parse_optional(
     return optional_mapper
 
 
-@wrap_type_view
-def parse_none(_: TypeView[T]) -> typing.Callable[[typing.Any], T]:
+def parse_none(value: typing.Any) -> None:
     """Create a value parser for None."""
+    if value is None:
+        return
 
-    def map_none(value: typing.Any) -> None:
-        if value is None:
-            return
-
-        raise ValueError(value)
-
-    return map_none
+    raise ValueError(value)
 
 
 @wrap_type_view
