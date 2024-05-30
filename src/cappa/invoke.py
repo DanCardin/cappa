@@ -16,7 +16,7 @@ C = typing.TypeVar("C", bound=HasCommand)
 
 
 class InvokeResolutionError(RuntimeError):
-    """Raised for errors encountered during evaluation of invoke depdendencies."""
+    """Raised for errors encountered during evaluation of invoke dependencies."""
 
 
 @dataclass(frozen=True)
@@ -175,7 +175,7 @@ def resolve_global_deps(
         deps = typing.cast(typing.Mapping, {d: Dep(d) for d in deps})
 
     for source_function, dep in deps.items():
-        # Deps need to be fullfilled, whereas raw values are taken directly.
+        # Deps need to be fulfilled, whereas raw values are taken directly.
         if isinstance(dep, Dep):
             value = Resolved(dep.callable, fullfill_deps(dep.callable, implicit_deps))
         else:
@@ -245,7 +245,7 @@ def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
 
         option_instance = getattr(instance, arg.field_name)
         if option_instance is None:
-            # None is a valid subcommand instance value, but it wont exist as a dependency
+            # None is a valid subcommand instance value, but it won't exist as a dependency
             # where an actual command has been selected.
             continue
 
@@ -278,13 +278,14 @@ def fullfill_deps(fn: Callable, fullfilled_deps: dict) -> typing.Any:
             dep = None
         else:
             object_annotation = find_type_annotation(annotation, Dep)
-            dep = object_annotation.obj
             annotation = object_annotation.annotation
+            objs = object_annotation.obj
+            dep = objs[0] if objs else None
 
         annotation = typing.get_origin(annotation) or annotation
 
         if dep is None:
-            # Non-annotated args are either implicit dependencies (and thus already fullfilled),
+            # Non-annotated args are either implicit dependencies (and thus already fulfilled),
             # or arguments that we cannot fullfill
             if annotation not in fullfilled_deps:
                 if param.default is param.empty:

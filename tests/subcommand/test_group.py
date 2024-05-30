@@ -28,3 +28,17 @@ def test_required_missing(backend, capsys):
 
     help = capsys.readouterr().out
     assert re.match(r".*Yup:?[\n\s]+\{?foo.*", help, re.DOTALL)
+
+
+@backends
+def test_explicit_group(backend, capsys):
+    @dataclass
+    class Args:
+        subcommand: Annotated[Foo, cappa.Subcommand(group=cappa.Group(name="Yup"))]
+
+    with pytest.raises(cappa.Exit) as e:
+        parse(Args, "--help", backend=backend)
+    assert e.value.code == 0
+
+    help = capsys.readouterr().out
+    assert re.match(r".*Yup:?[\n\s]+\{?foo.*", help, re.DOTALL)

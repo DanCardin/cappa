@@ -10,13 +10,13 @@ from rich.table import Table
 from rich.text import Text
 from typing_extensions import TypeAlias
 
-from cappa.arg import Arg, ArgAction, no_extra_arg_actions
+from cappa.arg import Arg, ArgAction, Group, no_extra_arg_actions
 from cappa.command import Command
 from cappa.output import Displayable
 from cappa.subcommand import Subcommand
 from cappa.typing import missing
 
-ArgGroup: TypeAlias = typing.Tuple[str, typing.List[typing.Union[Arg, Subcommand]]]
+ArgGroup: TypeAlias = typing.Tuple[Group, typing.List[typing.Union[Arg, Subcommand]]]
 
 left_padding = (0, 0, 0, 2)
 
@@ -104,15 +104,13 @@ def format_short_help(command: Command, prog: str) -> Displayable:
 
 
 def generate_arg_groups(command: Command, include_hidden=False) -> list[ArgGroup]:
-    def by_group(arg: Arg | Subcommand) -> tuple[int, str]:
-        assert isinstance(arg.group, tuple)
-        return typing.cast(typing.Tuple[int, str], arg.group)
+    def by_group(arg: Arg | Subcommand) -> Group:
+        assert isinstance(arg.group, Group)
+        return arg.group
 
     return [
         (g, [a for a in args if include_hidden or not a.hidden])
-        for (_, g), args in groupby(
-            sorted(command.arguments, key=by_group), key=by_group
-        )
+        for g, args in groupby(sorted(command.arguments, key=by_group), key=by_group)
     ]
 
 
@@ -132,7 +130,7 @@ def add_long_args(arg_groups: list[ArgGroup]) -> list:
 
     for group, args in arg_groups:
         table.add_row(
-            Text(group, style="cappa.group", justify="left"),
+            Text(group.name, style="cappa.group", justify="left"),
             Text(style="cappa.group"),
         )
         for arg in args:

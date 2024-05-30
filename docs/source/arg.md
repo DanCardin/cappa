@@ -49,7 +49,7 @@ can be used and are interpreted to handle different kinds of CLI input.
 ## Action
 
 Obliquely referenced through other `Arg` options like `count`, every `Arg` has a
-corrresponding "action". The action is automatically inferred, most of the time,
+corresponding "action". The action is automatically inferred, most of the time,
 based on other options (i.e. `count`), the annotated type (i.e. `bool` ->
 `ArgAction.set_true/ArgAction.set_false`, `list` -> `ArgAction.append`), etc.
 
@@ -79,7 +79,7 @@ As such, you may need to specify options like `num_args`, where you wouldn't hav
 needed to.
 ```
 
-Similarly to the [invoke][./invoke.md] system, you can use the type system to
+Similarly to the [invoke](./invoke.md) system, you can use the type system to
 automatically inject objects of supported types from the parse context into the
 function in question. The return value of the function will be used as the
 result of parsing that particular argument.
@@ -154,7 +154,7 @@ table below shows how their parsed output will end up looking when mapped to rea
 ## Num Args
 
 `num_args` controls the number of arguments that the parser will consume in
-order to fullfill a specific field. `num_args=1` is the default behavior,
+order to fulfill a specific field. `num_args=1` is the default behavior,
 meaning only one argument/value will be consumed for that field. This yields a
 scalar-type value.
 
@@ -197,4 +197,82 @@ supplied value at the CLI level.
 .. autoapimodule:: cappa
    :members: Env
    :noindex:
+```
+
+## Groups (and Mutual Exclusion)
+
+`Arg(group=...)` can be used to customize the way arguments/options are grouped
+together and interpreted.
+
+The `group` argument can be any of:
+
+- `str`: A string that indicates a custom group. This only affects help text output,
+  by placing any `Arg`s with that group string under a common heading.
+
+  ```python
+  class Example:
+      arg1: Annotated[str, Arg(group='Special')]
+      arg2: Annotated[str, Arg(group='Special')]
+  ```
+
+- `tuple[int, str]`: This additionally provides an `int` which is considered when
+  determining the `order` of group output.
+
+  ```python
+  class Example:
+      arg1: Annotated[str, Arg(group=(4, 'Special'))]
+      arg2: Annotated[str, Arg(group=(4, 'Special'))]
+  ```
+
+- `Group`: Instances of `Group` are the normalized form of the above two shorthand
+  options (which are ultimately coerced into `Group`s).
+
+  `Group` additionally has an `exclusive: bool` option, which can be used to indicate
+  that options within a group are mutually exclusive to one other.
+
+  ```{note}
+  Both `order` and `exclusive` options on `Group` are expected (and validated)
+  to be identical across all options sharing that group string.
+  ```
+
+  ```python
+  class Example:
+      arg1: Annotated[str, Arg(group=Group('Special', exclusive=True))]
+      arg2: Annotated[str, Arg(group=Group('Special', exclusive=True))]
+  ```
+
+  In this case, `example --arg1 foo --arg2` would generate an error like:
+
+  ```
+  Argument 'arg1' is not allowed with argument 'arg2'
+  ```
+
+### Dedicated Mutual Exclusion Syntax
+
+A potentially common use of mutually exclusive arguments would be two distinct
+CLI-level arguments, which ultimately are different ways of configuring a specific
+code-level field.
+
+In such cases, two (or more) `cappa.Arg`s can be annotated on a single class field.
+This **implies** a mutually exclusive group automatically, defaulting to the name
+of the field ("Verbose" in this case) as the group name. For example:
+
+```python
+@dataclass
+class Example:
+    verbose: Annotated[
+        int,
+        cappa.Arg(short="-v", action=cappa.ArgAction.count),
+        cappa.Arg(long="--verbosity"),
+    ] = 0
+```
+
+- `example -vvv` would yield: `verbose=3`
+- `example --verbosity 4` would yield: `verbose=4`
+- `example -vvv --verbosity 4` would yield the error: `Argument '--verbosity'
+is not allowed with argument '-v'`
+
+```{note}
+An explicit `group=` can still be used in concert with the above syntax to control
+the `order` and name of the resultant group.
 ```

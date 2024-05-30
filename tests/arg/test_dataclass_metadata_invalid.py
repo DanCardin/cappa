@@ -21,8 +21,8 @@ class Invalid:
 
 @backends
 def test_valid(backend):
-    with pytest.raises(
-        ValueError,
-        match='`metadata={"cappa": <x>}` must be of type `Arg` or `Subcommand`',
-    ):
+    with pytest.raises(cappa.Exit) as e:
         parse(Command, "-n", "foo", "subcommand", "4", backend=backend)
+
+    assert "invalid" in str(e.value.message).lower()
+    assert "'subcommand'" in str(e.value.message)

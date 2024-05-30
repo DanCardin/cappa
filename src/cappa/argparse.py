@@ -211,15 +211,17 @@ def add_arguments(
     parser: argparse.ArgumentParser, command: Command, output: Output, dest_prefix=""
 ):
     arg_groups = generate_arg_groups(command, include_hidden=True)
-    for group_name, args in arg_groups:
-        group = parser.add_argument_group(title=group_name)
+    for group, args in arg_groups:
+        argparse_group = parser.add_argument_group(title=group.name)
+        if group.exclusive:
+            argparse_group = argparse_group.add_mutually_exclusive_group()
 
         for arg in args:
             if isinstance(arg, Arg):
-                add_argument(group, arg, dest_prefix=dest_prefix)
+                add_argument(argparse_group, arg, dest_prefix=dest_prefix)
             elif isinstance(arg, Subcommand):
                 add_subcommands(
-                    parser, group_name, arg, output=output, dest_prefix=dest_prefix
+                    parser, group.name, arg, output=output, dest_prefix=dest_prefix
                 )
             else:
                 assert_never(arg)
@@ -355,4 +357,4 @@ def add_deprecated_kwarg(arg: Arg | Command) -> dict[str, typing.Any]:
     if sys.version_info < (3, 13) or not arg.deprecated:
         return {}
 
-    return {"deprecated": arg.deprecated}
+    return {"deprecated": arg.deprecated}  # pragma: no cover

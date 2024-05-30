@@ -4,7 +4,7 @@ import dataclasses
 import typing
 from collections import deque
 
-from cappa.arg import Arg, ArgAction, no_extra_arg_actions
+from cappa.arg import Arg, ArgAction, Group, no_extra_arg_actions
 from cappa.command import Command, Subcommand
 from cappa.completion.types import Completion, FileCompletion
 from cappa.help import format_help, format_subcommand_names
@@ -116,6 +116,7 @@ class ParseContext:
     output: Output
 
     consumed_args: list[RawArg | RawOption] = dataclasses.field(default_factory=list)
+    exclusive_args: dict[str, Arg] = dataclasses.field(default_factory=dict)
 
     result: dict[str, typing.Any] = dataclasses.field(default_factory=dict)
     command_stack: list[Command] = dataclasses.field(default_factory=list)
@@ -548,6 +549,22 @@ def consume_arg(
                 command=context.command,
                 arg=arg,
             )
+
+    group = typing.cast(typing.Optional[Group], arg.group)
+    if group and group.exclusive:
+        group_name = typing.cast(str, group.name)
+        exclusive_arg = context.exclusive_args.get(group_name)
+
+        if exclusive_arg and exclusive_arg != arg:
+            raise BadArgumentError(
+                f"Argument '{arg.names_str('/')}' is not allowed with argument"
+                f" '{exclusive_arg.names_str('/')}'",
+                value=result,
+                command=context.command,
+                arg=arg,
+            )
+
+        context.exclusive_args[group_name] = arg
 
     if option and arg.field_name in context.missing_options:
         context.missing_options.remove(arg.field_name)

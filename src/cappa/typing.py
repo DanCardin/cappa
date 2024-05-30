@@ -31,14 +31,14 @@ MISSING: typing.TypeAlias = type(missing)  # type: ignore
 
 @dataclass
 class ObjectAnnotation(typing.Generic[T]):
-    obj: T | None
+    obj: list[T]
     annotation: type
     doc: str | None = None
     other_annotations: list[type] = field(default_factory=list)
 
 
 def find_type_annotation(type_hint: type, kind: type[T]) -> ObjectAnnotation[T]:
-    instance = None
+    instances = []
     doc = None
 
     other_annotations = []
@@ -50,11 +50,12 @@ def find_type_annotation(type_hint: type, kind: type[T]) -> ObjectAnnotation[T]:
             is_instance = isinstance(annotation, kind)
             is_kind = isinstance(annotation, type) and issubclass(annotation, kind)
 
-            if instance is None and (is_instance or is_kind):
+            if is_instance or is_kind:
                 instance = annotation
                 if is_kind:
                     instance = typing.cast(type, annotation)()
-                    break
+
+                instances.append(instance)
             else:
                 other_annotations.append(annotation)
 
@@ -67,7 +68,10 @@ def find_type_annotation(type_hint: type, kind: type[T]) -> ObjectAnnotation[T]:
             typing_extensions.assert_never(doc_type)  # type: ignore
 
     return ObjectAnnotation(
-        obj=instance, annotation=type_hint, doc=doc, other_annotations=other_annotations
+        obj=instances,
+        annotation=type_hint,
+        doc=doc,
+        other_annotations=other_annotations,
     )
 
 

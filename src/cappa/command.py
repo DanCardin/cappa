@@ -8,7 +8,7 @@ from collections.abc import Callable
 from types import ModuleType
 
 from cappa import class_inspect
-from cappa.arg import Arg, ArgAction
+from cappa.arg import Arg, ArgAction, Group
 from cappa.env import Env
 from cappa.output import Exit, Output, prompt_types
 from cappa.subcommand import Subcommand
@@ -151,15 +151,17 @@ class Command(typing.Generic[T]):
                 if maybe_subcommand:
                     arguments.append(maybe_subcommand)
                 else:
-                    arg_def: Arg = Arg.collect(
+                    arg_defs: list[Arg] = Arg.collect(
                         field,
                         type_hint,
                         fallback_help=arg_help,
                         default_short=command.default_short,
                         default_long=command.default_long,
                     )
-                    arguments.append(arg_def)
 
+                    arguments.extend(arg_defs)
+
+        check_group_identity(arguments)
         kwargs["arguments"] = arguments
 
         return dataclasses.replace(command, **kwargs)
@@ -299,3 +301,23 @@ def get_doc(cls):
     if doc == dataclasses_docstring:
         return ""
     return doc
+
+
+def check_group_identity(args: list[Arg | Subcommand]):
+    group_identity: dict[str, Group] = {}
+
+    for arg in args:
+        if isinstance(arg, Subcommand):
+            continue
+
+        assert isinstance(arg.group, Group)
+
+        name = typing.cast(str, arg.group.name)
+        identity = group_identity.get(name)
+        if identity and identity != arg.group:
+            raise ValueError(
+                f"Group details between `{identity}` and `{arg.group}` must match"
+            )
+
+        assert isinstance(arg.group, Group)
+        group_identity[name] = arg.group

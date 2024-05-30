@@ -9,10 +9,10 @@ from enum import Enum
 import typing_inspect
 from typing_extensions import Self, get_args
 
-from cappa.typing import MISSING, find_type_annotation, get_type_hints, missing
+from cappa.typing import MISSING, T, find_type_annotation, get_type_hints, missing
 
 if typing.TYPE_CHECKING:
-    from cappa import Arg, Subcommand
+    pass
 
 __all__ = [
     "fields",
@@ -207,18 +207,13 @@ class ClassTypes(Enum):
         return None
 
 
-def extract_dataclass_metadata(field: Field) -> Arg | Subcommand | None:
-    from cappa.arg import Arg
-    from cappa.subcommand import Subcommand
-
+def extract_dataclass_metadata(field: Field, cls: type[T]) -> T | None:
     field_metadata = field.metadata.get("cappa")
     if not field_metadata:
         return None
 
-    if not isinstance(field_metadata, (Arg, Subcommand)):
-        raise ValueError(
-            '`metadata={"cappa": <x>}` must be of type `Arg` or `Subcommand`'
-        )
+    if not isinstance(field_metadata, cls):
+        return None
 
     return field_metadata
 
