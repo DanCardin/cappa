@@ -7,12 +7,13 @@ import typing
 from collections.abc import Callable
 from types import ModuleType
 
+from type_lens import Empty, FunctionView
+
 from cappa import class_inspect
 from cappa.arg import Arg, ArgAction, Group
 from cappa.env import Env
 from cappa.output import Exit, Output, prompt_types
 from cappa.subcommand import Subcommand
-from cappa.typing import get_type_hints, missing
 
 try:
     import docstring_parser as _docstring_parser
@@ -139,21 +140,22 @@ class Command(typing.Generic[T]):
             ]
         else:
             fields = class_inspect.fields(command.cmd_cls)
-            type_hints = get_type_hints(command.cmd_cls, include_extras=True)
+            function_view = FunctionView.from_type_hints(
+                command.cmd_cls, include_extras=True
+            )
 
             arguments = []
 
-            for field in fields:
-                type_hint = type_hints[field.name]
-                arg_help = arg_help_map.get(field.name)
+            for field, param_view in zip(fields, function_view.parameters):
+                arg_help = arg_help_map.get(param_view.name)
 
-                maybe_subcommand = Subcommand.collect(field, type_hint)
+                maybe_subcommand = Subcommand.collect(field, param_view.type_view)
                 if maybe_subcommand:
                     arguments.append(maybe_subcommand)
                 else:
                     arg_defs: list[Arg] = Arg.collect(
                         field,
-                        type_hint,
+                        param_view.type_view,
                         fallback_help=arg_help,
                         default_short=command.default_short,
                         default_long=command.default_long,
@@ -207,7 +209,7 @@ class Command(typing.Generic[T]):
                 if is_subcommand:
                     continue
 
-                assert arg.default is not missing
+                assert arg.default is not Empty
                 value = arg.default
             else:
                 value = parsed_args[arg.field_name]

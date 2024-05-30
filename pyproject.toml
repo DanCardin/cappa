@@ -28,7 +28,7 @@ include = [
 python = ">=3.8,<4"
 
 typing-extensions = ">=4.8.0"
-typing-inspect = ">=0.9.0"
+type-lens = {version = ">=0.0.0", allow-prereleases=true}
 rich = "*"
 eval_type_backport = {version = "*", python = "<3.10"}
 

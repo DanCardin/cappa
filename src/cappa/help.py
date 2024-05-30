@@ -8,13 +8,13 @@ from rich.markdown import Markdown
 from rich.padding import Padding
 from rich.table import Table
 from rich.text import Text
+from type_lens import Empty
 from typing_extensions import TypeAlias
 
 from cappa.arg import Arg, ArgAction, Group, no_extra_arg_actions
 from cappa.command import Command
 from cappa.output import Displayable
 from cappa.subcommand import Subcommand
-from cappa.typing import missing
 
 ArgGroup: TypeAlias = typing.Tuple[Group, typing.List[typing.Union[Arg, Subcommand]]]
 
@@ -34,7 +34,7 @@ def create_version_arg(version: str | Arg | None = None) -> Arg | None:
             group=(4, "Help"),
         )
 
-    if version.value_name is missing:
+    if version.value_name is Empty:
         raise ValueError(
             "Expected explicit version `Arg` to supply version number as its name, like `Arg('1.2.3', ...)`"
         )

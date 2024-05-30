@@ -3,20 +3,13 @@ from __future__ import annotations
 import dataclasses
 import typing
 
+from type_lens import Empty, EmptyType, TypeView
 from typing_extensions import Annotated, Self, TypeAlias
-from typing_inspect import is_optional_type, is_union_type
 
 from cappa.arg import Group
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.types import Completion
-from cappa.typing import (
-    MISSING,
-    NoneType,
-    T,
-    assert_type,
-    find_type_annotation,
-    missing,
-)
+from cappa.typing import T, assert_type, find_annotations
 
 if typing.TYPE_CHECKING:
     from cappa.command import Command
@@ -35,40 +28,42 @@ class Subcommand:
         hidden: Whether the argument should be hidden in help text. Defaults to False.
     """
 
-    field_name: str | MISSING = ...
+    field_name: str | EmptyType = Empty
     required: bool | None = None
     group: str | tuple[int, str] | Group = (3, "Subcommands")
     hidden: bool = False
 
-    types: typing.Iterable[type] | MISSING = ...
+    types: typing.Iterable[type] | EmptyType = Empty
     options: dict[str, Command] = dataclasses.field(default_factory=dict)
 
     @classmethod
-    def collect(cls, field: Field, type_hint: type) -> Subcommand | None:
-        object_annotation = find_type_annotation(type_hint, Subcommand)
-        subcommand = object_annotation.obj
+    def collect(cls, field: Field, type_view: TypeView) -> Subcommand | None:
+        subcommand = find_annotations(type_view, cls) or None
 
         field_metadata = extract_dataclass_metadata(field, Subcommand)
         if field_metadata:
-            subcommand = [field_metadata]
+            subcommand = field_metadata
 
         if not subcommand:
             return None
 
         assert len(subcommand) == 1
         return subcommand[0].normalize(
-            object_annotation.annotation,
+            type_view,
             field_name=field.name,
         )
 
     def normalize(
         self,
-        annotation=NoneType,
+        type_view: TypeView | None = None,
         field_name: str | None = None,
     ) -> Self:
+        if type_view is None:
+            type_view = TypeView(...)
+
         field_name = field_name or assert_type(self.field_name, str)
-        types = infer_types(self, annotation)
-        required = infer_required(self, annotation)
+        types = infer_types(self, type_view)
+        required = infer_required(self, type_view)
         options = infer_options(self, types)
         group = infer_group(self)
 
@@ -99,22 +94,23 @@ class Subcommand:
         return [Completion(o) for o in self.options if partial in o]
 
 
-def infer_types(arg: Subcommand, annotation: type) -> typing.Iterable[type]:
-    if arg.types is not missing:
+def infer_types(arg: Subcommand, type_view: TypeView) -> typing.Iterable[type]:
+    if arg.types is not Empty:
         return typing.cast(typing.Iterable[type], arg.types)
 
-    if is_union_type(annotation):
-        types = typing.get_args(annotation)
-        return tuple([t for t in types if not is_optional_type(t)])
+    if type_view.is_union:
+        return tuple(
+            [t.annotation for t in type_view.inner_types if not t.is_none_type]
+        )
 
-    return (annotation,)
+    return (type_view.annotation,)
 
 
-def infer_required(arg: Subcommand, annotation: type) -> bool:
+def infer_required(arg: Subcommand, annotation: TypeView) -> bool:
     if arg.required is not None:
         return arg.required
 
-    return not is_optional_type(annotation)
+    return not annotation.is_optional
 
 
 def infer_options(arg: Subcommand, types: typing.Iterable[type]) -> dict[str, Command]:
@@ -153,3 +149,4 @@ def infer_group(arg: Subcommand) -> Group:
 
 
 Subcommands: TypeAlias = Annotated[T, Subcommand]
+DEFAULT_SUBCOMMAND = Subcommand()

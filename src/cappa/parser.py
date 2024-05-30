@@ -8,7 +8,7 @@ from cappa.arg import Arg, ArgAction, Group, no_extra_arg_actions
 from cappa.command import Command, Subcommand
 from cappa.completion.types import Completion, FileCompletion
 from cappa.help import format_help, format_subcommand_names
-from cappa.invoke import fullfill_deps
+from cappa.invoke import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.typing import T, assert_type
 
@@ -519,9 +519,9 @@ def consume_arg(
 
             if context.provide_completions and not context.has_values():
                 if arg.completion:
-                    completions: list[Completion] | list[
-                        FileCompletion
-                    ] = arg.completion(result)
+                    completions: list[Completion] | list[FileCompletion] = (
+                        arg.completion(result)
+                    )
                 else:
                     completions = [FileCompletion(result)]
                 raise CompletionAction(*completions)
@@ -587,7 +587,7 @@ def consume_arg(
     if option:
         fullfilled_deps[RawOption] = option
 
-    kwargs = fullfill_deps(action_handler, fullfilled_deps)
+    kwargs = fulfill_deps(action_handler, fullfilled_deps)
     context.result[arg.field_name] = action_handler(**kwargs)
 
     check_deprecated(context, arg, option)

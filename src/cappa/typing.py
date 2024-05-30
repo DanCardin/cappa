@@ -3,76 +3,38 @@ from __future__ import annotations
 import sys
 import types
 import typing
-from dataclasses import dataclass, field
-from inspect import cleandoc
+from dataclasses import dataclass
 
-import typing_extensions
-import typing_inspect
+from type_lens import TypeView
 from typing_extensions import Annotated, get_args, get_origin
-from typing_inspect import is_literal_type
 
 try:
     from typing_extensions import Doc
 
-    doc_type: type | None = Doc
+    doc_type: type = Doc
 except ImportError:  # pragma: no cover
-    doc_type = None
 
-if sys.version_info < (3, 10):
-    NoneType = type(None)  # pragma: no cover
-else:
-    NoneType = types.NoneType  # type: ignore
+    @dataclass
+    class Doc:  # type: ignore
+        documentation: str
+
 
 T = typing.TypeVar("T")
 
-missing = ...
-MISSING: typing.TypeAlias = type(missing)  # type: ignore
 
+def find_annotations(type_view: TypeView, kind: type[T]) -> list[T]:
+    if kind is None:
+        return []
 
-@dataclass
-class ObjectAnnotation(typing.Generic[T]):
-    obj: list[T]
-    annotation: type
-    doc: str | None = None
-    other_annotations: list[type] = field(default_factory=list)
+    result = []
+    for annotation in type_view.metadata:
+        if isinstance(annotation, kind):
+            result.append(annotation)
 
+        if isinstance(annotation, type) and issubclass(annotation, kind):
+            result.append(annotation())
 
-def find_type_annotation(type_hint: type, kind: type[T]) -> ObjectAnnotation[T]:
-    instances = []
-    doc = None
-
-    other_annotations = []
-    if get_origin(type_hint) is Annotated:
-        annotations = type_hint.__metadata__  # type: ignore
-        type_hint = type_hint.__origin__  # type: ignore
-
-        for annotation in annotations:
-            is_instance = isinstance(annotation, kind)
-            is_kind = isinstance(annotation, type) and issubclass(annotation, kind)
-
-            if is_instance or is_kind:
-                instance = annotation
-                if is_kind:
-                    instance = typing.cast(type, annotation)()
-
-                instances.append(instance)
-            else:
-                other_annotations.append(annotation)
-
-        if doc_type:
-            for annotation in annotations:
-                if isinstance(annotation, doc_type):
-                    doc = cleandoc(annotation.documentation)  # type: ignore
-                    break
-        else:
-            typing_extensions.assert_never(doc_type)  # type: ignore
-
-    return ObjectAnnotation(
-        obj=instances,
-        annotation=type_hint,
-        doc=doc,
-        other_annotations=other_annotations,
-    )
+    return result
 
 
 def assert_type(value: typing.Any, typ: type[T]) -> T:
@@ -80,45 +42,12 @@ def assert_type(value: typing.Any, typ: type[T]) -> T:
     return typing.cast(T, value)
 
 
-def backend_type(typ) -> str:
-    if is_literal_type(typ):
-        return get_args(typ)[0]
+def backend_type(annotation: TypeView) -> str:
+    if annotation.is_literal:
+        assert annotation.args
+        return annotation.args[0]
 
-    return f"<{typ.__name__}>"
-
-
-def is_union_type(typ):
-    if typing_inspect.is_union_type(typ):
-        return True
-
-    if hasattr(types, "UnionType") and typ is types.UnionType:
-        return True  # pragma: no cover
-    return False
-
-
-def is_none_type(typ):
-    return typ is NoneType
-
-
-def is_subclass(typ, superclass):
-    if not isinstance(typ, type):
-        return False
-
-    if typ is str:
-        return False
-
-    return issubclass(typ, superclass)
-
-
-def get_optional_type(typ: typing.Optional[T]):
-    if typ is NoneType:
-        return typ
-
-    args = get_args(typ)
-    if len(args) == 2:
-        return args[0]
-
-    return typing.Union[args]
+    return f"<{annotation.annotation.__name__}>"
 
 
 def get_type_hints(obj, include_extras=False):
@@ -144,19 +73,6 @@ def fix_annotated_optional_type_hints(
         ):
             hints[param_name] = next(iter(args))
     return hints
-
-
-def is_of_type(annotation, types):
-    if typing_inspect.is_optional_type(annotation):
-        args = get_args(annotation)
-    else:
-        args = (annotation,)
-
-    for arg in args:
-        arg_annotation = get_origin(arg) or arg
-        if is_subclass(arg_annotation, types):
-            return True
-    return False
 
 
 if sys.version_info >= (3, 10):
