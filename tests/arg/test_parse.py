@@ -74,5 +74,5 @@ def test_parse_optional(backend):
     assert e.value.code == 2
     assert (
         e.value.message
-        == "Invalid value for 'numbers' with value 'one': could not convert string to float: 'one'"
+        == "Invalid value for 'numbers': could not convert string to float: 'one'"
     )

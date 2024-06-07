@@ -7,7 +7,7 @@ import typing
 from typing_inspect import get_origin, is_literal_type
 
 from cappa.file_io import FileMode
-from cappa.typing import T, backend_type, is_none_type, is_subclass, is_union_type
+from cappa.typing import T, is_none_type, is_subclass, is_union_type
 
 __all__ = [
     "parse_value",
@@ -57,7 +57,7 @@ def parse_value(
         return origin
 
     if is_none_type(origin):
-        return parse_none()
+        return parse_none
 
     if is_subclass(origin, list):
         return parse_list(*type_args)
@@ -87,8 +87,9 @@ def parse_literal(*type_args: T) -> typing.Callable[[typing.Any], T]:
             if raw_value == value:
                 return type_arg
 
+        options = ", ".join(f"'{t}'" for t in type_args)
         raise ValueError(
-            f"Invalid choice: '{value}' (choose from {', '.join(str(t) for t in type_args)})"
+            f"Invalid choice: '{value}' (choose from literal values {options})"
         )
 
     return literal_mapper
@@ -142,20 +143,27 @@ def parse_union(*type_args: type) -> typing.Callable[[typing.Any], typing.Any]:
     def type_priority_key(type_) -> int:
         return type_priority.get(type_, 1)
 
-    mappers: list[typing.Callable] = [
-        parse_value(t) for t in sorted(type_args, key=type_priority_key)
+    mappers: list[tuple[type, typing.Callable]] = [
+        (t, parse_value(t)) for t in sorted(type_args, key=type_priority_key)
     ]
 
     def union_mapper(value):
-        for mapper in mappers:
+        exceptions = []
+        for type_arg, mapper in mappers:
             try:
                 return mapper(value)
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                if mapper is parse_none:
+                    err = " - <no value>"
+                else:
+                    err = f" - {repr_type(type_arg)}: {e}"
+                exceptions.append(err)
 
-        raise ValueError(
-            f"Could not parse '{value}' given options: {', '.join(backend_type(t) for t in type_args)}"
-        )
+        # Perhaps we should be showing all failed mappings at some point. As-is,
+        # the preferred interpretation will be determined by order in the event
+        # of all mappings failing
+        reasons = "\n".join(exceptions)
+        raise ValueError(f"Possible variants\n{reasons}")
 
     return union_mapper
 
@@ -172,16 +180,12 @@ def parse_optional(
     return optional_mapper
 
 
-def parse_none():
+def parse_none(value):
     """Create a value parser for None."""
+    if value is None:
+        return
 
-    def map_none(value):
-        if value is None:
-            return
-
-        raise ValueError(value)
-
-    return map_none
+    raise ValueError(value)
 
 
 def parse_file_io(
@@ -226,3 +230,10 @@ def detect_choices(origin: type, type_args: tuple[type, ...]) -> list[str] | Non
 
 def is_sequence_type(typ):
     return is_subclass(get_origin(typ) or typ, (typing.List, typing.Tuple, typing.Set))
+
+
+def repr_type(t):
+    if isinstance(t, type) and not typing.get_origin(t):
+        return str(t.__name__)
+
+    return str(t).replace("typing.", "")

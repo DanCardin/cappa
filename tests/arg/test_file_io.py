@@ -173,10 +173,8 @@ def test_invalid_mode(backend):
     with pytest.raises(cappa.Exit) as e:
         parse(Foo, "foo.py", backend=backend)
 
-    assert (
-        e.value.message
-        == "Invalid value for 'bar' with value 'foo.py': can't have text and binary mode at once"
-    )
+    assert str(e.value.message).startswith("Invalid value for 'bar'")
+    assert str(e.value.message).endswith("can't have text and binary mode at once")
 
 
 @backends
