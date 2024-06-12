@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import textwrap
 from dataclasses import dataclass
 from typing import Literal, Union
 
 import cappa
 import pytest
+from typing_extensions import Annotated
 
 from tests.utils import backends, parse
 
@@ -35,3 +37,23 @@ def test_invalid(backend):
     assert (
         "invalid choice: 'thename' (choose from 'one', 'two', 'three', '4')" in message
     )
+
+
+@backends
+def test_invalid_collection_of_literals(backend):
+    @dataclass
+    class Args:
+        foo: Annotated[set[Literal["one", "two"]] | None, cappa.Arg(short=True)] = None
+
+    with pytest.raises(cappa.Exit) as e:
+        parse(Args, "-f", "three", backend=backend)
+
+    assert e.value.code == 2
+
+    err = textwrap.dedent(
+        """\
+        Invalid value for '-f': Possible variants
+         - set[Literal['one', 'two']]: Invalid choice: 'three' (choose from literal values 'one', 'two')
+         - <no value>"""
+    )
+    assert str(e.value.message).lower() == err.lower()

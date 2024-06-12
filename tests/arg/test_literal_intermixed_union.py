@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import textwrap
 from dataclasses import dataclass
 from typing import Literal, Union
 
@@ -33,7 +34,10 @@ def test_invalid_string(backend):
 
     assert e.value.code == 2
 
-    assert e.value.message == (
-        "Invalid value for 'name' with value 'thename': "
-        "Could not parse 'thename' given options: <int>, one"
+    err = textwrap.dedent(
+        """\
+        Invalid value for 'name': Possible variants
+         - Literal['one']: Invalid choice: 'thename' (choose from literal values 'one')
+         - int: invalid literal for int() with base 10: 'thename'"""
     )
+    assert err in str(e.value.message)

@@ -23,7 +23,7 @@ def test_default(backend):
     assert e.value.code == 2
     assert (
         e.value.message
-        == "Invalid value for 'default' with value 'foo': invalid literal for int() with base 10: 'foo'"
+        == "Invalid value for 'default': invalid literal for int() with base 10: 'foo'"
     )
 
 

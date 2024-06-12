@@ -227,7 +227,7 @@ class Command(typing.Generic[T]):
                 except Exception as e:
                     exception_reason = str(e)
                     raise Exit(
-                        f"Invalid value for '{arg.names_str()}' with value '{value}': {exception_reason}",
+                        f"Invalid value for '{arg.names_str()}': {exception_reason}",
                         code=2,
                         prog=prog,
                     )

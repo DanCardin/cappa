@@ -2,6 +2,10 @@
 
 ## 0.20
 
+### 0.20.1
+
+- feat: Improve union error message.
+
 ### 0.20.0
 
 - feat: Implement exclusive argument groups.
