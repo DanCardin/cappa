@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.21
+
+### 0.21.0
+
+- feat: Add `help_formatter` system wherein help text rendering can be customized
+  to include or exclude things like default values, or choices. Notably changes
+  to include default values in help text by default.
+
 ## 0.20
 
 ### 0.20.1

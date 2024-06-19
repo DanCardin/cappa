@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 from rich.console import Console
 
 import cappa
-from cappa.help import format_help, generate_arg_groups
+from cappa.help import HelpFormatter, generate_arg_groups
 from cappa.output import Displayable, theme
 from cappa.typing import missing
 
@@ -63,7 +63,7 @@ class CappaDirective(Directive):
 
 
 def render_to_terminal(command: cappa.Command, terminal_width: int):
-    raw_help: list[Displayable] = format_help(command, command.real_name())
+    raw_help: list[Displayable] = HelpFormatter.default(command, command.real_name())
 
     line_wrap = ""
     if terminal_width == 0:

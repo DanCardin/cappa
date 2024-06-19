@@ -223,7 +223,7 @@ class Arg(typing.Generic[T]):
         required = infer_required(self, annotation, default)
 
         parse = infer_parse(self, annotation)
-        help = infer_help(self, choices, fallback_help)
+        help = infer_help(self, fallback_help)
         completion = infer_completion(self, choices)
 
         group = infer_group(self, short, long, exclusive)
@@ -546,22 +546,12 @@ def infer_parse(arg: Arg, annotation: type) -> Callable:
     return parse_value(annotation, extra_annotations=arg.annotations)
 
 
-def infer_help(
-    arg: Arg, choices: list[str] | None, fallback_help: str | None
-) -> str | None:
+def infer_help(arg: Arg, fallback_help: str | None) -> str | None:
     help = arg.help
     if help is None:
         help = fallback_help
 
-    if not choices:
-        return help
-
-    choices_str = "Valid options: " + ", ".join(choices) + "."
-
-    if help:
-        return f"{help} {choices_str}"
-
-    return choices_str
+    return help
 
 
 def infer_completion(

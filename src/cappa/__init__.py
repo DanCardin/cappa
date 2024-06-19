@@ -3,6 +3,7 @@ from cappa.command import Command
 from cappa.completion.types import Completion
 from cappa.env import Env
 from cappa.file_io import FileMode
+from cappa.help import HelpFormatable, HelpFormatter
 from cappa.invoke import Dep
 from cappa.output import Exit, HelpExit, Output
 from cappa.subcommand import Subcommand, Subcommands
@@ -25,6 +26,8 @@ __all__ = [
     "FileMode",
     "Group",
     "HelpExit",
+    "HelpFormatable",
+    "HelpFormatter",
     "Output",
     "Subcommand",
     "Subcommands",
