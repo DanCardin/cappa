@@ -2,6 +2,10 @@
 
 ## 0.21
 
+### 0.21.1
+
+- feat: Update automatic inference to support `date`, `time`, and `datetime` parsing (for isoformat).
+
 ### 0.21.0
 
 - feat: Add `help_formatter` system wherein help text rendering can be customized
