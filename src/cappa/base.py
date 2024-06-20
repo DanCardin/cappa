@@ -10,6 +10,8 @@ from cappa import argparse, parser
 from cappa.class_inspect import detect
 from cappa.command import Command
 from cappa.help import (
+    HelpFormatable,
+    HelpFormatter,
     create_completion_arg,
     create_help_arg,
     create_version_arg,
@@ -34,6 +36,7 @@ def parse(
     completion: bool | Arg = True,
     theme: Theme | None = None,
     output: Output | None = None,
+    help_formatter: HelpFormatable | None = None,
 ) -> T:
     """Parse the command, returning an instance of `obj`.
 
@@ -61,6 +64,7 @@ def parse(
         output: Optional `Output` instance. A default `Output` will constructed if one is not provided.
             Note the `color` and `theme` arguments take precedence over manually constructed `Output`
             attributes.
+        help_formatter: Override the default help formatter.
     """
     _, _, instance, _ = parse_command(
         obj=obj,
@@ -72,6 +76,7 @@ def parse(
         completion=completion,
         theme=theme,
         output=output,
+        help_formatter=help_formatter,
     )
     return instance
 
@@ -90,6 +95,7 @@ def invoke(
     completion: bool | Arg = True,
     theme: Theme | None = None,
     output: Output | None = None,
+    help_formatter: HelpFormatable | None = None,
 ):
     """Parse the command, and invoke the selected async command or subcommand.
 
@@ -119,6 +125,7 @@ def invoke(
         output: Optional `Output` instance. A default `Output` will constructed if one is not provided.
             Note the `color` and `theme` arguments take precedence over manually constructed `Output`
             attributes.
+        help_formatter: Override the default help formatter.
     """
     command, parsed_command, instance, concrete_output = parse_command(
         obj=obj,
@@ -130,6 +137,7 @@ def invoke(
         completion=completion,
         theme=theme,
         output=output,
+        help_formatter=help_formatter,
     )
     resolved, global_deps = resolve_callable(
         command, parsed_command, instance, output=concrete_output, deps=deps
@@ -156,6 +164,7 @@ async def invoke_async(
     completion: bool | Arg = True,
     theme: Theme | None = None,
     output: Output | None = None,
+    help_formatter: HelpFormatable | None = None,
 ):
     """Parse the command, and invoke the selected command or subcommand.
 
@@ -185,6 +194,7 @@ async def invoke_async(
         output: Optional `Output` instance. A default `Output` will constructed if one is not provided.
             Note the `color` and `theme` arguments take precedence over manually constructed `Output`
             attributes.
+        help_formatter: Override the default help formatter.
     """
     command, parsed_command, instance, concrete_output = parse_command(
         obj=obj,
@@ -196,6 +206,7 @@ async def invoke_async(
         completion=completion,
         theme=theme,
         output=output,
+        help_formatter=help_formatter,
     )
     resolved, global_deps = resolve_callable(
         command, parsed_command, instance, output=concrete_output, deps=deps
@@ -219,6 +230,7 @@ def parse_command(
     completion: bool | Arg = True,
     theme: Theme | None = None,
     output: Output | None = None,
+    help_formatter: HelpFormatable | None = None,
 ) -> tuple[Command, Command[T], T, Output]:
     concrete_backend = _coalesce_backend(backend)
     concrete_output = _coalesce_output(output, theme, color)
@@ -229,6 +241,7 @@ def parse_command(
         version=version,
         completion=completion,
         backend=concrete_backend,
+        help_formatter=help_formatter,
     )
     command, parsed_command, instance = Command.parse_command(
         command,
@@ -251,6 +264,7 @@ def command(
     default_short: bool = False,
     default_long: bool = False,
     deprecated: bool = False,
+    help_formatter: HelpFormatable = HelpFormatter.default,
 ):
     """Register a cappa CLI command/subcomment.
 
@@ -275,6 +289,7 @@ def command(
         deprecated: If supplied, the argument will be marked as deprecated. If given `True`,
             a default message will be generated, otherwise a supplied string will be
             used as the deprecation message.
+        help_formatter: Override the default help formatter.
     """
 
     def wrapper(_decorated_cls):
@@ -291,8 +306,10 @@ def command(
             default_short=default_short,
             default_long=default_long,
             deprecated=deprecated,
+            help_formatter=help_formatter,
         )
         _decorated_cls.__cappa__ = instance
+
         return _decorated_cls
 
     if _cls is not None:
@@ -307,6 +324,7 @@ def collect(
     version: str | Arg | None = None,
     help: bool | Arg = True,
     completion: bool | Arg = True,
+    help_formatter: HelpFormatable | None = None,
 ) -> Command[T]:
     """Retrieve the `Command` object from a cappa-capable source class.
 
@@ -324,8 +342,9 @@ def collect(
             (default to True), adds a --completion flag. An `Arg` can be supplied to customize
             the argument's behavior.
         color: Whether to output in color.
+        help_formatter: Override the default help formatter.
     """
-    command: Command[T] = Command.get(obj)
+    command: Command[T] = Command.get(obj, help_formatter=help_formatter)
     command = Command.collect(command)
 
     concrete_backend = _coalesce_backend(backend)

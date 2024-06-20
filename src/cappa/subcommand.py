@@ -20,6 +20,7 @@ from cappa.typing import (
 
 if typing.TYPE_CHECKING:
     from cappa.command import Command
+    from cappa.help import HelpFormatable
 
 
 @dataclasses.dataclass
@@ -44,7 +45,9 @@ class Subcommand:
     options: dict[str, Command] = dataclasses.field(default_factory=dict)
 
     @classmethod
-    def collect(cls, field: Field, type_hint: type) -> Subcommand | None:
+    def collect(
+        cls, field: Field, type_hint: type, help_formatter: HelpFormatable | None = None
+    ) -> Subcommand | None:
         object_annotation = find_type_annotation(type_hint, Subcommand)
         subcommand = object_annotation.obj
 
@@ -59,17 +62,19 @@ class Subcommand:
         return subcommand[0].normalize(
             object_annotation.annotation,
             field_name=field.name,
+            help_formatter=help_formatter,
         )
 
     def normalize(
         self,
         annotation=NoneType,
         field_name: str | None = None,
+        help_formatter: HelpFormatable | None = None,
     ) -> Self:
         field_name = field_name or assert_type(self.field_name, str)
         types = infer_types(self, annotation)
         required = infer_required(self, annotation)
-        options = infer_options(self, types)
+        options = infer_options(self, types, help_formatter=help_formatter)
         group = infer_group(self)
 
         return dataclasses.replace(
@@ -117,7 +122,11 @@ def infer_required(arg: Subcommand, annotation: type) -> bool:
     return not is_optional_type(annotation)
 
 
-def infer_options(arg: Subcommand, types: typing.Iterable[type]) -> dict[str, Command]:
+def infer_options(
+    arg: Subcommand,
+    types: typing.Iterable[type],
+    help_formatter: HelpFormatable | None = None,
+) -> dict[str, Command]:
     from cappa.command import Command
 
     if arg.options:
@@ -128,7 +137,7 @@ def infer_options(arg: Subcommand, types: typing.Iterable[type]) -> dict[str, Co
 
     options = {}
     for type_ in types:
-        type_command: Command = Command.get(type_)
+        type_command: Command = Command.get(type_, help_formatter=help_formatter)
         type_name = type_command.real_name()
         options[type_name] = Command.collect(type_command)
 

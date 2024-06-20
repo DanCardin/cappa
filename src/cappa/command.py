@@ -10,6 +10,7 @@ from types import ModuleType
 from cappa import class_inspect
 from cappa.arg import Arg, ArgAction, Group
 from cappa.env import Env
+from cappa.help import HelpFormatable, HelpFormatter, format_short_help
 from cappa.output import Exit, Output, prompt_types
 from cappa.subcommand import Subcommand
 from cappa.typing import get_type_hints, missing
@@ -80,15 +81,26 @@ class Command(typing.Generic[T]):
     default_long: bool = False
     deprecated: bool | str = False
 
+    help_formatter: HelpFormatable = HelpFormatter.default
+
     _collected: bool = False
 
     @classmethod
-    def get(cls, obj: type[T] | Command[T]) -> Command[T]:
+    def get(
+        cls, obj: type[T] | Command[T], help_formatter: HelpFormatable | None = None
+    ) -> Command[T]:
         if isinstance(obj, cls):
             return obj
 
         obj = class_inspect.get_command_capable_object(obj)
-        return getattr(obj, "__cappa__", cls(obj))  # type: ignore
+        if hasattr(obj, "__cappa__"):
+            return obj.__cappa__  # type: ignore
+
+        assert not isinstance(obj, Command)
+        return cls(
+            obj,
+            help_formatter=help_formatter or HelpFormatter.default,
+        )
 
     def real_name(self) -> str:
         if self.name is not None:
@@ -147,7 +159,9 @@ class Command(typing.Generic[T]):
                 type_hint = type_hints[field.name]
                 arg_help = arg_help_map.get(field.name)
 
-                maybe_subcommand = Subcommand.collect(field, type_hint)
+                maybe_subcommand = Subcommand.collect(
+                    field, type_hint, help_formatter=command.help_formatter
+                )
                 if maybe_subcommand:
                     arguments.append(maybe_subcommand)
                 else:
@@ -186,13 +200,11 @@ class Command(typing.Generic[T]):
             prog = parser.prog
             result = command.map_result(command, prog, parsed_args)
         except Exit as e:
-            from cappa.help import format_help, format_short_help
-
             command = e.command or command
             prog = e.prog or prog
             output.exit(
                 e,
-                help=format_help(command, prog),
+                help=command.help_formatter(command, prog),
                 short_help=format_short_help(command, prog),
             )
             raise

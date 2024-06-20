@@ -7,7 +7,7 @@ from collections import deque
 from cappa.arg import Arg, ArgAction, Group, no_extra_arg_actions
 from cappa.command import Command, Subcommand
 from cappa.completion.types import Completion, FileCompletion
-from cappa.help import format_help, format_subcommand_names
+from cappa.help import format_subcommand_names
 from cappa.invoke import fullfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.typing import T, assert_type
@@ -81,7 +81,9 @@ def backend(
             parse(context)
         except HelpAction as e:
             raise HelpExit(
-                format_help(e.command, e.command_name), code=0, prog=context.prog
+                e.command.help_formatter(e.command, e.command_name),
+                code=0,
+                prog=context.prog,
             )
         except VersionAction as e:
             raise Exit(e.version.value_name, code=0, prog=context.prog)

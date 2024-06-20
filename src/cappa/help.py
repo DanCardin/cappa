@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import typing
+from collections.abc import Iterable
+from dataclasses import dataclass, replace
 from itertools import groupby
 
 from rich.console import NewLine
@@ -8,17 +10,24 @@ from rich.markdown import Markdown
 from rich.padding import Padding
 from rich.table import Table
 from rich.text import Text
-from typing_extensions import TypeAlias
+from typing_extensions import Self, TypeAlias
 
 from cappa.arg import Arg, ArgAction, Group, no_extra_arg_actions
-from cappa.command import Command
 from cappa.output import Displayable
 from cappa.subcommand import Subcommand
 from cappa.typing import missing
 
-ArgGroup: TypeAlias = typing.Tuple[Group, typing.List[typing.Union[Arg, Subcommand]]]
+if typing.TYPE_CHECKING:
+    from cappa.command import Command
 
-left_padding = (0, 0, 0, 2)
+HelpFormatable: TypeAlias = typing.Callable[["Command", str], typing.List[Displayable]]
+ArgGroup: TypeAlias = typing.Tuple[Group, typing.List[typing.Union[Arg, Subcommand]]]
+Dimension: TypeAlias = typing.Tuple[int, int, int, int]
+ArgFormat: TypeAlias = typing.Union[
+    str,
+    typing.Sequence[typing.Union[str, typing.Callable[[Arg], typing.Union[str, None]]]],
+    typing.Callable[[Arg], typing.Union[str, None]],
+]
 
 
 def create_version_arg(version: str | Arg | None = None) -> Arg | None:
@@ -81,21 +90,106 @@ def create_completion_arg(completion: bool | Arg = True) -> Arg | None:
     )
 
 
-def format_help(command: Command, prog: str) -> list[Displayable]:
-    arg_groups = generate_arg_groups(command)
+@dataclass(frozen=True)
+class HelpFormatter:
+    left_padding: Dimension = (0, 0, 0, 2)
+    arg_format: ArgFormat = ("{help}", "{choices}", "{default}")
+    default_format: str = "(Default: {default})"
 
-    lines: list[Displayable] = []
-    lines.append(add_short_args(prog, arg_groups))
+    default: typing.ClassVar[Self]
 
-    if command.help:
-        lines.append(NewLine())
-        lines.append(Padding(Markdown(f"**{command.help}**"), left_padding))
-    if command.description:
-        lines.append(NewLine())
-        lines.append(Padding(Markdown(command.description), left_padding))
+    def __call__(self, command: Command, prog: str) -> list[Displayable]:
+        arg_groups = generate_arg_groups(command)
 
-    lines.extend(add_long_args(arg_groups))
-    return lines
+        lines: list[Displayable] = []
+        lines.append(add_short_args(prog, arg_groups))
+
+        if command.help:
+            lines.append(NewLine())
+            lines.append(Padding(Markdown(f"**{command.help}**"), self.left_padding))
+        if command.description:
+            lines.append(NewLine())
+            lines.append(Padding(Markdown(command.description), self.left_padding))
+
+        lines.extend(add_long_args(self, arg_groups))
+        return lines
+
+    def with_arg_format(self, format: ArgFormat) -> Self:
+        return replace(self, arg_format=format)
+
+    def with_default_format(self, format: str) -> Self:
+        return replace(self, default_format=format)
+
+
+HelpFormatter.default = HelpFormatter()
+
+
+def add_long_args(help_formatter: HelpFormatter, arg_groups: list[ArgGroup]) -> list:
+    table = Table(box=None, expand=False, padding=help_formatter.left_padding)
+    table.add_column(justify="left", ratio=1)
+    table.add_column(style="cappa.help", ratio=2)
+
+    for group, args in arg_groups:
+        table.add_row(
+            Text(group.name, style="cappa.group", justify="left"),
+            Text(style="cappa.group"),
+        )
+        for arg in args:
+            if isinstance(arg, Arg):
+                table.add_row(
+                    Padding(format_arg_name(arg, ", "), help_formatter.left_padding),
+                    Text(format_arg(help_formatter, arg), style=""),
+                )
+            else:
+                for option in arg.available_options():
+                    table.add_row(*format_subcommand(help_formatter, option))
+
+        table.add_row()
+
+    return [table]
+
+
+def format_arg(help_formatter: HelpFormatter, arg: Arg) -> str:
+    arg_format = help_formatter.arg_format
+    if not isinstance(arg_format, Iterable) or isinstance(arg_format, str):
+        arg_format = (arg_format,)
+
+    segments = []
+    for format_segment in arg_format:
+        default = ""
+        if arg.default is not None and arg.default is not missing:
+            default = help_formatter.default_format.format(default=arg.default)
+
+        choices = ""
+        if arg.choices:
+            choices = "Valid options: " + ", ".join(arg.choices) + "."
+
+        context = {
+            "help": arg.help or "",
+            "default": default,
+            "choices": choices,
+            "arg": arg,
+        }
+
+        if callable(format_segment):
+            segment = format_segment(arg)
+        else:
+            segment = format_segment.format(**context)
+
+        if segment:
+            segments.append(segment)
+
+    return " ".join(segments)
+
+
+def format_subcommand(help_formatter: HelpFormatter, command: Command):
+    return (
+        Padding(
+            f"[cappa.subcommand]{command.real_name()}[/cappa.subcommand]",
+            help_formatter.left_padding,
+        ),
+        command.help,
+    )
 
 
 def format_short_help(command: Command, prog: str) -> Displayable:
@@ -123,31 +217,6 @@ def add_short_args(prog: str, arg_groups: list[ArgGroup]) -> str:
     return " ".join(segments)
 
 
-def add_long_args(arg_groups: list[ArgGroup]) -> list:
-    table = Table(box=None, expand=False, padding=left_padding)
-    table.add_column(justify="left", ratio=1)
-    table.add_column(style="cappa.help", ratio=2)
-
-    for group, args in arg_groups:
-        table.add_row(
-            Text(group.name, style="cappa.group", justify="left"),
-            Text(style="cappa.group"),
-        )
-        for arg in args:
-            if isinstance(arg, Arg):
-                table.add_row(
-                    Padding(format_arg_name(arg, ", "), left_padding),
-                    Text(arg.help or "", style=""),
-                )
-            else:
-                for option in arg.available_options():
-                    table.add_row(*format_subcommand(option))
-
-        table.add_row()
-
-    return [table]
-
-
 def format_arg_name(arg: Arg | Subcommand, delimiter, *, n=0) -> str:
     if isinstance(arg, Arg):
         is_option = arg.short or arg.long
@@ -170,15 +239,6 @@ def format_arg_name(arg: Arg | Subcommand, delimiter, *, n=0) -> str:
 
     arg_names = arg.names_str(",")
     return f"{{[cappa.subcommand]{arg_names}[/cappa.subcommand]}}"
-
-
-def format_subcommand(command: Command):
-    return (
-        Padding(
-            f"[cappa.subcommand]{command.real_name()}[/cappa.subcommand]", left_padding
-        ),
-        command.help,
-    )
 
 
 def format_subcommand_names(names: list[str]):

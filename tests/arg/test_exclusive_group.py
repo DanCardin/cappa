@@ -59,8 +59,8 @@ def test_implicit_syntax_explicit_name(backend, capsys):
         textwrap.dedent(
             """
             Foo
-              [-v]
-              [--verbosity VERBOSE]
+              [-v]                       (Default: 0)
+              [--verbosity VERBOSE]      (Default: 0)
             """,
         ),
         "  ",

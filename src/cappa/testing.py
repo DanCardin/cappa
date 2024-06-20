@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing_extensions import Unpack
 
 import cappa
+from cappa.help import HelpFormatable
 
 __all__ = [
     "CommandRunner",
@@ -17,15 +18,18 @@ class RunnerArgs(typing.TypedDict, total=False):
     """Available kwargs for `parse` and `invoke` function, to match `CommandRunner` fields."""
 
     obj: type
-    deps: typing.Sequence[typing.Callable] | typing.Mapping[
-        typing.Callable, cappa.Dep | typing.Any
-    ] | None
+    deps: (
+        typing.Sequence[typing.Callable]
+        | typing.Mapping[typing.Callable, cappa.Dep | typing.Any]
+        | None
+    )
     backend: typing.Callable | None
     output: cappa.Output | None
     color: bool
     version: str | cappa.Arg
     help: bool | cappa.Arg
     completion: bool | cappa.Arg
+    help_formatter: HelpFormatable
 
 
 @dataclass
@@ -72,15 +76,18 @@ class CommandRunner:
     """
 
     obj: type | None = None
-    deps: typing.Sequence[typing.Callable] | typing.Mapping[
-        typing.Callable, cappa.Dep | typing.Any
-    ] | None = None
+    deps: (
+        typing.Sequence[typing.Callable]
+        | typing.Mapping[typing.Callable, cappa.Dep | typing.Any]
+        | None
+    ) = None
     backend: typing.Callable | None = None
     output: cappa.Output | None = None
     color: bool = True
     version: str | cappa.Arg | None = None
     help: bool | cappa.Arg = True
     completion: bool | cappa.Arg = True
+    help_formatter: HelpFormatable | None = None
 
     base_args: list[str] = field(default_factory=lambda: [])
 
@@ -96,6 +103,9 @@ class CommandRunner:
             "completion": kwargs["completion"]
             if "completion" in kwargs
             else self.completion,
+            "help_formatter": kwargs["help_formatter"]
+            if "help_formatter" in kwargs
+            else self.help_formatter,
         }
 
     def parse(self, *args: str, **kwargs: Unpack[RunnerArgs]):
