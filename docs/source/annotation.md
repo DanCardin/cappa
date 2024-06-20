@@ -202,6 +202,19 @@ returns the type (such as `pathlib.Path`, or `decimal.Decimal`).
 Note this also applies to `Enum`s, who's raw values by map-time should be
 guaranteed to be compatible with the Enum's variants.
 
+### `date`/`datetime`/`time`
+
+Both types are directly supported through inference, by calling the `fromisoformat`
+method on each type.
+
+```{note}
+The set of supported input formats are
+[python version specific](https://docs.python.org/3/library/datetime.html#datetime.date.fromisoformat).
+```
+
+To support more general input formats, you should instead supply a function to
+`Arg(parse=...)` which accepts a string and returns the given type.
+
 ### Union (and Optional)
 
 Unions are handled by recursively processing the set of unioned inner types

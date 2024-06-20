@@ -3,6 +3,7 @@ from __future__ import annotations
 import enum
 import types
 import typing
+from datetime import date, datetime, time
 
 from typing_inspect import get_origin, is_literal_type
 
@@ -55,6 +56,15 @@ def parse_value(
 
     if is_subclass(origin, (str, bool, int, float)):
         return origin
+
+    if is_subclass(origin, datetime):
+        return datetime.fromisoformat
+
+    if is_subclass(origin, date):
+        return date.fromisoformat
+
+    if is_subclass(origin, time):
+        return time.fromisoformat
 
     if is_none_type(origin):
         return parse_none
