@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from unittest.mock import patch
 
 import cappa
 import pytest
@@ -142,3 +143,28 @@ def test_optional_bool_and_int(backend):
 
     test = parse(ArgTest, "-t", "asdf", backend=backend)
     assert test.true_false is True
+
+
+@backends
+def test_env_default_value_precedence(backend):
+    """Assert a bool flag yields correct value given an env default."""
+
+    @dataclass
+    class ArgTest:
+        env_default: Annotated[
+            bool, cappa.Arg(long=True, default=cappa.Env("ENV_DEFAULT"))
+        ] = False
+
+    test = parse(ArgTest, backend=backend)
+    assert test.env_default is False
+
+    with patch("os.environ", new={"ENV_DEFAULT": "1"}):
+        test = parse(ArgTest, backend=backend)
+    assert test.env_default is True
+
+    test = parse(ArgTest, "--env-default", backend=backend)
+    assert test.env_default is True
+
+    with patch("os.environ", new={"ENV_DEFAULT": "1"}):
+        test = parse(ArgTest, "--env-default", backend=backend)
+    assert test.env_default is True
