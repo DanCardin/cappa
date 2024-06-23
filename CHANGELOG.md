@@ -2,6 +2,9 @@
 
 ## 0.21
 
+### 0.21.2
+- fix: action inference when `default` is an `Env`.
+
 ### 0.21.1
 
 - feat: Update automatic inference to support `date`, `time`, and `datetime` parsing (for isoformat).

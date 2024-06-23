@@ -445,6 +445,9 @@ def infer_action(
 
     # Coerce raw `bool` into flags by default
     if is_subclass(origin, bool):
+        if isinstance(default, Env):
+            default = default.default
+
         if default is not missing and bool(default):
             return ArgAction.store_false
 

@@ -10,7 +10,7 @@ from typing_extensions import assert_never
 from cappa.arg import Arg, ArgAction, no_extra_arg_actions
 from cappa.command import Command, Subcommand
 from cappa.help import generate_arg_groups
-from cappa.invoke import fullfill_deps
+from cappa.invoke import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.parser import RawOption, Value
 from cappa.typing import assert_type, missing
@@ -129,7 +129,7 @@ def custom_action(arg: Arg, action: Callable):
             if option_string:
                 fullfilled_deps[RawOption] = RawOption.from_str(option_string)
 
-            deps = fullfill_deps(action, fullfilled_deps)
+            deps = fulfill_deps(action, fullfilled_deps)
             result = action(**deps)
             setattr(namespace, self.dest, result)
 
