@@ -184,3 +184,84 @@ def test_escaped_markdown(backend, capsys, monkeypatch):
             [-h, --help]  Show this message and exit.
         """
     )
+
+
+@pytest.mark.help
+@backends
+def test_attribute_docstring(backend, capsys):
+    @dataclass
+    class Args:
+        """Bah.
+
+        Arguments:
+            top_level: woo woo
+            foo: this should get superseded
+        """
+
+        top_level: int
+
+        foo: int
+        """This is a foo."""
+
+        bar: str
+        """This is a bar."""
+
+    with pytest.raises(cappa.Exit):
+        parse(Args, "--help", backend=backend, completion=False)
+
+    result = strip_trailing_whitespace(capsys.readouterr().out)
+    assert result == dedent(
+        """\
+        Usage: args TOP_LEVEL FOO BAR [-h]
+
+          Bah.
+
+          Arguments
+            TOP_LEVEL     woo woo
+            FOO           This is a foo.
+            BAR           This is a bar.
+
+          Help
+            [-h, --help]  Show this message and exit.
+        """
+    )
+
+
+@pytest.mark.help
+@backends
+def test_explicit_help_description_manual_args(backend, capsys):
+    @cappa.command(help="Title", description="longer description")
+    @dataclass
+    class Args2:
+        """...
+
+        Args:
+            foo: nope
+            bar: yep
+        """
+
+        foo: int
+        """this is a foo"""
+
+        bar: int
+
+    with pytest.raises(cappa.Exit):
+        parse(Args2, "--help", backend=backend, completion=False)
+
+    result = strip_trailing_whitespace(capsys.readouterr().out)
+    assert result == dedent(
+        """\
+        Usage: args2 FOO BAR [-h]
+
+          Title
+
+          longer description
+
+          Arguments
+            FOO           this is a foo
+            BAR           yep
+
+          Help
+            [-h, --help]  Show this message and exit.
+        """
+    )
