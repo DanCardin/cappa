@@ -1,26 +1,18 @@
 from __future__ import annotations
 
 import dataclasses
-import inspect
 import sys
 import typing
 from collections.abc import Callable
-from types import ModuleType
 
 from cappa import class_inspect
 from cappa.arg import Arg, ArgAction, Group
+from cappa.docstring import ClassHelpText
 from cappa.env import Env
 from cappa.help import HelpFormatable, HelpFormatter, format_short_help
 from cappa.output import Exit, Output, prompt_types
 from cappa.subcommand import Subcommand
 from cappa.typing import get_type_hints, missing
-
-try:
-    import docstring_parser as _docstring_parser
-
-    docstring_parser: ModuleType | None = _docstring_parser
-except ImportError:  # pragma: no cover
-    docstring_parser = None
 
 T = typing.TypeVar("T")
 
@@ -114,30 +106,14 @@ class Command(typing.Generic[T]):
     @classmethod
     def collect(cls, command: Command[T]) -> Command[T]:
         kwargs: CommandArgs = {}
-        arg_help_map = {}
 
-        if not (command.help and command.description):
-            doc = get_doc(command.cmd_cls)
-            if docstring_parser:
-                parsed_help = docstring_parser.parse(doc)
-                for param in parsed_help.params:
-                    arg_help_map[param.arg_name] = param.description
-                summary = parsed_help.short_description
-                body = parsed_help.long_description
-            else:
-                doc = inspect.cleandoc(doc).split("\n", 1)
-                if len(doc) == 1:
-                    summary = doc[0]
-                    body = ""
-                else:
-                    summary, body = doc
-                    body = body.strip()
+        help_text = ClassHelpText.collect(command.cmd_cls)
 
-            if not command.help:
-                kwargs["help"] = summary
+        if not command.help:
+            kwargs["help"] = help_text.summary
 
-            if not command.description:
-                kwargs["description"] = body
+        if not command.description:
+            kwargs["description"] = help_text.body
 
         if command.arguments:
             arguments: list[Arg | Subcommand] = [
@@ -157,7 +133,7 @@ class Command(typing.Generic[T]):
 
             for field in fields:
                 type_hint = type_hints[field.name]
-                arg_help = arg_help_map.get(field.name)
+                arg_help = help_text.args.get(field.name)
 
                 maybe_subcommand = Subcommand.collect(
                     field, type_hint, help_formatter=command.help_formatter
@@ -292,27 +268,6 @@ H = typing.TypeVar("H", covariant=True)
 
 class HasCommand(typing.Generic[H], typing.Protocol):
     __cappa__: typing.ClassVar[Command]
-
-
-def get_doc(cls):
-    """Lifted from dataclasses source."""
-    doc = cls.__doc__ or ""
-
-    # Dataclasses will set the doc attribute to the below value if there was no
-    # explicit docstring. This is just annoying for us, so we treat that as though
-    # there wasn't one.
-    try:
-        # In some cases fetching a signature is not possible.
-        # But, we surely should not fail in this case.
-        text_sig = str(inspect.signature(cls)).replace(" -> None", "")
-    except (TypeError, ValueError):  # pragma: no cover
-        text_sig = ""
-
-    dataclasses_docstring = cls.__name__ + text_sig
-
-    if doc == dataclasses_docstring:
-        return ""
-    return doc
 
 
 def check_group_identity(args: list[Arg | Subcommand]):

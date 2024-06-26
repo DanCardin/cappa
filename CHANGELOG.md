@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.22.0
+
+- feat: Allow "attribute docstrings" as additional method of documenting args.
+
 ## 0.21
 
 ### 0.21.2

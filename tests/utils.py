@@ -47,7 +47,7 @@ def parse_completion(cls, *args, location=None) -> Union[str, None]:
 def ignore_docstring_parser(monkeypatch):
     import importlib
 
-    cappa_command = importlib.import_module("cappa.command")
+    cappa_command = importlib.import_module("cappa.docstring")
 
     with monkeypatch.context() as m:
         m.setattr(cappa_command, "docstring_parser", None)

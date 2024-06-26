@@ -7,6 +7,7 @@ descending order of priority:
 
 - An explicit `help=` argument
 - A PEP-727 `Doc` annotation
+- The class "attribute docstring"
 - The class docstring argument description
 
 If none of the above sources produce help text, no description will be rendered.
@@ -51,6 +52,31 @@ import cappa
 @cappa.command
 class Command:
     arg: Annotated[str, Doc('Arg help')]
+```
+
+### Class "attribute docstring" Parsing
+
+An "attribute docstring" is a common convention whereby a declarative class attribute
+is "annotated" similarly to a class docstring. For example:
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class Command:
+    arg: int
+    """This arg is an int."""
+```
+
+```{note}
+Attribute docstrings are not a first-class concept in python today, although
+there is a [rejected PEP](https://peps.python.org/pep-0224/) associated with
+the idea.
+
+As such, `ast` traversal is required to obtain it, which implies a requirement
+that `ast.getsource` be able to function on the given source class. For most
+typical user-written situations this should not be an issue, but it's worth
+noting the relative complexity involved with this option.
 ```
 
 ### Class Docstring Parsing
