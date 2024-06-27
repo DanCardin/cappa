@@ -35,8 +35,8 @@ def test_argument_name(capsys):
 
           Help
             [-h, --help]               Show this message and exit.
-            [--completion COMPLETION]  Use `--completion generate` to print
-                                       shell-specific completion source. Valid options:
-                                       generate, complete.
+            [--completion COMPLETION]  Use --completion generate to print shell-specific
+                                       completion source. Valid options: generate,
+                                       complete.
         """
     )

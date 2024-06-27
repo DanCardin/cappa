@@ -138,7 +138,7 @@ def add_long_args(help_formatter: HelpFormatter, arg_groups: list[ArgGroup]) -> 
             if isinstance(arg, Arg):
                 table.add_row(
                     Padding(format_arg_name(arg, ", "), help_formatter.left_padding),
-                    Text(format_arg(help_formatter, arg), style=""),
+                    Markdown(format_arg(help_formatter, arg), style=""),
                 )
             else:
                 for option in arg.available_options():
