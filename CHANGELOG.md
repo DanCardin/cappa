@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.22.0
+## 0.22
+
+### 0.22.1
+
+- fix: Route arg help formatting through markdown processing.
+
+### 0.22.0
 
 - feat: Allow "attribute docstrings" as additional method of documenting args.
 
