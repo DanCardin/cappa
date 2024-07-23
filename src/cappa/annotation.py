@@ -5,10 +5,10 @@ import types
 import typing
 from datetime import date, datetime, time
 
-from typing_inspect import get_origin, is_literal_type
+from typing_inspect import get_origin, is_literal_type, is_optional_type
 
 from cappa.file_io import FileMode
-from cappa.typing import T, is_none_type, is_subclass, is_union_type
+from cappa.typing import T, get_optional_type, is_none_type, is_subclass, is_union_type
 
 __all__ = [
     "parse_value",
@@ -219,10 +219,14 @@ def parse_file_io(
     return file_io_mapper
 
 
-def detect_choices(origin: type, type_args: tuple[type, ...]) -> list[str] | None:
+def detect_choices(annotation: type) -> list[str] | None:
+    if is_optional_type(annotation):
+        annotation = get_optional_type(annotation)
+
+    origin = typing.get_origin(annotation) or annotation
+    type_args = typing.get_args(annotation)
     if is_subclass(origin, enum.Enum):
-        assert issubclass(origin, enum.Enum)
-        return [v.value for v in origin]
+        return [v.value for v in origin]  # type: ignore
 
     if is_subclass(origin, (tuple, list, set)):
         origin = typing.cast(type, type_args[0])

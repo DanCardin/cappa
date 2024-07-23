@@ -2,6 +2,10 @@
 
 ## 0.22
 
+### 0.22.2
+
+- fix: Ensure `Arg.choices` is inferred when `T | None` where `T` would have inferred `choices` is encountered.
+
 ### 0.22.1
 
 - fix: Route arg help formatting through markdown processing.
