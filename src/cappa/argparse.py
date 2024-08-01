@@ -89,7 +89,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         raise Exit(message, code=status, prog=self.prog)
 
-    def print_help(self):
+    def print_help(self, file=None):
         raise HelpExit(self.command.help_formatter(self.command, self.prog))
 
 

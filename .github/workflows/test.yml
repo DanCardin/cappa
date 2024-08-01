@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         pydantic-version: ["1.0", "2.0"]
 
         # No need to matrix test pydantic versions. But the matrix syntax still
@@ -32,7 +32,7 @@ jobs:
            pydantic-version: '1.0'
          - python-version: '3.12'
            pydantic-version: '1.0'
-         - python-version: '3.13-dev'
+         - python-version: '3.13'
            pydantic-version: '1.0'
 
     steps:

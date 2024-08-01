@@ -93,7 +93,7 @@ def test_explicit_output_prefix(capsys, backend):
 
     assert e.value.code == 2
     out = capsys.readouterr().err
-    assert out == "asdf: error(2): Unrecognized arguments: --fooooo.\n"
+    assert out.lower() == "asdf: error(2): unrecognized arguments: --fooooo.\n"
 
 
 def _debug(output: cappa.Output):

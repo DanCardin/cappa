@@ -81,8 +81,8 @@ def get_attribute_docstrings(command: type) -> dict[str, str]:
     source = textwrap.dedent(raw_source)
     module = ast.parse(source)
 
-    cls_node = module.body[0]
-    assert isinstance(cls_node, ast.ClassDef)
+    cls_node = module.body[-1]
+    assert isinstance(cls_node, ast.ClassDef), cls_node
 
     last_assignment: ast.AnnAssign | None = None
     for node in cls_node.body:

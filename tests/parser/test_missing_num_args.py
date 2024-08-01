@@ -23,6 +23,6 @@ def test_invalid_choice_help(backend):
 
     message = str(e.value.message)
     if backend == argparse.backend:
-        assert "The following arguments are required: arg" in message
+        assert "the following arguments are required: arg" in message.lower()
     else:
         assert message == "Argument 'arg arg' requires 2 values, found 1 ('arg' so far)"

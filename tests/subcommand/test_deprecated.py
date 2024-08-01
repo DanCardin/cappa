@@ -58,5 +58,5 @@ def test_argparse_ge_313(capsys):
 
     result = parse(ArgTest, "sub", backend=cappa.argparse.backend)
     assert result.sub == Sub()
-    err = capsys.readouterr().err
+    err = capsys.readouterr().err.replace("arg-test: ", "").strip()
     assert err == "warning: command 'sub' is deprecated"
