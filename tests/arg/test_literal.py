@@ -43,7 +43,9 @@ def test_invalid(backend):
 def test_invalid_collection_of_literals(backend):
     @dataclass
     class Args:
-        foo: Annotated[set[Literal["one", "two"]] | None, cappa.Arg(short=True)] = None
+        foo: Annotated[
+            set[Literal["one", "two"]] | list[int] | None, cappa.Arg(short=True)
+        ] = None
 
     with pytest.raises(cappa.Exit) as e:
         parse(Args, "-f", "three", backend=backend)
@@ -54,6 +56,7 @@ def test_invalid_collection_of_literals(backend):
         """\
         Invalid value for '-f': Possible variants
          - set[Literal['one', 'two']]: Invalid choice: 'three' (choose from literal values 'one', 'two')
+         - list[int]: invalid literal for int() with base 10: 'three'
          - <no value>"""
     )
     assert str(e.value.message).lower() == err.lower()

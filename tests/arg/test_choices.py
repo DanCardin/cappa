@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 import cappa
 import pytest
@@ -26,3 +27,18 @@ def test_manually_specified_choices(backend):
 
     message = str(e.value.message).lower()
     assert "invalid choice: 'two' (choose from 'a', '1')" in message
+
+
+@backends
+def test_optional_set_of_choices(backend, capsys):
+    @dataclass
+    class ArgTest:
+        choice: Annotated[
+            set[Literal["one", "two"]] | None, cappa.Arg(short=True)
+        ] = None
+
+    with pytest.raises(cappa.HelpExit):
+        parse(ArgTest, "--help", backend=backend)
+
+    result = capsys.readouterr().out
+    assert "Valid options: one, two." in result

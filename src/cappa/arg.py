@@ -215,7 +215,7 @@ class Arg(typing.Generic[T]):
         verify_type_compatibility(self, field_name, annotation, origin, type_args)
         short = infer_short(self, field_name, default_short)
         long = infer_long(self, origin, field_name, default_long)
-        choices = infer_choices(self, origin, type_args)
+        choices = infer_choices(self, annotation)
         action = action or infer_action(
             self, annotation, origin, type_args, long, default
         )
@@ -411,11 +411,9 @@ def infer_long(
     return [item if item.startswith("--") else f"--{item}" for item in long]
 
 
-def infer_choices(
-    arg: Arg, origin: type, type_args: tuple[type, ...]
-) -> list[str] | None:
+def infer_choices(arg: Arg, annotation: type) -> list[str] | None:
     if arg.choices is None:
-        choices = detect_choices(origin, type_args)
+        choices = detect_choices(annotation)
     else:
         choices = arg.choices
 
