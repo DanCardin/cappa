@@ -99,7 +99,7 @@ def test_argparse_ge_313(capsys):
     assert result.arg1 == "1"
     assert result.arg1 == "1"
     assert result.arg1 == "1"
-    err = capsys.readouterr().err
+    err = capsys.readouterr().err.replace("arg-test: ", "")
     assert err == textwrap.dedent(
         """\
         warning: argument 'arg1' is deprecated

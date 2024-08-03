@@ -52,4 +52,4 @@ def test_tuple_option(backend):
     with pytest.raises(cappa.Exit) as e:
         parse(Example, "-s", "1", "2", "3", backend=backend)
     assert e.value.code == 2
-    assert e.value.message == "Unrecognized arguments: 3"
+    assert str(e.value.message).lower() == "unrecognized arguments: 3"

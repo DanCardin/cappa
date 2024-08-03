@@ -186,8 +186,8 @@ class TestPrompt(Prompt):
         console = Console(file=self.file)
         super().__init__(prompt=prompt, console=console, **kwargs)
 
-    def __call__(self):
-        return super().__call__(default=self.default, stream=self.stream)
+    def __call__(self, *, stream: typing.TextIO | None = None, default=None) -> str:
+        return super().__call__(default=self.default, stream=self.stream)  # pyright: ignore
 
 
 class Exit(SystemExit):
