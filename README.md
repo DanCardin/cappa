@@ -142,9 +142,8 @@ import cappa
 class Example:
     cmd: cappa.Subcommands[Print | Fail]
 
-
-def print_cmd(print: Print):
-    if print.loudly:
+def print_cmd(print_: Print):
+    if print_.loudly:
         print("PRINTING!")
     else:
         print("printing!")
@@ -158,7 +157,7 @@ class Fail:
     code: int
 
     def __call__(self):  # again, __call__ is shorthand for the above explicit `invoke=` form.
-        raise cappa.Exit(code=code)
+        raise cappa.Exit(code=self.code)
 
 cappa.invoke(Example)
 ```
