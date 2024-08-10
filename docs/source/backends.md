@@ -1,5 +1,12 @@
 # Parser Backends
 
+```{note}
+If you're looking for custom parsing of individual arguments, you probably want
+[Arg.parse](./arg.md#parse) or [Arg.action](./arg.md#action).
+
+This document is concerned with the actual e2e CLI parsing process.
+```
+
 Cappa is designed in two parts:
 
 - The "frontend", which is the vast majority of the public API. All the
@@ -68,3 +75,31 @@ Some potential reasons you want want to use the argparse backend:
   guarantee an arbitrary argparse extension will function correctly with cappa,
   but to the extent possible, it's a goal that they should be supported if
   possible.
+
+## Custom Backends
+
+`cappa.invoke`/`cappa.parse` both accept a `backend=` argument which is used to
+select between the existing two backends shipped with Cappa.
+
+Technically, you could use this `backend` argument to author an entirely new
+backend to a different argument parser, like `click` for example (although
+a click backend was attempted at some point and later abandoned due to unforeseen
+complexities). This would allow you to retain all of cappa's pre-parsing and inference
+capabilities, as well as the post-processing, mapping, and invoke/dependency injection
+infrastructure.
+
+With that said, it's much more likely that it could be useful to make use of the
+backend argument to **wrap** one of the existing backends, and mutate the resultant
+output structure of the backend before it's passed further downstream. This is somewhat
+of an interesting usecase, and again if you find yourself making use of this in order
+to work around potential upstream deficiencies in cappa, please bring it up in an
+issue/discussion!
+
+```{note}
+The backend **interface** is currently not set in stone. Before relying on the specific
+details of the input/output shape of a backend, please bring it up in an issue/discussion
+in hopes that customizing the backend may be made to not be necessary!
+
+Further, it's likely that the backend interface is more formalized at some point
+in the future; at which point it may break those assumptions.
+```
