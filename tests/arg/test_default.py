@@ -18,3 +18,16 @@ class Command:
 def test_valid(backend):
     test = parse(Command, "1", "2", backend=backend)
     assert test == Command(1, 2)
+
+
+@backends
+def test_default_is_not_mapped(backend):
+    @dataclass
+    class Command:
+        foo: int = "4"  # type: ignore
+
+    test = parse(Command, "1", backend=backend)
+    assert test == Command(1)
+
+    test = parse(Command, backend=backend)
+    assert test == Command("4")  # type: ignore

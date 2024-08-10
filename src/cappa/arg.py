@@ -94,6 +94,8 @@ class Arg(typing.Generic[T]):
             arguments.
         default: An explicit default CLI value. When left unspecified, the default is
             inferred from the class' default or the adapter default/default_factory.
+            Note, if the default value is used, it will not be coerced into the annotated
+            type through the `parse` method.
         help: By default, the help text will be inferred from the containing class'
             arguments' section, if it exists. Alternatively, you can directly supply
             the help text here.

@@ -191,34 +191,36 @@ class Command(typing.Generic[T]):
         kwargs = {}
         for arg in self.value_arguments():
             is_subcommand = isinstance(arg, Subcommand)
-            if arg.field_name not in parsed_args:
+            parsed_arg = arg.field_name in parsed_args
+            if not parsed_arg:
                 if is_subcommand:
                     continue
 
                 assert arg.default is not missing
                 value = arg.default
+
             else:
                 value = parsed_args[arg.field_name]
 
-            if isinstance(value, Env):
-                value = value.evaluate()
-            if isinstance(value, prompt_types):
+            if isinstance(value, (Env, *prompt_types)):
                 value = value()
+                parsed_arg = True
 
-            if isinstance(arg, Subcommand):
+            if is_subcommand:
                 value = arg.map_result(prog, value)
             else:
                 assert arg.parse
 
-                try:
-                    value = arg.parse(value)
-                except Exception as e:
-                    exception_reason = str(e)
-                    raise Exit(
-                        f"Invalid value for '{arg.names_str()}': {exception_reason}",
-                        code=2,
-                        prog=prog,
-                    )
+                if parsed_arg:
+                    try:
+                        value = arg.parse(value)
+                    except Exception as e:
+                        exception_reason = str(e)
+                        raise Exit(
+                            f"Invalid value for '{arg.names_str()}': {exception_reason}",
+                            code=2,
+                            prog=prog,
+                        )
 
             kwargs[arg.field_name] = value
 
