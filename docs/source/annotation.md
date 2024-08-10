@@ -184,7 +184,7 @@ As such you can again, opt out of the "Mapping inference" entirely, by supplying
 your own `parse` function.
 
 ```{note}
-Mapping inference is built up out of component functions defined in `cappa.annotation`,
+Mapping inference is built up out of component functions defined in `cappa.parse`,
 such as `parse_list`, which know how to translate `list[int]` and a source list of raw
 parser strings into a list of ints.
 

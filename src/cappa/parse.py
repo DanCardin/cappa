@@ -6,9 +6,8 @@ from datetime import date, datetime, time
 
 from typing_inspect import is_literal_type
 
-from cappa.annotation import repr_type
 from cappa.file_io import FileMode
-from cappa.typing import T, is_none_type, is_subclass, is_union_type
+from cappa.typing import T, is_none_type, is_subclass, is_union_type, repr_type
 
 __all__ = [
     "parse_value",
