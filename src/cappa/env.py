@@ -24,7 +24,7 @@ class Env:
         self.env_vars = (env_var, *env_vars)
         self.default = default
 
-    def evaluate(self) -> str | None:
+    def __call__(self) -> str | None:
         for env_var in self.env_vars:
             value = os.getenv(env_var)
             if value:

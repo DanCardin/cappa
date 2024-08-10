@@ -183,6 +183,19 @@ dataclasses).
 However it can be convenient to use cappa's default because it does not affect
 the optionality of the field in question in the resultant class constructor.
 
+```{note}
+The `default` value is not parsed by `parse`. That is to say, if no value is
+selected at the CLI and the default value is used instead, it will not be
+coerced into the annotated type automatically.
+
+The reason for this is twofold:
+
+1. Typechecking should already emit an error when the given default is of the incorrect type.
+2. This interacts poorly with types who's constructor does not accept an instance
+   of the given type as an input argument. For example, `foo: Foo = Foo('')`
+   would infer `parse=Foo` and attempt to pass `Foo(Foo(''))` during parsing.
+```
+
 ### Environment Variable Fallback
 
 You can also use the default field to supply supported kinds of

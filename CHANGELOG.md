@@ -2,6 +2,14 @@
 
 ## 0.22
 
+### 0.22.4
+
+- fix: Avoid applying annotated type parsing to default value.
+
+### 0.22.3
+
+- fix: Ensure compatibility with python 3.13
+
 ### 0.22.2
 
 - fix: Ensure `Arg.choices` is inferred when `T | None` where `T` would have inferred `choices` is encountered.
@@ -17,6 +25,7 @@
 ## 0.21
 
 ### 0.21.2
+
 - fix: action inference when `default` is an `Env`.
 
 ### 0.21.1
@@ -60,7 +69,7 @@
 ## 0.18.1
 
 - feat: Add `deprecated` option, allowing deprecation of args, options, and subcommands
->>>>>>> 142825c (feat: Implement exclusive groups.)
+  > > > > > > > 142825c (feat: Implement exclusive groups.)
 
 ### 0.18.0
 
