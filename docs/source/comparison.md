@@ -1,6 +1,6 @@
 # Why
 
-A fair question. The incumbants, with click/typer and argparse have been readily
+A fair question. The incumbents, with click/typer and argparse have been readily
 serving python for a long time, and will certainly continue to do so.
 
 Having use the "derive API" from Rust's
