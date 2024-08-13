@@ -115,9 +115,16 @@ class Command(typing.Generic[T]):
         if not command.description:
             kwargs["description"] = help_text.body
 
+        fields = class_inspect.fields(command.cmd_cls)
+        function_view = CallableView.from_callable(command.cmd_cls, include_extras=True)
+
         if command.arguments:
+            param_by_name = {p.name: p for p in function_view.parameters}
             arguments: list[Arg | Subcommand] = [
                 a.normalize(
+                    type_view=param_by_name[typing.cast(str, a.field_name)].type_view
+                    if a.field_name in param_by_name
+                    else None,
                     default_short=command.default_short,
                     default_long=command.default_long,
                 )
@@ -126,11 +133,6 @@ class Command(typing.Generic[T]):
                 for a in command.arguments
             ]
         else:
-            fields = class_inspect.fields(command.cmd_cls)
-            function_view = CallableView.from_callable(
-                command.cmd_cls, include_extras=True
-            )
-
             arguments = []
 
             for field, param_view in zip(fields, function_view.parameters):
@@ -213,6 +215,7 @@ class Command(typing.Generic[T]):
                 value = arg.map_result(prog, value)
             else:
                 assert arg.parse
+                assert callable(arg.parse)
 
                 if parsed_arg:
                     try:

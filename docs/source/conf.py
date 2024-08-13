@@ -28,7 +28,7 @@ html_theme_options = {
 }
 html_static_path = ["_static"]
 
-myst_heading_anchors = 3
+myst_heading_anchors = 4
 myst_enable_extensions = [
     "amsmath",
     "colon_fence",

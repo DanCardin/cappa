@@ -2,7 +2,7 @@
 
 ```{note}
 If you're looking for custom parsing of individual arguments, you probably want
-[Arg.parse](./arg.md#parse) or [Arg.action](./arg.md#action).
+[Arg.parse](./arg.md#arg-parse) or [Arg.action](./arg.md#arg-action).
 
 This document is concerned with the actual e2e CLI parsing process.
 ```

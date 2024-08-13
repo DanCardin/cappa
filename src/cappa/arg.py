@@ -6,7 +6,7 @@ import dataclasses
 import enum
 import typing
 from collections.abc import Callable
-from typing import Union
+from typing import Sequence, Union
 
 from typing_extensions import TypeAlias
 
@@ -14,7 +14,7 @@ from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
 from cappa.env import Env
-from cappa.parse import parse_value
+from cappa.parse import evaluate_parse, parse_value
 from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import (
     Doc,
@@ -147,7 +147,7 @@ class Arg(typing.Generic[T]):
     count: bool = False
     default: T | None | EmptyType = Empty
     help: str | None = None
-    parse: Callable[[typing.Any], T] | None = None
+    parse: Callable[..., T] | Sequence[Callable[..., T]] | None = None
 
     group: str | tuple[int, str] | Group | EmptyType = Empty
 
@@ -163,7 +163,7 @@ class Arg(typing.Generic[T]):
     destructured: Destructured | None = None
     has_value: bool | None = None
 
-    annotations: list[type] = dataclasses.field(default_factory=list)
+    type_view: TypeView | None = None
 
     @classmethod
     def collect(
@@ -195,7 +195,6 @@ class Arg(typing.Generic[T]):
                 arg,
                 field_name=field_name,
                 default=default,
-                annotations=list(type_view.metadata),
             )
             normalized_arg = arg.normalize(
                 type_view,
@@ -225,7 +224,7 @@ class Arg(typing.Generic[T]):
         exclusive: bool = False,
     ) -> Arg:
         if type_view is None:
-            type_view = TypeView(...)
+            type_view = TypeView(typing.Any)
 
         field_name = typing.cast(str, field_name or self.field_name)
         default = default if default is not Empty else self.default
@@ -263,6 +262,7 @@ class Arg(typing.Generic[T]):
             completion=completion,
             group=group,
             has_value=has_value,
+            type_view=type_view,
         )
 
     @classmethod
@@ -537,9 +537,11 @@ def infer_num_args(
 
 def infer_parse(arg: Arg, type_view: TypeView) -> Callable:
     if arg.parse:
-        return arg.parse
+        parse = arg.parse
+    else:
+        parse = parse_value(type_view)
 
-    return parse_value(type_view)
+    return evaluate_parse(parse, type_view)
 
 
 def infer_help(arg: Arg, fallback_help: str | None) -> str | None:

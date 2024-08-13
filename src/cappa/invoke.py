@@ -218,7 +218,7 @@ def resolve_invoke_handler(
         try:
             module = importlib.import_module(module_name)
         except ModuleNotFoundError as e:
-            name = getattr(e, "name") or str(e)
+            name = getattr(e, "name", None) or str(e)
             raise InvokeResolutionError(
                 f"No module '{name}' when attempting to load '{fn}'."
             )
@@ -260,16 +260,23 @@ def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
     return deps
 
 
-def fulfill_deps(fn: Callable, fulfilled_deps: dict) -> typing.Any:
-    result = {}
+def fulfill_deps(
+    fn: Callable, fulfilled_deps: dict, allow_empty: bool = False
+) -> typing.Any:
+    result: dict[str, typing.Any] = {}
 
     try:
         function_view = CallableView.from_callable(fn, include_extras=True)
     except NameError as e:  # pragma: no cover
-        name = getattr(e, "name") or str(e)
+        name = getattr(e, "name", None) or str(e)
         raise InvokeResolutionError(
-            f"Could not collect resolve reference to {name} for Dep({fn.__name__})"
+            f"Could not collect resolve reference to {name} for `{fn.__name__}`"
         )
+    except (ValueError, AttributeError):
+        # ValueError is common amongst builtins. Perhaps TypeView ought to be handling this.
+        # AttributeError is currently an issue with Enums, I think TypeView should **definitely**
+        # handle this.
+        return result
 
     for param_view in function_view.parameters:
         type_view = param_view.type_view
@@ -279,7 +286,7 @@ def fulfill_deps(fn: Callable, fulfilled_deps: dict) -> typing.Any:
             # Non-annotated args are either implicit dependencies (and thus already fulfilled),
             # or arguments that we cannot fulfill
             if type_view.fallback_origin not in fulfilled_deps:
-                if param_view.has_default:
+                if param_view.has_default or allow_empty:
                     # if there's a default, we can just skip it and let the default fulfill the value.
                     continue
 

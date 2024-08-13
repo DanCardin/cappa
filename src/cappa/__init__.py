@@ -6,6 +6,7 @@ from cappa.file_io import FileMode
 from cappa.help import HelpFormatable, HelpFormatter
 from cappa.invoke import Dep
 from cappa.output import Exit, HelpExit, Output
+from cappa.parse import unpack_arguments
 from cappa.subcommand import Subcommand, Subcommands
 
 # isort: split
@@ -38,4 +39,5 @@ __all__ = [
     "invoke",
     "invoke_async",
     "parse",
+    "unpack_arguments",
 ]

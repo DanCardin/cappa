@@ -19,14 +19,14 @@ if typing.TYPE_CHECKING:
     from cappa.command import Command
 
 __all__ = [
-    "output_format",
-    "error_format",
-    "error_format_without_short_help",
     "Displayable",
-    "theme",
-    "Output",
     "Exit",
     "HelpExit",
+    "Output",
+    "error_format",
+    "error_format_without_short_help",
+    "output_format",
+    "theme",
 ]
 
 prompt_types = (Prompt, Confirm)

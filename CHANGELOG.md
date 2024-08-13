@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.24
+
+### 0.24.0
+- feat: Support native inference parser for dataclass-like annotation
+s.
+  Note this contains a minor breaking changes:
+
+  * The `Arg.annotations` attribute was swapped for `Arg.type_view`. This was
+    never a documented feature, but rather a side-effect required to implement
+    certain built-in parser inferences. Swapping to `type_view` exposes strictly
+    more information, and in a nicer interface.
+
+- feat: User defined parsers can access the `TypeView` by accepting it as an argument.
+
+## 0.23
+
+### 0.23.0
+- fix: Avoid storing has_value=False values in the parser.
+- feat: Introduce `Arg.destructure()` and `Arg.has_value`.
+- chore: Swap custom MISSING/missing for EmptyType/Empty.
+- refactor: Adopt the type-lens package.
+
 ## 0.22
 
 ### 0.22.5
