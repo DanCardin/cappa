@@ -2,6 +2,10 @@
 
 ## 0.22
 
+### 0.22.5
+
+- fix: Refactor parser combinators into dedicated module, and document the behavior more thoroughly.
+
 ### 0.22.4
 
 - fix: Avoid applying annotated type parsing to default value.

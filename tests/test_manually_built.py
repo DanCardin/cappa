@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 import cappa
 import pytest
-from cappa.annotation import parse_list, parse_value
 from cappa.output import Exit
+from cappa.parse import parse_list, parse_value
 
 from tests.utils import backends, parse
 

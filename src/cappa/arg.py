@@ -9,23 +9,20 @@ from collections.abc import Callable
 
 from typing_inspect import is_optional_type
 
-from cappa.annotation import (
-    detect_choices,
-    is_sequence_type,
-    parse_optional,
-    parse_value,
-)
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
 from cappa.env import Env
+from cappa.parse import parse_optional, parse_value
 from cappa.typing import (
     MISSING,
     NoneType,
     T,
+    detect_choices,
     find_type_annotation,
     get_optional_type,
     is_of_type,
+    is_sequence_type,
     is_subclass,
     is_union_type,
     missing,

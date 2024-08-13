@@ -61,7 +61,7 @@ default inferred behavior.
 ```{note}
 This feature is currently experimental, in particular because the parser state
 available to either backend's callable is radically different. However, for an
-action callable which accepts no arguments, behaviors is unlikely to change.
+action callable which accepts no arguments, the behavior is unlikely to change.
 ```
 
 In addition to one of the literal `ArgAction` variants, the provided action can
@@ -73,7 +73,7 @@ argument.
 ```{note}
 Custom actions may interfere with general inference features, depending on what you're
 doing (given that you're taking over the parser's duty of determining how the
-code ought to handle the argument).
+code ought to handle the argument in question).
 
 As such, you may need to specify options like `num_args`, where you wouldn't have otherwise
 needed to.
@@ -97,7 +97,8 @@ The set of available objects to inject include:
   original input.
 
 The above set of objects is of potentially limited value. More parser state will
-likely be exposed through this interface in the future.
+likely be exposed through this interface in the future. If you think some specific
+bit of parser state is missing and could be useful to you, please raise an issue!
 
 For example:
 
@@ -289,3 +290,60 @@ is not allowed with argument '-v'`
 An explicit `group=` can still be used in concert with the above syntax to control
 the `order` and name of the resultant group.
 ```
+
+## Parse
+
+`Arg.parse` can be used to provide **specific** instruction to cappa as to how to
+handle the raw value given from the CLI parser backend.
+
+In _general_, this argument shouldn't need to be specified because the annotated
+type will generally _imply_ how that particular value ought to be parsed, especially
+for built in python types.
+
+However, there will inevitably be cases where the type itself is not enough to infer
+the specific parsing required. Take for example:
+
+```python
+from datetime import date
+
+@dataclass
+class Example:
+    iso_date: date
+    american_date: Annotated[date, cappa.Arg(parse=lambda date_str: date.strptime('%d/%m/%y'))]
+```
+
+Cappa's default date parsing assumes an input isoformat string. However you might instead
+want a specific alternate parsing behavior; and `parse=` is how that is achieved.
+
+Further, this is likely more useful for parsing any custom classes which dont have simple,
+single-string-input constructor arguments.
+
+```{note}
+Note cappa itself contains a number of component `parse_*` functions inside the `parse`
+module, which can be used in combination with your own custom `parse` functions.
+```
+
+### Parsing JSON
+
+Another example of a potentially useful parsing concept could be to parse json string input.
+For example:
+
+```python
+import json
+from dataclasses import dataclass
+from typing import Annotated
+
+import cappa
+
+@dataclass
+class Example:
+    todo: Annotated[dict[str, int], cappa.Arg(parse=json.loads)]
+
+todo = cappa.parse(Todo)
+print(todo)
+```
+
+Natively (at present), cappa doesn't have any specific `dict` type inference because it's
+ambiguous what CLI input shape that ought to map to. However, by combining that with
+a dedicated `parse=json.loads` annotation, `example.py '{"foo": "bar"}'` now yields
+`Example({'foo': 'bar'})`.
