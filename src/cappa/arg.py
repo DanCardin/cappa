@@ -6,6 +6,9 @@ import dataclasses
 import enum
 import typing
 from collections.abc import Callable
+from typing import Union
+
+from typing_extensions import TypeAlias
 
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
@@ -71,6 +74,9 @@ class ArgAction(enum.Enum):
         return self in {self.store_true, self.store_false}
 
 
+ArgActionType: TypeAlias = Union[ArgAction, Callable]
+
+
 @dataclasses.dataclass(order=True)
 class Group:
     order: int = 0
@@ -128,6 +134,11 @@ class Arg(typing.Generic[T]):
         deprecated: If supplied, the argument will be marked as deprecated. If given `True`,
             a default message will be generated, otherwise a supplied string will be
             used as the deprecation message.
+        destructured: When set, destructures the annotated type into current-level arguments.
+            See `Arg.destructure`.
+        has_value: Whether the argument has a value that should be saved back to the destination
+            type. For most `Arg`, this will default to `True`, however `--help` is an example
+            of an `Arg` for which it is false.
     """
 
     value_name: str | EmptyType = Empty
@@ -141,13 +152,16 @@ class Arg(typing.Generic[T]):
     group: str | tuple[int, str] | Group | EmptyType = Empty
 
     hidden: bool = False
-    action: ArgAction | Callable | None = None
+    action: ArgActionType | None = None
     num_args: int | None = None
     choices: list[str] | None = None
     completion: Callable[..., list[Completion]] | None = None
     required: bool | None = None
     field_name: str | EmptyType = Empty
     deprecated: bool | str = False
+
+    destructured: Destructured | None = None
+    has_value: bool | None = None
 
     annotations: list[type] = dataclasses.field(default_factory=list)
 
@@ -190,7 +204,12 @@ class Arg(typing.Generic[T]):
                 default_long=default_long,
                 exclusive=exclusive,
             )
-            result.append(normalized_arg)
+
+            if arg.destructured:
+                destructured_args = destructure(normalized_arg, type_view)
+                result.extend(destructured_args)
+            else:
+                result.append(normalized_arg)
 
         return list(explode_negated_bool_args(result))
 
@@ -198,7 +217,7 @@ class Arg(typing.Generic[T]):
         self,
         type_view: TypeView | None = None,
         fallback_help: str | None = None,
-        action: ArgAction | Callable | None = None,
+        action: ArgActionType | None = None,
         default: typing.Any = Empty,
         field_name: str | None = None,
         default_short: bool = False,
@@ -226,6 +245,7 @@ class Arg(typing.Generic[T]):
         group = infer_group(self, short, long, exclusive)
 
         value_name = infer_value_name(self, field_name, num_args)
+        has_value = infer_has_value(self, action)
 
         return dataclasses.replace(
             self,
@@ -242,7 +262,12 @@ class Arg(typing.Generic[T]):
             help=help,
             completion=completion,
             group=group,
+            has_value=has_value,
         )
+
+    @classmethod
+    def destructure(cls, settings: Destructured | None = None):
+        return cls(destructured=settings or Destructured())
 
     def names(self, *, n=0) -> list[str]:
         short_names = typing.cast(list, self.short or [])
@@ -415,7 +440,7 @@ def infer_choices(arg: Arg, type_view: TypeView) -> list[str] | None:
 
 def infer_action(
     arg: Arg, type_view: TypeView, long, default: typing.Any
-) -> ArgAction | Callable:
+) -> ArgActionType:
     if arg.count:
         return ArgAction.count
 
@@ -458,7 +483,7 @@ def infer_action(
 def infer_num_args(
     arg: Arg,
     type_view: TypeView,
-    action: ArgAction | Callable,
+    action: ArgActionType,
     long,
 ) -> int:
     if arg.num_args is not None:
@@ -607,3 +632,16 @@ def explode_negated_bool_args(args: typing.Sequence[Arg]) -> typing.Iterable[Arg
 
         if not yielded:
             yield arg
+
+
+def infer_has_value(arg: Arg, action: ArgActionType):
+    if arg.has_value is not None:
+        return arg.has_value
+
+    if isinstance(action, ArgAction) and action in ArgAction.value_actions():
+        return False
+
+    return True
+
+
+from cappa.destructure import Destructured, destructure  # noqa: E402

@@ -4,7 +4,7 @@ import dataclasses
 import typing
 from collections import deque
 
-from cappa.arg import Arg, ArgAction, Group
+from cappa.arg import Arg, ArgAction, ArgActionType, Group
 from cappa.command import Command, Subcommand
 from cappa.completion.types import Completion, FileCompletion
 from cappa.help import format_subcommand_names
@@ -180,6 +180,7 @@ class ParseContext:
                 isinstance(arg, Arg)
                 and not arg.short
                 and not arg.long
+                and not arg.destructured
                 or isinstance(arg, Subcommand)
             ):
                 result.append(arg)
@@ -576,13 +577,7 @@ def consume_arg(
     if option and field_name in context.missing_options:
         context.missing_options.remove(field_name)
 
-    action = arg.action
-    assert action
-
-    if isinstance(action, ArgAction):
-        action_handler = process_options[action]
-    else:
-        action_handler = action
+    action_handler = determine_action_handler(arg.action)
 
     fulfilled_deps: dict = {
         Command: context.command,
@@ -649,6 +644,15 @@ def store_append(context: ParseContext, arg: Arg, value: Value[typing.Any]):
     result = context.result.setdefault(typing.cast(str, arg.field_name), [])
     result.append(value.value)
     return result
+
+
+def determine_action_handler(action: ArgActionType | None):
+    assert action
+
+    if isinstance(action, ArgAction):
+        return process_options[action]
+
+    return action
 
 
 process_options: dict[ArgAction, typing.Callable] = {
