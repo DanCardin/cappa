@@ -1,25 +1,24 @@
-.PHONY: install test lint format build publish
+.PHONY: install test lint format
 
 PACKAGE_VERSION = $(shell python -c 'import importlib.metadata; print(importlib.metadata.version("responsaas"))')
 
 install:
-	poetry install -E docstring
+	uv sync --all-extras
 
 test:
-	coverage run -m pytest src tests
-	coverage combine
-	coverage report
-	coverage xml
+	uv run --all-extras coverage run -m pytest src tests
+	uv run coverage combine
+	uv run coverage report
+	uv run coverage xml
 
 lint:
-	ruff check src tests || exit 1
-	mypy src tests || exit 1
-	ruff format --check src tests || exit 1
+	uv run ruff check src tests || exit 1
+	uv run --all-extras mypy src tests || exit 1
+	uv run ruff format --check src tests || exit 1
 
 format:
-	ruff check src tests --fix
-	ruff format src tests
+	uv run ruff check src tests --fix
+	uv run ruff format src tests
 
 readme-image:
-	FORCE_COLOR=true python readme.py --help | ansitoimg --title '' docs/source/_static/example.svg
-	
+	FORCE_COLOR=true uv run python readme.py --help | ansitoimg --title '' docs/source/_static/example.svg

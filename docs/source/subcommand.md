@@ -59,7 +59,6 @@ class SubcmdTwo:
   your own name.
 
 ```{eval-rst}
-.. autoapimodule:: cappa
-   :members: Subcommand
+.. autoapiclass:: cappa.Subcommand
    :noindex:
 ```

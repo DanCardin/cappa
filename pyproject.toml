@@ -1,11 +1,13 @@
-[tool.poetry]
+[project]
 name = "cappa"
 version = "0.22.4"
 description = "Declarative CLI argument parser."
 
-repository = "https://github.com/dancardin/cappa"
-authors = ["DanCardin <ddcardin@gmail.com>"]
-license = "Apache-2.0"
+urls = {repository = "https://github.com/dancardin/cappa"}
+authors = [
+  {name = "Dan Cardin", email = "ddcardin@gmail.com"},
+]
+license = {file = "LICENSE"}
 readme = "README.md"
 keywords = [
   "CLI",
@@ -18,40 +20,36 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-packages = [{include = "cappa", from = "src"}]
 include = [
-    "*.md",
-    "py.typed",
+  "py.typed",
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.8,<4"
+requires-python = ">=3.8,<4"
 
-typing-extensions = ">=4.8.0"
-typing-inspect = ">=0.9.0"
-rich = "*"
-eval_type_backport = {version = "*", python = "<3.10"}
+dependencies = [
+  "typing-extensions >= 4.8.0",
+  "typing-inspect >= 0.9.0",
+  "rich",
+  "eval_type_backport; python_version < '3.10'",
+]
 
-docstring-parser = {version = ">=0.15", optional = true}
+[project.optional-dependencies]
+docstring = ["docstring-parser >= 0.15"]
 
-[tool.poetry.extras]
-docstring = ["docstring-parser"]
+[tool.uv]
+dev-dependencies = [
+  "pytest >=8.1.1,<9",
+  "coverage >= 7.3.0",
+  "mypy >= 1.0.0",
+  "ruff >= 0.6.2",
+  "docutils >= 0.20.0",
+  "typing-extensions >= 4.8.0",
+  "types-docutils >= 0.20.0",
 
-[tool.poetry.group.dev.dependencies]
-attrs = "*"
-coverage = "^7.3.0"
-msgspec = {version = "*", python = "<3.13"}
-mypy = ">=1.0"
-pydantic = "*"
-pytest = "^7.4.0"
-ruff = "^0.6.2"
-docutils = "0.20.0"
-typing-extensions = ">=4.8.0"
-types-docutils = "^0.20.0.3"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+  "attrs",
+  "pydantic",
+  "msgspec; python_version < '3.13'",
+]
 
 [tool.ruff]
 target-version = "py38"
@@ -110,3 +108,7 @@ pytester_example_dir = "tests/examples"
 markers = [
   "help",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

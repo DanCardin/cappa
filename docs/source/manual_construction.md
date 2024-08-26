@@ -45,6 +45,11 @@ For inherent types, like `int`, `float`, etc. Their constructor may serve as
 their own parser.
 
 ```{eval-rst}
-.. autoapimodule:: cappa.parse
-   :members: parse_value, parse_list, parse_tuple, parse_literal, parse_none, parse_set, parse_union
+.. autoapifunction:: cappa.parse.parse_value
+.. autoapifunction:: cappa.parse.parse_list
+.. autoapifunction:: cappa.parse.parse_tuple
+.. autoapifunction:: cappa.parse.parse_literal
+.. autoapifunction:: cappa.parse.parse_none
+.. autoapifunction:: cappa.parse.parse_set
+.. autoapifunction:: cappa.parse.parse_union
 ```

@@ -64,16 +64,9 @@
 
 ## 0.18
 
-### 0.18.1
-
-- feat: Add deprecated option to command/arg.
-
-## 0.18
-
 ## 0.18.1
 
 - feat: Add `deprecated` option, allowing deprecation of args, options, and subcommands
-  > > > > > > > 142825c (feat: Implement exclusive groups.)
 
 ### 0.18.0
 
