@@ -3,9 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Union
 
-import cappa
 from typing_extensions import Annotated
 
+import cappa
 from tests.utils import backends, invoke
 
 
@@ -15,8 +15,7 @@ def foo(tlc: TopLevelCommand, subcommand: Subcommand, foo: Foo):
 
 @cappa.command(invoke=foo)
 @dataclass
-class Foo:
-    ...
+class Foo: ...
 
 
 @dataclass

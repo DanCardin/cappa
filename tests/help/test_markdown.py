@@ -1,10 +1,10 @@
 import sys
 from dataclasses import dataclass
 
-import cappa
 import pytest
 from rich.console import Console
 
+import cappa
 from tests.utils import backends, parse
 
 

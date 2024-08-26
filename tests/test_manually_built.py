@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import cappa
 import pytest
+
+import cappa
 from cappa.output import Exit
 from cappa.parse import parse_list, parse_value
-
 from tests.utils import backends, parse
 
 

@@ -6,10 +6,10 @@ from dataclasses import dataclass
 from typing import BinaryIO, TextIO
 from unittest.mock import mock_open, patch
 
-import cappa
 import pytest
 from typing_extensions import Annotated
 
+import cappa
 from tests.utils import backends, parse
 
 

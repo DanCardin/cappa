@@ -3,9 +3,9 @@ from __future__ import annotations
 import sys
 from typing import Optional
 
-import cappa
 from typing_extensions import Annotated
 
+import cappa
 from tests.utils import backends, parse
 
 if sys.version_info < (3, 13):

@@ -8,8 +8,9 @@ import sqlite3
 from dataclasses import dataclass, field
 from typing import Literal, Union
 
-import cappa
 from typing_extensions import Annotated
+
+import cappa
 
 log = logging.getLogger(__name__)
 
@@ -70,8 +71,7 @@ def bark(bark: BarkCommand):
 
 @cappa.command(name="bark", invoke=bark)
 @dataclass
-class BarkCommand:
-    ...
+class BarkCommand: ...
 
 
 # invoke cli parsing

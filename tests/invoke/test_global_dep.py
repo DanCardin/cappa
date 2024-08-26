@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import cappa
-
 from tests.utils import backends, invoke
 
 
@@ -21,8 +20,7 @@ def command():
 
 @cappa.command(invoke=command)
 @dataclass
-class Command:
-    ...
+class Command: ...
 
 
 @backends

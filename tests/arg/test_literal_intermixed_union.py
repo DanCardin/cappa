@@ -4,9 +4,9 @@ import textwrap
 from dataclasses import dataclass
 from typing import Literal, Union
 
-import cappa
 import pytest
 
+import cappa
 from tests.utils import backends, parse
 
 

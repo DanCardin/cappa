@@ -3,9 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Union
 
-import cappa
 import pytest
 
+import cappa
 from tests.utils import backends, parse
 
 

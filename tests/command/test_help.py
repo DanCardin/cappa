@@ -3,10 +3,10 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-import cappa
 import pytest
-from cappa.output import Exit
 
+import cappa
+from cappa.output import Exit
 from tests.utils import backends, parse
 
 
@@ -50,8 +50,7 @@ def test_default_help_no_long_description(backend, capsys):
 def test_unannotated_argument(backend, capsys):
     @cappa.command(help="All the help.")
     @dataclass
-    class Command:
-        ...
+    class Command: ...
 
     with pytest.raises(Exit):
         parse(Command, "--help", backend=backend)

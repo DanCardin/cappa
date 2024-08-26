@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import cappa
 import pytest
-from cappa import argparse
 from typing_extensions import Annotated
 
+import cappa
+from cappa import argparse
 from tests.utils import backends, parse
 
 

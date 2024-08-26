@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import cappa
-
 from tests.utils import backends, parse
 
 

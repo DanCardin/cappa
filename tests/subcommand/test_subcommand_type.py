@@ -4,7 +4,6 @@ import typing
 from dataclasses import dataclass
 
 import cappa
-
 from tests.utils import backends, parse
 
 

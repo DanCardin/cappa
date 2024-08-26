@@ -3,10 +3,11 @@ from typing import Union
 from unittest.mock import patch
 
 import pytest
+from typing_extensions import Unpack
+
 from cappa import argparse, parser
 from cappa.output import Exit
 from cappa.testing import CommandRunner, RunnerArgs
-from typing_extensions import Unpack
 
 backends = pytest.mark.parametrize("backend", [None, argparse.backend])
 

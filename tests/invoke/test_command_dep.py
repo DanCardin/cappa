@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Union
 
 import cappa
-
 from tests.utils import backends, invoke
 
 

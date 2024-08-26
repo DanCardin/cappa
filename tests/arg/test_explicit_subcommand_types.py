@@ -3,20 +3,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Union
 
-import cappa
 from typing_extensions import Annotated
 
+import cappa
 from tests.utils import backends, parse
 
 
 @dataclass
-class Sc1:
-    ...
+class Sc1: ...
 
 
 @dataclass
-class Sc2:
-    ...
+class Sc2: ...
 
 
 @dataclass
