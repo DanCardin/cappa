@@ -3,9 +3,9 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass
 
-import cappa
 import pytest
 
+import cappa
 from tests.utils import backends, parse
 
 

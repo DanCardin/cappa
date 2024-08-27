@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-import cappa
 import pytest
 from typing_extensions import Annotated
 
+import cappa
 from tests.utils import backends, parse
 
 
@@ -33,9 +33,9 @@ def test_manually_specified_choices(backend):
 def test_optional_set_of_choices(backend, capsys):
     @dataclass
     class ArgTest:
-        choice: Annotated[
-            set[Literal["one", "two"]] | None, cappa.Arg(short=True)
-        ] = None
+        choice: Annotated[set[Literal["one", "two"]] | None, cappa.Arg(short=True)] = (
+            None
+        )
 
     with pytest.raises(cappa.HelpExit):
         parse(ArgTest, "--help", backend=backend)

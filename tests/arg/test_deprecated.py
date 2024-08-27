@@ -4,10 +4,10 @@ import sys
 import textwrap
 from dataclasses import dataclass
 
-import cappa
 import pytest
 from typing_extensions import Annotated
 
+import cappa
 from tests.utils import parse
 
 
@@ -15,12 +15,12 @@ def test_native_backend(capsys):
     @dataclass
     class ArgTest:
         arg1: Annotated[str, cappa.Arg(deprecated=True)] = "default"
-        arg2: Annotated[
-            str, cappa.Arg(short="a", long="--aaaa", deprecated=True)
-        ] = "default"
-        arg3: Annotated[
-            str, cappa.Arg(short="b", deprecated="Use something else")
-        ] = "default"
+        arg2: Annotated[str, cappa.Arg(short="a", long="--aaaa", deprecated=True)] = (
+            "default"
+        )
+        arg3: Annotated[str, cappa.Arg(short="b", deprecated="Use something else")] = (
+            "default"
+        )
 
     result = parse(ArgTest)
     assert result.arg1 == "default"
@@ -52,12 +52,12 @@ def test_argparse_le_313(capsys):
     @dataclass
     class ArgTest:
         arg1: Annotated[str, cappa.Arg(deprecated=True)] = "default"
-        arg2: Annotated[
-            str, cappa.Arg(short="a", long="--aaaa", deprecated=True)
-        ] = "default"
-        arg3: Annotated[
-            str, cappa.Arg(short="b", deprecated="Use something else")
-        ] = "default"
+        arg2: Annotated[str, cappa.Arg(short="a", long="--aaaa", deprecated=True)] = (
+            "default"
+        )
+        arg3: Annotated[str, cappa.Arg(short="b", deprecated="Use something else")] = (
+            "default"
+        )
 
     result = parse(ArgTest, backend=cappa.argparse.backend)
     assert result.arg1 == "default"
@@ -81,12 +81,12 @@ def test_argparse_ge_313(capsys):
     @dataclass
     class ArgTest:
         arg1: Annotated[str, cappa.Arg(deprecated=True)] = "default"
-        arg2: Annotated[
-            str, cappa.Arg(short="a", long="--aaaa", deprecated=True)
-        ] = "default"
-        arg3: Annotated[
-            str, cappa.Arg(short="b", deprecated="Use something else")
-        ] = "default"
+        arg2: Annotated[str, cappa.Arg(short="a", long="--aaaa", deprecated=True)] = (
+            "default"
+        )
+        arg3: Annotated[str, cappa.Arg(short="b", deprecated="Use something else")] = (
+            "default"
+        )
 
     result = parse(ArgTest, backend=cappa.argparse.backend)
     assert result.arg1 == "default"

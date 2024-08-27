@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 
-import cappa
 from typing_extensions import Annotated
 
+import cappa
 from tests.utils import backends, invoke_async
 
 
@@ -23,8 +23,7 @@ async def handler(foo: Annotated[int, cappa.Dep(foo)]):
 
 @cappa.command(invoke=handler)
 @dataclass
-class Command:
-    ...
+class Command: ...
 
 
 def idk():

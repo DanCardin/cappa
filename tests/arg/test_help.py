@@ -4,11 +4,11 @@ import re
 from dataclasses import dataclass
 from typing import Literal, Union
 
-import cappa
 import pytest
-from cappa.output import Exit
 from typing_extensions import Annotated, Doc
 
+import cappa
+from cappa.output import Exit
 from tests.utils import backends, parse
 
 

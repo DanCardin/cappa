@@ -3,11 +3,11 @@ from __future__ import annotations
 import textwrap
 from dataclasses import dataclass
 
-import cappa
 import pytest
-from cappa.arg import Group
 from typing_extensions import Annotated
 
+import cappa
+from cappa.arg import Group
 from tests.utils import backends, parse, strip_trailing_whitespace
 
 

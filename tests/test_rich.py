@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
-import cappa
-from cappa import output
 from typing_extensions import Annotated
 
+import cappa
+from cappa import output
 from tests.utils import backends, parse
 
 

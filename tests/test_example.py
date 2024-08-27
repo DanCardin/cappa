@@ -4,7 +4,6 @@ import pathlib
 from dataclasses import dataclass, field
 
 import cappa
-
 from tests.utils import backends, parse
 
 

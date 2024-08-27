@@ -44,7 +44,7 @@ msgspec = {version = "*", python = "<3.13"}
 mypy = ">=1.0"
 pydantic = "*"
 pytest = "^7.4.0"
-ruff = "^0.2.2"
+ruff = "^0.6.2"
 docutils = "0.20.0"
 typing-extensions = ">=4.8.0"
 types-docutils = "^0.20.0.3"

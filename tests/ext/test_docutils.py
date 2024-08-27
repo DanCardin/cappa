@@ -2,13 +2,14 @@ from dataclasses import dataclass
 from typing import Union
 from unittest.mock import Mock
 
-import cappa
 import pytest
-from cappa.ext.docutils import CappaDirective
 from docutils.core import publish_from_doctree
 from docutils.parsers.rst.states import Body, RSTStateMachine
 from docutils.utils import new_document
 from typing_extensions import Annotated
+
+import cappa
+from cappa.ext.docutils import CappaDirective
 
 
 @dataclass

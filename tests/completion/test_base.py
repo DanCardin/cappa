@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from unittest.mock import patch
 
-import cappa
 import pytest
-from cappa.parser import backend
 
+import cappa
+from cappa.parser import backend
 from tests.utils import parse
 
 
@@ -50,8 +50,7 @@ def test_invalid_setup():
 
 def test_no_completion():
     @dataclass
-    class Example:
-        ...
+    class Example: ...
 
     result = cappa.parse(Example, argv=[], backend=backend, completion=False)
     assert result == Example()
@@ -68,8 +67,7 @@ def test_no_completion():
 
 def test_arg_completion(capsys):
     @dataclass
-    class Example:
-        ...
+    class Example: ...
 
     completion: cappa.Arg = cappa.Arg(short="-p", long="--pompletion")
 

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-import cappa
 from typing_extensions import Annotated
 
+import cappa
 from tests.utils import backends, parse
 
 

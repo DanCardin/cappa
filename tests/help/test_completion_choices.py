@@ -3,16 +3,15 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-import cappa
 import pytest
 
+import cappa
 from tests.utils import parse
 
 
 def test_string_group(capsys):
     @dataclass
-    class Args:
-        ...
+    class Args: ...
 
     with pytest.raises(cappa.HelpExit) as e:
         parse(Args, "--help", backend=cappa.backend)

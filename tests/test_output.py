@@ -1,12 +1,12 @@
 import textwrap
 from dataclasses import dataclass
 
-import cappa
 import pytest
 from rich.table import Table
 from rich.text import Text
 from typing_extensions import Annotated
 
+import cappa
 from tests.utils import backends, parse
 
 
@@ -17,8 +17,7 @@ def test_invoke_exit_success_with_message(capsys, backend):
 
     @cappa.command(invoke=fn)
     @dataclass
-    class Example:
-        ...
+    class Example: ...
 
     with pytest.raises(cappa.Exit):
         cappa.invoke(Example, argv=[], backend=backend)
@@ -34,8 +33,7 @@ def test_invoke_exit_success_without_message(capsys, backend):
 
     @cappa.command(invoke=fn)
     @dataclass
-    class Example:
-        ...
+    class Example: ...
 
     with pytest.raises(cappa.Exit):
         cappa.invoke(Example, argv=[], backend=backend)
@@ -51,8 +49,7 @@ def test_invoke_exit_error(capsys, backend):
 
     @cappa.command(invoke=fn)
     @dataclass
-    class Example:
-        ...
+    class Example: ...
 
     with pytest.raises(cappa.Exit) as e:
         cappa.invoke(Example, argv=[], backend=backend)
@@ -69,8 +66,7 @@ def test_error_output_rich_text(capsys, backend):
 
     @cappa.command(invoke=fn)
     @dataclass
-    class Example:
-        ...
+    class Example: ...
 
     with pytest.raises(cappa.Exit) as e:
         cappa.invoke(Example, argv=[], backend=backend)
@@ -84,8 +80,7 @@ def test_error_output_rich_text(capsys, backend):
 def test_explicit_output_prefix(capsys, backend):
     @cappa.command(name="asdf")
     @dataclass
-    class Example:
-        ...
+    class Example: ...
 
     output = cappa.Output(error_format="{prog}: error({code}): {message}.")
     with pytest.raises(cappa.Exit) as e:

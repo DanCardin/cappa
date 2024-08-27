@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import cappa
 from typing_extensions import Annotated
 
+import cappa
 from tests.utils import backends, invoke
 
 
@@ -26,8 +26,7 @@ def command(levels: Annotated[dict, cappa.Dep(level_one)]):
 
 @cappa.command(invoke=command)
 @dataclass
-class Command:
-    ...
+class Command: ...
 
 
 @backends

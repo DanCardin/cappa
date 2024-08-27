@@ -2,26 +2,23 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import cappa
 import pytest
 
+import cappa
 from tests.utils import backends, parse
 
 
 @dataclass
-class One:
-    ...
+class One: ...
 
 
 @cappa.command(hidden=True)
 @dataclass
-class Two:
-    ...
+class Two: ...
 
 
 @dataclass
-class Three:
-    ...
+class Three: ...
 
 
 @dataclass

@@ -1,10 +1,10 @@
 import pytest
+
 from cappa.class_inspect import fields
 
 
 def test_invalid_class_base():
-    class Random:
-        ...
+    class Random: ...
 
     with pytest.raises(ValueError) as e:
         fields(Random)

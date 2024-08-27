@@ -2,9 +2,9 @@ import re
 from dataclasses import dataclass
 from textwrap import dedent
 
-import cappa
 import pytest
 
+import cappa
 from tests.utils import (
     backends,
     ignore_docstring_parser,

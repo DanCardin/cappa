@@ -3,9 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Union
 
-import cappa
 from typing_extensions import Annotated
 
+import cappa
 from tests.utils import backends, parse
 
 
@@ -48,9 +48,9 @@ def test_list_positional(backend):
 def test_optional_list(backend):
     @dataclass
     class ArgTest:
-        value: Annotated[
-            Union[list[str], None], cappa.Arg(short=True, long=True)
-        ] = None
+        value: Annotated[Union[list[str], None], cappa.Arg(short=True, long=True)] = (
+            None
+        )
 
     test = parse(
         ArgTest,

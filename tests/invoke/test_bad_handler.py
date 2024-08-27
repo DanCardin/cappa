@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import cappa
 import pytest
 
+import cappa
 from tests.utils import backends, invoke
 
 
@@ -12,8 +12,7 @@ from tests.utils import backends, invoke
 def test_missing_invoke(backend):
     @cappa.command()
     @dataclass
-    class Command:
-        ...
+    class Command: ...
 
     with pytest.raises(RuntimeError) as e:
         invoke(Command, backend=backend)
@@ -31,8 +30,7 @@ def test_missing_invoke(backend):
 def test_string_missing_function(backend):
     @cappa.command(invoke="sys")
     @dataclass
-    class Command:
-        ...
+    class Command: ...
 
     with pytest.raises(RuntimeError) as e:
         invoke(Command, backend=backend)
@@ -50,8 +48,7 @@ def test_string_missing_function(backend):
 def test_string_references_invalid_module(backend):
     @cappa.command(invoke="completely.wrong")
     @dataclass
-    class Command:
-        ...
+    class Command: ...
 
     with pytest.raises(RuntimeError) as e:
         invoke(Command, backend=backend)
@@ -68,8 +65,7 @@ def test_string_references_invalid_module(backend):
 def test_string_references_invalid_function(backend):
     @cappa.command(invoke="builtins.meow")
     @dataclass
-    class Command:
-        ...
+    class Command: ...
 
     with pytest.raises(RuntimeError) as e:
         invoke(Command, backend=backend)
@@ -87,8 +83,7 @@ def test_string_references_invalid_function(backend):
 def test_string_reference_not_callable(backend):
     @cappa.command(invoke="builtins.__name__")
     @dataclass
-    class Command:
-        ...
+    class Command: ...
 
     with pytest.raises(RuntimeError) as e:
         invoke(Command, backend=backend)

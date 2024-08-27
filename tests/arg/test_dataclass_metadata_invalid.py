@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-import cappa
 import pytest
 
+import cappa
 from tests.utils import backends, parse
 
 

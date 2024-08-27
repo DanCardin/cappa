@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import cappa
 import pytest
 
+import cappa
 from tests.utils import backends, invoke
 
 
@@ -15,8 +15,7 @@ def test_invalid_dependency(backend):
 
     @cappa.command(invoke=command)
     @dataclass
-    class Command:
-        ...
+    class Command: ...
 
     with pytest.raises(RuntimeError) as e:
         invoke(Command, backend=backend)
@@ -34,8 +33,7 @@ def test_unannotated_argument(backend):
 
     @cappa.command(invoke=command)
     @dataclass
-    class Command:
-        ...
+    class Command: ...
 
     with pytest.raises(RuntimeError) as e:
         invoke(Command, backend=backend)

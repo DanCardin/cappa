@@ -3,9 +3,9 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-import cappa
 from typing_extensions import Annotated
 
+import cappa
 from tests.utils import backends, invoke
 
 log = logging.getLogger("test")
@@ -39,8 +39,7 @@ def command(
 
 @cappa.command(invoke=command)
 @dataclass
-class Command:
-    ...
+class Command: ...
 
 
 @backends

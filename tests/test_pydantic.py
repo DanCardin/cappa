@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-import cappa
 from pydantic import BaseModel, dataclasses
 from typing_extensions import Annotated
 
+import cappa
 from tests.utils import backends, parse
 
 
