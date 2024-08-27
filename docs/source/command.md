@@ -63,8 +63,7 @@ able to do sans decorator.
 ```
 
 ```{eval-rst}
-.. autoapimodule:: cappa
-   :members: Command
+.. autoapiclass:: cappa.Command
    :noindex:
 ```
 

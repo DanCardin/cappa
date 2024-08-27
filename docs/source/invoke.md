@@ -100,8 +100,7 @@ Then, in order to opt into the invoke behavior, you need to call
 [cappa.invoke](cappa.invoke), rather than [cappa.parse](cappa.parse).
 
 ```{eval-rst}
-.. autoapimodule:: cappa
-   :members: invoke
+.. autoapifunction:: cappa.invoke
    :noindex:
 ```
 

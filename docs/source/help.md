@@ -131,9 +131,9 @@ Positional Arguments:
 
 By default, help text is composed from a few sources:
 
-* The actual help text (as described above)
-* The default argument value (if exists)
-* The set of available "choices" (if exists) (for `Enum`, `Literal`, and `choices=[...]`)
+- The actual help text (as described above)
+- The default argument value (if exists)
+- The set of available "choices" (if exists) (for `Enum`, `Literal`, and `choices=[...]`)
 
 This can be controlled through the use of the `help_formatter` argument to the root
 `cappa.parse`, `cappa.invoke`, etc functions. Additionally it can be set on a
@@ -141,11 +141,11 @@ per-command/subcommand level by making use of the `@cappa.command(help_formatter
 kwarg.
 
 ```{eval-rst}
-.. autoapimodule:: cappa
-   :members: HelpFormatter
+.. autoapiclass:: cappa.HelpFormatter
 ```
 
 ### Customize "default" help representation
+
 By default, the default value will be rendered into the help text as `(Default: {default})`.
 
 You can customize this, by altering the default `help_formatter`:
@@ -160,11 +160,12 @@ parse(Command, help_formatter=HelpFormatter(default_format="(Default `{default}`
 ```
 
 ### Customizing help formatter "sources"
+
 The default `arg_format` is `("{help}", "{choices}", "{default}")`. That means, given
 some argument: `foo: Annotated[Literal["one", "two"], Arg(help="Foo.")] = "two"`, the
 help text will be rendered as `Foo. Valid options: one, two. (Default: two)`
 
-`arg_format` can be any of: A string, a callable, or a sequence of strings or callables. 
+`arg_format` can be any of: A string, a callable, or a sequence of strings or callables.
 Sequences of values will be joined together with an empty space, and **empty strings or `None`
 will be ignored**.
 

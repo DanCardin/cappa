@@ -41,8 +41,7 @@ can be used and are interpreted to handle different kinds of CLI input.
 ```
 
 ```{eval-rst}
-.. autoapimodule:: cappa
-   :members: Arg
+.. autoapiclass:: cappa.Arg
    :noindex:
 ```
 
@@ -121,8 +120,7 @@ class Example:
 ```
 
 ```{eval-rst}
-.. autoapimodule:: cappa
-   :members: Argction
+.. autoapiclass:: cappa.ArgAction
    :noindex:
 ```
 
@@ -208,8 +206,7 @@ look up the environment variable `FOO` for the default value, if there was no
 supplied value at the CLI level.
 
 ```{eval-rst}
-.. autoapimodule:: cappa
-   :members: Env
+.. autoapiclass:: cappa.Env
    :noindex:
 ```
 
