@@ -12,13 +12,13 @@ test:
 	uv run coverage xml
 
 lint:
-	uv run ruff check src tests || exit 1
-	uv run --all-extras mypy src tests || exit 1
-	uv run ruff format --check src tests || exit 1
+	uv run ruff check src tests examples || exit 1
+	uv run --all-extras mypy src tests examples || exit 1
+	uv run ruff format --check src tests examples || exit 1
 
 format:
-	uv run ruff check src tests --fix
-	uv run ruff format src tests
+	uv run ruff check src tests examples --fix
+	uv run ruff format src tests examples
 
 readme-image:
 	FORCE_COLOR=true uv run python readme.py --help | ansitoimg --title '' docs/source/_static/example.svg
