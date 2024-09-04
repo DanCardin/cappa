@@ -38,7 +38,7 @@ Testing <testing>
 :caption: Extra Details
 :hidden:
 
-Examples (vs click/typer/argparse) <examples>
+Examples (vs click/typer/argparse) <examples/index>
 Help/Help Inference <help>
 Asyncio <asyncio>
 Manual Construction <manual_construction>

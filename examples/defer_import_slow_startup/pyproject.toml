@@ -1,0 +1,11 @@
+[project]
+name = "defer-import"
+version = "0.0.1"
+dependencies = ["pandas", "cappa"]
+
+[project.scripts]
+defer-import = "defer_import.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

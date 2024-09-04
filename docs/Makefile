@@ -20,4 +20,5 @@ help:
 	@uv run $(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 autobuild:
-	uv run sphinx-autobuild source build/html
+	rm -rf build
+	uv run sphinx-autobuild --host 0.0.0.0 source build/html

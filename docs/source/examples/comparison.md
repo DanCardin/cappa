@@ -4,6 +4,12 @@ Below is a collection of standalone examples of specific argument/CLI behavior
 one might want, with comparison examples of how it might be done in each of
 Click/Typer/Argparse, where relevant.
 
+Please bring up any specific usage questions about comparisons between Cappa
+and other libraries as an [issue](https://github.com/dancardin/cappa/issues) or
+a [discussion](https://github.com/dancardin/cappa/discussion). The list below can
+ and should grow in response to feature-comparisons which are not clear just from
+ reading the cappa-specific documentation.
+
 ## Custom Option Value Name
 
 i.e. "FOO" in
