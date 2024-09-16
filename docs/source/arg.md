@@ -50,7 +50,7 @@ can be used and are interpreted to handle different kinds of CLI input.
 Obliquely referenced through other `Arg` options like `count`, every `Arg` has a
 corresponding "action". The action is automatically inferred, most of the time,
 based on other options (i.e. `count`), the annotated type (i.e. `bool` ->
-`ArgAction.set_true/ArgAction.set_false`, `list` -> `ArgAction.append`), etc.
+`ArgAction.store_true/ArgAction.store_false`, `list` -> `ArgAction.append`), etc.
 
 However the inferred action can always be directly set, in order to override the
 default inferred behavior.
