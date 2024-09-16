@@ -624,11 +624,12 @@ class Value(typing.Generic[T]):
     value: T
 
 
-def store_bool(val: bool):
-    def store():
-        return val
+def store_true():
+    return True
 
-    return store
+
+def store_false():
+    return False
 
 
 def store_count(context: ParseContext, arg: Arg):
@@ -645,13 +646,13 @@ def store_append(context: ParseContext, arg: Arg, value: Value[typing.Any]):
     return result
 
 
-process_options = {
+process_options: dict[ArgAction, typing.Callable] = {
     ArgAction.help: HelpAction.from_context,
     ArgAction.version: VersionAction.from_arg,
     ArgAction.completion: CompletionAction.from_value,
     ArgAction.set: store_set,
-    ArgAction.store_true: store_bool(True),
-    ArgAction.store_false: store_bool(False),
+    ArgAction.store_true: store_true,
+    ArgAction.store_false: store_false,
     ArgAction.count: store_count,
     ArgAction.append: store_append,
 }

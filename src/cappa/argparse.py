@@ -93,22 +93,6 @@ class ArgumentParser(argparse.ArgumentParser):
         raise HelpExit(self.command.help_formatter(self.command, self.prog))
 
 
-class BooleanOptionalAction(argparse.Action):
-    """Simplified backport of same-named class from 3.9 onward.
-
-    We know more about the called context here, and thus need much less of the
-    logic. Also, we support 3.8, which does not have the original class, so we
-    couldn't use it anyway.
-    """
-
-    def __init__(self, **kwargs):
-        super().__init__(nargs=0, **kwargs)
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        assert isinstance(option_string, str)
-        setattr(namespace, self.dest, not option_string.startswith("--no-"))
-
-
 def custom_action(arg: Arg, action: Callable):
     class CustomAction(argparse.Action):
         def __call__(  # type: ignore

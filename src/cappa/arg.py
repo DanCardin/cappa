@@ -619,19 +619,20 @@ def explode_negated_bool_args(args: typing.Sequence[Arg]) -> typing.Iterable[Arg
     for arg in args:
         yielded = False
         if isinstance(arg.action, ArgAction) and arg.action.is_bool_action and arg.long:
-            long = typing.cast(list[str], arg.long)
+            long = typing.cast(typing.List[str], arg.long)
 
             negatives = [item for item in long if "--no-" in item]
             positives = [item for item in long if "--no-" not in item]
-            positive_arg = dataclasses.replace(
-                arg, long=positives, action=ArgAction.store_true
-            )
-            negative_arg = dataclasses.replace(
-                arg, long=negatives, action=ArgAction.store_false
-            )
-            yield positive_arg
-            yield negative_arg
-            yielded = True
+            if negatives and positives:
+                positive_arg = dataclasses.replace(
+                    arg, long=positives, action=ArgAction.store_true
+                )
+                negative_arg = dataclasses.replace(
+                    arg, long=negatives, action=ArgAction.store_false
+                )
+                yield positive_arg
+                yield negative_arg
+                yielded = True
 
         if not yielded:
             yield arg

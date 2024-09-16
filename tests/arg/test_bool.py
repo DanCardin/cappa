@@ -168,3 +168,29 @@ def test_env_default_value_precedence(backend):
     with patch("os.environ", new={"ENV_DEFAULT": "1"}):
         test = parse(ArgTest, "--env-default", backend=backend)
     assert test.env_default is True
+
+
+@backends
+def test_sole_no_arg(backend):
+    @dataclass
+    class ArgTest:
+        no_dry_run: bool = False
+
+    test = parse(ArgTest, backend=backend)
+    assert test.no_dry_run is False
+
+    test = parse(ArgTest, "--no-dry-run", backend=backend)
+    assert test.no_dry_run is True
+
+
+@backends
+def test_sole_no_arg_inverted(backend):
+    @dataclass
+    class ArgTest:
+        no_dry_run: bool = True
+
+    test = parse(ArgTest, backend=backend)
+    assert test.no_dry_run is True
+
+    test = parse(ArgTest, "--no-dry-run", backend=backend)
+    assert test.no_dry_run is False
