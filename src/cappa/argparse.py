@@ -342,11 +342,6 @@ def join_help(*segments):
 def get_action(arg: Arg) -> argparse.Action | type[argparse.Action] | str:
     action = arg.action
     if isinstance(action, ArgAction):
-        if action in {ArgAction.store_true, ArgAction.store_false}:
-            long = assert_type(arg.long, list)
-            has_no_option = any("--no-" in i for i in long)
-            if has_no_option:
-                return BooleanOptionalAction
         return action.value
 
     action = typing.cast(Callable, action)

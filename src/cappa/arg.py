@@ -64,6 +64,10 @@ class ArgAction(enum.Enum):
     def is_custom(cls, action: ArgAction | Callable | None):
         return action is not None and not isinstance(action, ArgAction)
 
+    @property
+    def is_bool_action(self):
+        return self in {self.store_true, self.store_false}
+
 
 @dataclasses.dataclass(order=True)
 class Group:
@@ -192,7 +196,7 @@ class Arg(typing.Generic[T]):
             )
             result.append(normalized_arg)
 
-        return result
+        return list(explode_negated_bool_args(result))
 
     def normalize(
         self,
@@ -604,6 +608,33 @@ def infer_value_name(arg: Arg, field_name: str, num_args: int | None) -> str:
         return " ".join([field_name] * num_args)
 
     return field_name
+
+
+def explode_negated_bool_args(args: typing.Sequence[Arg]) -> typing.Iterable[Arg]:
+    """Expand `--foo/--no-foo` solo arguments into dual-arguments.
+
+    Acts as a transform from `Arg(long='--foo/--no-foo')` to
+    `Annotated[Arg(long='--foo', action=ArgAction.store_true), Arg(long='--no-foo', action=ArgAction.store_false)]`
+    """
+    for arg in args:
+        yielded = False
+        if isinstance(arg.action, ArgAction) and arg.action.is_bool_action and arg.long:
+            long = typing.cast(list[str], arg.long)
+
+            negatives = [item for item in long if "--no-" in item]
+            positives = [item for item in long if "--no-" not in item]
+            positive_arg = dataclasses.replace(
+                arg, long=positives, action=ArgAction.store_true
+            )
+            negative_arg = dataclasses.replace(
+                arg, long=negatives, action=ArgAction.store_false
+            )
+            yield positive_arg
+            yield negative_arg
+            yielded = True
+
+        if not yielded:
+            yield arg
 
 
 no_extra_arg_actions = {

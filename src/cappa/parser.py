@@ -625,12 +625,7 @@ class Value(typing.Generic[T]):
 
 
 def store_bool(val: bool):
-    def store(arg: Arg, option: RawOption):
-        long = assert_type(arg.long, list)
-        has_no_option = any("--no-" in i for i in long)
-        if has_no_option:
-            return not option.name.startswith("--no-")
-
+    def store():
         return val
 
     return store
