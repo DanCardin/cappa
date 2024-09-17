@@ -5,6 +5,8 @@
 ### 0.22.5
 
 - fix: Refactor parser combinators into dedicated module, and document the behavior more thoroughly.
+- refactor: Pull handling of `--no-*` bool arguments out of the parser
+- fix: Only apply `--no-*` handling when there is both a positive and negative variant
 
 ### 0.22.4
 
