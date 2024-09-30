@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import List
 
 import pytest
 
@@ -20,7 +21,7 @@ command = cappa.Command(
     Foo,
     arguments=[
         cappa.Arg(field_name="bar", parse=str),
-        cappa.Arg(field_name="baz", parse=parse_list(int), num_args=-1),
+        cappa.Arg(field_name="baz", parse=parse_list(List[int]), num_args=-1),
     ],
     help="Short help.",
     description="Long description.",

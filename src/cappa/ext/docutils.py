@@ -4,14 +4,14 @@ import importlib
 import importlib.util
 import io
 import logging
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 from rich.console import Console
 
 import cappa
 from cappa.help import HelpFormatter, generate_arg_groups
 from cappa.output import Displayable, theme
-from cappa.typing import missing
+from cappa.type_view import Empty
 
 try:
     importlib.util.find_spec("docutils")
@@ -120,11 +120,13 @@ def render_to_docutils(command: cappa.Command, document):
                     for name in names:
                         option_content += nodes.literal(text=name)
                 else:
-                    name = arg.field_name
-                    name += f" {arg.value_name.upper()}"
+                    name = cast(str, arg.field_name)
+                    value_name = cast(str, arg.value_name)
+
+                    name += f" {value_name.upper()}"
                     option_content += nodes.literal(text=name)
 
-                if arg.default is not missing and arg.default is not None:
+                if arg.default is not Empty and arg.default is not None:
                     default = str(arg.default)
 
                     option_content += nodes.inline(text=" (")

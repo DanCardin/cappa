@@ -12,7 +12,7 @@ from cappa.env import Env
 from cappa.help import HelpFormatable, HelpFormatter, format_short_help
 from cappa.output import Exit, Output, prompt_types
 from cappa.subcommand import Subcommand
-from cappa.typing import get_type_hints, missing
+from cappa.type_view import CallableView, Empty
 
 T = typing.TypeVar("T")
 
@@ -127,23 +127,26 @@ class Command(typing.Generic[T]):
             ]
         else:
             fields = class_inspect.fields(command.cmd_cls)
-            type_hints = get_type_hints(command.cmd_cls, include_extras=True)
+            function_view = CallableView.from_callable(
+                command.cmd_cls, include_extras=True
+            )
 
             arguments = []
 
-            for field in fields:
-                type_hint = type_hints[field.name]
-                arg_help = help_text.args.get(field.name)
+            for field, param_view in zip(fields, function_view.parameters):
+                arg_help = help_text.args.get(param_view.name)
 
                 maybe_subcommand = Subcommand.collect(
-                    field, type_hint, help_formatter=command.help_formatter
+                    field,
+                    param_view.type_view,
+                    help_formatter=command.help_formatter,
                 )
                 if maybe_subcommand:
                     arguments.append(maybe_subcommand)
                 else:
                     arg_defs: list[Arg] = Arg.collect(
                         field,
-                        type_hint,
+                        param_view.type_view,
                         fallback_help=arg_help,
                         default_short=command.default_short,
                         default_long=command.default_long,
@@ -196,7 +199,7 @@ class Command(typing.Generic[T]):
                 if is_subcommand:
                     continue
 
-                assert arg.default is not missing
+                assert arg.default is not Empty
                 value = arg.default
 
             else:

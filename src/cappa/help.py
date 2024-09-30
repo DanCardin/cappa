@@ -15,7 +15,7 @@ from typing_extensions import Self, TypeAlias
 from cappa.arg import Arg, ArgAction, Group, no_extra_arg_actions
 from cappa.output import Displayable
 from cappa.subcommand import Subcommand
-from cappa.typing import missing
+from cappa.type_view import Empty
 
 if typing.TYPE_CHECKING:
     from cappa.command import Command
@@ -43,7 +43,7 @@ def create_version_arg(version: str | Arg | None = None) -> Arg | None:
             group=(4, "Help"),
         )
 
-    if version.value_name is missing:
+    if version.value_name is Empty:
         raise ValueError(
             "Expected explicit version `Arg` to supply version number as its name, like `Arg('1.2.3', ...)`"
         )
@@ -157,7 +157,7 @@ def format_arg(help_formatter: HelpFormatter, arg: Arg) -> str:
     segments = []
     for format_segment in arg_format:
         default = ""
-        if arg.default is not None and arg.default is not missing:
+        if arg.default is not None and arg.default is not Empty:
             default = help_formatter.default_format.format(default=arg.default)
 
         choices = ""
@@ -229,7 +229,7 @@ def format_arg_name(arg: Arg | Subcommand, delimiter, *, n=0) -> str:
         text = f"[cappa.arg]{arg_names}[/cappa.arg]"
 
         if is_option and has_value:
-            name = arg.value_name.upper()
+            name = typing.cast(str, arg.value_name).upper()
             text = f"{text} [cappa.arg.name]{name}[/cappa.arg.name]"
 
         if not arg.required:
