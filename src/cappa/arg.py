@@ -56,6 +56,16 @@ class ArgAction(enum.Enum):
     def is_custom(cls, action: ArgAction | Callable | None):
         return action is not None and not isinstance(action, ArgAction)
 
+    @classmethod
+    def is_non_value_consuming(cls, action: ArgAction | Callable | None):
+        return action in {
+            ArgAction.store_true,
+            ArgAction.store_false,
+            ArgAction.count,
+            ArgAction.version,
+            ArgAction.help,
+        }
+
     @property
     def is_bool_action(self):
         return self in {self.store_true, self.store_false}
@@ -150,7 +160,7 @@ class Arg(typing.Generic[T]):
         default_short: bool = False,
         default_long: bool = False,
     ) -> list[Arg]:
-        args = find_annotations(type_view, cls) or [DEFAULT_ARG]
+        args = find_annotations(type_view, cls) or [Arg()]
 
         exclusive = len(args) > 1
 
@@ -457,7 +467,7 @@ def infer_num_args(
     if arg.parse:
         return 1
 
-    if isinstance(action, ArgAction) and action in no_extra_arg_actions:
+    if ArgAction.is_non_value_consuming(action):
         return 0
 
     if type_view.is_union:
@@ -597,14 +607,3 @@ def explode_negated_bool_args(args: typing.Sequence[Arg]) -> typing.Iterable[Arg
 
         if not yielded:
             yield arg
-
-
-no_extra_arg_actions = {
-    ArgAction.store_true,
-    ArgAction.store_false,
-    ArgAction.count,
-    ArgAction.version,
-    ArgAction.help,
-}
-
-DEFAULT_ARG: Arg = Arg()
