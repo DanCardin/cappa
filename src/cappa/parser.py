@@ -4,7 +4,7 @@ import dataclasses
 import typing
 from collections import deque
 
-from cappa.arg import Arg, ArgAction, Group, no_extra_arg_actions
+from cappa.arg import Arg, ArgAction, Group
 from cappa.command import Command, Subcommand
 from cappa.completion.types import Completion, FileCompletion
 from cappa.help import format_subcommand_names
@@ -478,7 +478,7 @@ def consume_arg(
     orig_num_args = arg.num_args if arg.num_args is not None else 1
     num_args = orig_num_args
 
-    if arg.action in no_extra_arg_actions:
+    if ArgAction.is_non_value_consuming(arg.action):
         orig_num_args = 0
         num_args = 0
 

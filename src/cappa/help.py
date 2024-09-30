@@ -12,7 +12,7 @@ from rich.table import Table
 from rich.text import Text
 from typing_extensions import Self, TypeAlias
 
-from cappa.arg import Arg, ArgAction, Group, no_extra_arg_actions
+from cappa.arg import Arg, ArgAction, Group
 from cappa.output import Displayable
 from cappa.subcommand import Subcommand
 from cappa.type_view import Empty
@@ -220,7 +220,7 @@ def add_short_args(prog: str, arg_groups: list[ArgGroup]) -> str:
 def format_arg_name(arg: Arg | Subcommand, delimiter, *, n=0) -> str:
     if isinstance(arg, Arg):
         is_option = arg.short or arg.long
-        has_value = arg.action not in no_extra_arg_actions
+        has_value = not ArgAction.is_non_value_consuming(arg.action)
 
         arg_names = arg.names_str(delimiter, n=n)
         if not is_option:

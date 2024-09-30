@@ -5,7 +5,7 @@ import sys
 import typing
 from collections.abc import Callable
 
-from cappa.arg import Arg, ArgAction, no_extra_arg_actions
+from cappa.arg import Arg, ArgAction
 from cappa.command import Command, Subcommand
 from cappa.help import generate_arg_groups
 from cappa.invoke import fulfill_deps
@@ -242,7 +242,7 @@ def add_argument(
     if arg.default is not Empty:
         kwargs["default"] = argparse.SUPPRESS
 
-    if num_args is not None and (arg.action and arg.action not in no_extra_arg_actions):
+    if num_args is not None and not ArgAction.is_non_value_consuming(arg.action):
         kwargs["nargs"] = num_args
     elif is_positional and not arg.required:
         kwargs["nargs"] = "?"
