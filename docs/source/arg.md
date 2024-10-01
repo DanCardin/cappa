@@ -258,6 +258,8 @@ The `group` argument can be any of:
   Argument 'arg1' is not allowed with argument 'arg2'
   ```
 
+(exclusive-group-syntax)=
+
 ### Dedicated Mutual Exclusion Syntax
 
 A potentially common use of mutually exclusive arguments would be two distinct
@@ -344,3 +346,64 @@ Natively (at present), cappa doesn't have any specific `dict` type inference bec
 ambiguous what CLI input shape that ought to map to. However, by combining that with
 a dedicated `parse=json.loads` annotation, `example.py '{"foo": "bar"}'` now yields
 `Example({'foo': 'bar'})`.
+
+### `Arg.has_value`
+
+`Arg(has_value=True/False)` can be used to explicitly control whether the argument in question
+corresponds to a destination-type attribute as a value.
+
+For example the `Arg` that produces the `--help` option has a dedicated action which produces
+help text, and as such has a `has_value=False`.
+
+While there may not be much point in manually setting this attribute to `True` (because it will default
+to `True` in most cases), you **could** conceivably manually combine `has_value=False` and a
+custom [action](#Action), to avoid cappa trying to map your `Arg` back to a specific attribute.
+
+### `Arg.destructured`/`Arg.destructure()`
+
+**Generally** a single class/type corresponds to a command, and that type's attributes correspond to
+the arguments/options for that command.
+
+The [exclusive group syntax](#exclusive-group-syntax) is one counter example, where a single
+class attribute maps to more than one CLI argument.
+
+"Destructured" arguments are essentially the inverse, in that they allow multiple attributes
+(and thus CLI arguments) to be mapped back to a single command's class attribute.
+
+```python
+from __future__ import annotations
+from typing import Annotated
+
+@dataclass
+class Args:
+    sub_object: Annotated[SubObject, Arg.destructured()]
+
+
+@dataclass
+class SubObject:
+    arg1: Annotated[str, Arg(long=True)]
+    arg2: Annotated[int, Arg(long=True)]
+```
+
+This essentially fans out the `--arg1=foo --arg2=2` CLI arguments up into the parent `Args` command,
+while ultimately mapping the resultant values back into the expected output structure of:
+`Args(sub_object=SubObject(arg1='foo', arg2=2))`.
+
+This concept has a couple of practical uses:
+
+- Code/argument reuse: In the above example `SubObject` can now be shared between multiple subcommands
+  to provide the same set of arguments in different places **without** requiring subclassing.
+
+- Logical grouping/organization: This allows grouping of logically related fields in the **python**
+  code without affecting how those arguments are represented in the CLI shape.
+
+```{note}
+Currently `Arg.destructure()` only works with **singular concrete** type annotations. That is,
+in the above example `Annotated[SubObject, Arg.destructured()]`;
+whereas it will raise a `ValueError` if given `SubObject | None` or other more exotic annotations.
+
+Principally, `Annotated[SubObject | None, Arg.destructured()]` **could** make sense to imply that all
+child options are therefore optional, or that if any child attributes are missing, then that implies
+`sub_object=None` at the top level. However both of these are mechanically much more complex than the
+feature, as it exists today.
+```

@@ -6,7 +6,7 @@ import typing
 from collections.abc import Callable
 
 from cappa import class_inspect
-from cappa.arg import Arg, ArgAction, Group
+from cappa.arg import Arg, Group
 from cappa.docstring import ClassHelpText
 from cappa.env import Env
 from cappa.help import HelpFormatable, HelpFormatter, format_short_help
@@ -199,7 +199,7 @@ class Command(typing.Generic[T]):
                 if is_subcommand:
                     continue
 
-                assert arg.default is not Empty
+                assert arg.default is not Empty, arg
                 value = arg.default
 
             else:
@@ -231,9 +231,8 @@ class Command(typing.Generic[T]):
 
     def value_arguments(self):
         for arg in self.arguments:
-            if isinstance(arg, Arg):
-                if arg.action in ArgAction.value_actions():
-                    continue
+            if isinstance(arg, Arg) and not arg.has_value:
+                continue
 
             yield arg
 

@@ -41,6 +41,7 @@ def create_version_arg(version: str | Arg | None = None) -> Arg | None:
             long=["--version"],
             help="Show the version and exit.",
             group=(4, "Help"),
+            action=ArgAction.version,
         )
 
     if version.value_name is Empty:
@@ -66,6 +67,7 @@ def create_help_arg(help: bool | Arg | None = True) -> Arg | None:
             long=["--help"],
             help="Show this message and exit.",
             group=(4, "Help"),
+            action=ArgAction.help,
         )
 
     return help.normalize(action=ArgAction.help, field_name="help", default=None)
@@ -81,6 +83,7 @@ def create_completion_arg(completion: bool | Arg = True) -> Arg | None:
             choices=["generate", "complete"],
             group=(4, "Help"),
             help="Use `--completion generate` to print shell-specific completion source.",
+            action=ArgAction.completion,
         )
 
     return completion.normalize(
