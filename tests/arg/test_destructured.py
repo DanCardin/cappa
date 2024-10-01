@@ -64,3 +64,27 @@ def test_destructured_optional():
         str(e.value)
         == "Destructured arguments currently only support singular concrete types."
     )
+
+
+@dataclass
+class CollisionSub:
+    field1: str = ""
+    field2: Annotated[str, cappa.Arg(long=True)] = ""
+
+
+@dataclass
+class Collision:
+    sub: Annotated[CollisionSub, cappa.Arg.destructure()]
+    field1: int = 0
+    field2: int = 0
+
+
+def test_destructured_collision():
+    result = parse(Collision, "1")
+    assert result == Collision(sub=CollisionSub("1", ""), field1=0)
+
+    result = parse(Collision, "1", "2")
+    assert result == Collision(sub=CollisionSub("1", ""), field1=2)
+
+    result = parse(Collision, "--field2=-1", "1", "2", "3")
+    assert result == Collision(sub=CollisionSub("1", "-1"), field1=2, field2=3)

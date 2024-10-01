@@ -406,4 +406,7 @@ Principally, `Annotated[SubObject | None, Arg.destructured()]` **could** make se
 child options are therefore optional, or that if any child attributes are missing, then that implies
 `sub_object=None` at the top level. However both of these are mechanically much more complex than the
 feature, as it exists today.
+
+Additionally, this feature only works with the native backend. This **probably** has a workable
+solution for argparse, so file an issue if this affects you!
 ```

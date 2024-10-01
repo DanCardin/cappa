@@ -590,7 +590,9 @@ def consume_arg(
         fulfilled_deps[RawOption] = option
 
     kwargs = fulfill_deps(action_handler, fulfilled_deps)
-    context.result[field_name] = action_handler(**kwargs)
+    result = action_handler(**kwargs)
+    if arg.has_value:
+        context.result[field_name] = result
 
     check_deprecated(context, arg, option)
 
