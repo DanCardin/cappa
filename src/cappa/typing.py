@@ -32,9 +32,6 @@ T = typing.TypeVar("T")
 
 
 def find_annotations(type_view: TypeView, kind: type[T]) -> list[T]:
-    if kind is None:
-        return []
-
     result = []
     for annotation in type_view.metadata:
         if isinstance(annotation, kind):

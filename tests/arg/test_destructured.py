@@ -7,6 +7,7 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
+from cappa.subcommand import Subcommands
 from tests.utils import parse
 
 
@@ -63,6 +64,25 @@ def test_destructured_optional():
     assert (
         str(e.value)
         == "Destructured arguments currently only support singular concrete types."
+    )
+
+
+@dataclass
+class InvalidSubcommandSub:
+    sub: Subcommands[Attributes]
+
+
+@dataclass
+class InvalidSubcommand:
+    attrs: Annotated[InvalidSubcommandSub, cappa.Arg.destructure()]
+
+
+def test_invalid_subcommand():
+    with pytest.raises(ValueError) as e:
+        parse(InvalidSubcommand)
+    assert (
+        str(e.value)
+        == "Subcommands are unsupported in the context of a destructured argument"
     )
 
 

@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from cappa.command import Command, HasCommand
 from cappa.output import Exit, Output
 from cappa.subcommand import Subcommand
-from cappa.type_view import CallableView, optional_repr_type
+from cappa.type_view import CallableView
 from cappa.typing import find_annotations
 
 C = typing.TypeVar("C", bound=HasCommand)
@@ -279,14 +279,19 @@ def fulfill_deps(fn: Callable, fulfilled_deps: dict) -> typing.Any:
             # Non-annotated args are either implicit dependencies (and thus already fulfilled),
             # or arguments that we cannot fulfill
             if type_view.fallback_origin not in fulfilled_deps:
-                if not param_view.has_default:
-                    raise InvokeResolutionError(
-                        f"`{param_view.name}: {optional_repr_type(type_view)}` "
-                        f"is not a valid dependency for Dep({fn.__name__})."
-                    )
+                if param_view.has_default:
+                    # if there's a default, we can just skip it and let the default fulfill the value.
+                    continue
 
-                # if there's a default, we can just skip it and let the default fulfill the value.
-                continue
+                param_annotation = (
+                    param_view.type_view.repr_type
+                    if param_view.has_annotation
+                    else "<empty>"
+                )
+                raise InvokeResolutionError(
+                    f"`{param_view.name}: {param_annotation}` "
+                    f"is not a valid dependency for Dep({fn.__name__})."
+                )
 
             value = fulfilled_deps[type_view.fallback_origin]
 

@@ -14,7 +14,7 @@ from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
 from cappa.env import Env
-from cappa.parse import parse_optional, parse_value
+from cappa.parse import parse_value
 from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import (
     Doc,
@@ -367,14 +367,12 @@ def infer_default(arg: Arg, field: Field, type_view: TypeView) -> typing.Any:
 
 
 def infer_required(arg: Arg, type_view: TypeView, default: typing.Any | EmptyType):
-    if arg.required is True:
+    required = arg.required
+    if required is True:
         return True
 
     if default is Empty:
-        if type_view.is_subclass_of(bool) or type_view.is_optional:
-            return False
-
-        if arg.required is False:
+        if required is False:
             raise ValueError(
                 "When specifying `required=False`, a default value must be supplied able to be "
                 "supplied through type inference, `Arg(default=...)`, or through class-level default"
@@ -539,8 +537,6 @@ def infer_num_args(
 
 def infer_parse(arg: Arg, type_view: TypeView) -> Callable:
     if arg.parse:
-        if type_view.is_optional:
-            return parse_optional(arg.parse)
         return arg.parse
 
     return parse_value(type_view)
