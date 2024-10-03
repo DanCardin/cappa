@@ -76,3 +76,24 @@ def test_parse_optional(backend):
         e.value.message
         == "Invalid value for 'numbers': could not convert string to float: 'one'"
     )
+
+
+def parse_test_parse_returns_none(value):
+    if int(value) % 2:
+        return True
+    return None
+
+
+@backends
+def test_parse_returns_none(backend):
+    """Assert that a parser which returns None succeeds ."""
+
+    @dataclass
+    class ArgTest:
+        numbers: Annotated[int | None, cappa.Arg(parse=parse_test_parse_returns_none)]
+
+    result = parse(ArgTest, "1", backend=backend)
+    assert result == ArgTest(True)
+
+    result = parse(ArgTest, "2", backend=backend)
+    assert result == ArgTest(None)

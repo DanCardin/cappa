@@ -189,23 +189,11 @@ def parse_union(annotation: TypeView[T]) -> typing.Callable[[typing.Any], T]:
     return union_mapper
 
 
-def parse_optional(
-    parser: typing.Callable[[typing.Any | None], T],
-) -> typing.Callable[[typing.Any | None], T | None]:
-    def optional_mapper(value) -> T | None:
-        if value is None:
-            return None
-
-        return parser(value)
-
-    return optional_mapper
-
-
 def parse_none(value: typing.Any) -> None:
-    """Create a value parser for None."""
-    if value is None:
-        return
+    """Create a value parser for None.
 
+    Default values are not run through Arg.parse, so there's no way to arrive at a `None` value.
+    """
     raise ValueError(value)
 
 

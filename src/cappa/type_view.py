@@ -5,11 +5,4 @@ __all__ = [
     "Empty",
     "EmptyType",
     "TypeView",
-    "optional_repr_type",
 ]
-
-
-def optional_repr_type(type_view: TypeView) -> str:
-    if type_view.annotation:
-        return type_view.repr_type
-    return "<empty>"

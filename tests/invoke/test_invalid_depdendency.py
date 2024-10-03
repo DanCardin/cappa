@@ -41,4 +41,4 @@ def test_unannotated_argument(backend):
     exc = e.value
     cause = exc.__cause__
     assert "due to resolution failure" in str(exc)
-    assert "`levels: Any` is not a valid dependency for Dep(command)." == str(cause)
+    assert "`levels: <empty>` is not a valid dependency for Dep(command)." == str(cause)

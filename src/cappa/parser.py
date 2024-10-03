@@ -181,8 +181,7 @@ class ParseContext:
                 and not arg.short
                 and not arg.long
                 and not arg.destructured
-                or isinstance(arg, Subcommand)
-            ):
+            ) or isinstance(arg, Subcommand):
                 result.append(arg)
         return result
 
@@ -237,10 +236,8 @@ class RawArg:
                 # ahead of the value.
                 if result:
                     result[-1].end = True
-
-                continue
-
-            result.append(item)
+            else:
+                result.append(item)
 
         return deque(result)
 
