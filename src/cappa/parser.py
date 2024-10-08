@@ -5,10 +5,9 @@ import typing
 from collections import deque
 from functools import cached_property
 
-from cappa.arg import Arg, ArgAction, ArgActionType, Group
-from cappa.command import Command, Subcommand
+from cappa.command import Command
 from cappa.completion.types import Completion, FileCompletion
-from cappa.help import format_subcommand_names
+from cappa.final import ArgAction, ArgActionType, FinalArg, FinalSubcommand
 from cappa.invoke import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.typing import T, assert_type
@@ -21,7 +20,7 @@ class BadArgumentError(RuntimeError):
         *,
         value,
         command: Command,
-        arg: Arg | Subcommand | None = None,
+        arg: FinalArg | FinalSubcommand | None = None,
     ) -> None:
         super().__init__(message)
         self.value = value
@@ -41,10 +40,10 @@ class HelpAction(RuntimeError):
 
 @dataclasses.dataclass
 class VersionAction(RuntimeError):
-    version: Arg
+    version: FinalArg
 
     @classmethod
-    def from_arg(cls, arg: Arg):
+    def from_arg(cls, arg: FinalArg):
         raise cls(arg)
 
 
@@ -53,14 +52,14 @@ class CompletionAction(RuntimeError):
         self,
         *completions: Completion | FileCompletion,
         value="complete",
-        arg: Arg | None = None,
+        arg: FinalArg | None = None,
     ) -> None:
         self.completions = completions
         self.value = value
         self.arg = arg
 
     @classmethod
-    def from_value(cls, value: Value[str], arg: Arg):
+    def from_value(cls, value: Value[str], arg: FinalArg):
         raise cls(value=value.value, arg=arg)
 
 
@@ -102,7 +101,7 @@ def backend(
             completions = format_completions(*e.completions)
             raise Exit(completions, code=0)
 
-        execute(command, prog, e.value, assert_type(e.arg, Arg), output=output)
+        execute(command, prog, e.value, assert_type(e.arg, FinalArg), output=output)
 
     if provide_completions:
         raise Exit(code=0)
@@ -157,8 +156,10 @@ class ParseState:
             return None
         return self.remaining_args[0]
 
-    def next_value(self):
-        return self.remaining_args.popleft()
+    def next_value(self, cls: type[T]) -> T:
+        result = self.remaining_args.popleft()
+        assert isinstance(result, cls)
+        return result
 
 
 @dataclasses.dataclass
@@ -166,12 +167,12 @@ class ParseContext:
     """The parsing context specific to a command."""
 
     command: Command
-    arguments: deque[Arg | Subcommand]
+    arguments: deque[FinalArg | FinalSubcommand]
     missing_options: set[str]
-    options: dict[str, Arg]
+    options: dict[str, FinalArg]
     propagated_options: set[str]
     parent_context: ParseContext | None = None
-    exclusive_args: dict[str, Arg] = dataclasses.field(default_factory=dict)
+    exclusive_args: dict[str, FinalArg] = dataclasses.field(default_factory=dict)
 
     result: dict[str, typing.Any] = dataclasses.field(default_factory=dict)
 
@@ -195,12 +196,12 @@ class ParseContext:
     @staticmethod
     def collect_options(
         command: Command,
-    ) -> tuple[dict[str, Arg], set[str], set[str]]:
+    ) -> tuple[dict[str, FinalArg], set[str], set[str]]:
         result = {}
         unique_names = set()
         propagated_options = set()
 
-        def add_option_names(arg: Arg):
+        def add_option_names(arg: FinalArg):
             for opts in (arg.short, arg.long):
                 if not opts:
                     continue
@@ -236,11 +237,7 @@ class ParseContext:
         parent_context = (
             self.parent_context.propagated_context if self.parent_context else {}
         )
-        self_options = {
-            assert_type(o.field_name, str): o
-            for o in self.command.options
-            if o.propagate
-        }
+        self_options = {o.field_name: o for o in self.command.options if o.propagate}
         self_context = dict.fromkeys(self_options, self)
         return {**parent_context, **self_context}
 
@@ -340,7 +337,7 @@ class RawOption:
 def parse(parse_state: ParseState, context: ParseContext) -> None:
     while True:
         while isinstance(parse_state.peek_value(), RawOption):
-            arg = typing.cast(RawOption, parse_state.next_value())
+            arg = parse_state.next_value(RawOption)
 
             if arg.is_long:
                 parse_option(parse_state, context, arg)
@@ -465,7 +462,7 @@ def parse_args(parse_state: ParseState, context: ParseContext) -> None:
 
         arg = context.next_argument()
 
-        if isinstance(arg, Subcommand):
+        if isinstance(arg, FinalSubcommand):
             consume_subcommand(parse_state, context, arg)
         else:
             consume_arg(parse_state, context, arg)
@@ -475,10 +472,8 @@ def parse_args(parse_state: ParseState, context: ParseContext) -> None:
             return
 
         raw_values = []
-        while parse_state.peek_value():
-            next_val = parse_state.next_value()
-            if not isinstance(next_val, RawArg):
-                break
+        while isinstance(parse_state.peek_value(), RawArg):
+            next_val = parse_state.next_value(RawArg)
             raw_values.append(next_val.raw)
 
         raise BadArgumentError(
@@ -489,10 +484,10 @@ def parse_args(parse_state: ParseState, context: ParseContext) -> None:
 
 
 def consume_subcommand(
-    parse_state: ParseState, context: ParseContext, arg: Subcommand
+    parse_state: ParseState, context: ParseContext, arg: FinalSubcommand
 ) -> typing.Any:
     try:
-        value = parse_state.next_value()
+        value = parse_state.next_value(RawArg)
     except IndexError:
         if not arg.required:
             return
@@ -504,7 +499,6 @@ def consume_subcommand(
             arg=arg,
         )
 
-    assert isinstance(value, RawArg), value
     if value.raw not in arg.options:
         message = f"Invalid command '{value.raw}'"
         possible_values = [name for name in arg.names() if name.startswith(value.raw)]
@@ -526,18 +520,15 @@ def consume_subcommand(
 
     parse(parse_state, nested_context)
 
-    name = typing.cast(str, arg.field_name)
-    context.result[name] = nested_context.result
+    context.result[arg.field_name] = nested_context.result
 
 
 def consume_arg(
     parse_state: ParseState,
     context: ParseContext,
-    arg: Arg,
+    arg: FinalArg,
     option: RawOption | None = None,
 ) -> typing.Any:
-    field_name = typing.cast(str, arg.field_name)
-
     orig_num_args = arg.num_args if arg.num_args is not None else 1
     num_args = orig_num_args
 
@@ -562,7 +553,7 @@ def consume_arg(
                 break
 
             try:
-                next_val = typing.cast(RawArg, parse_state.next_value())
+                next_val = parse_state.next_value(RawArg)
             except IndexError:
                 break
 
@@ -618,10 +609,8 @@ def consume_arg(
                 arg=arg,
             )
 
-    group = typing.cast(typing.Optional[Group], arg.group)
-    if group and group.exclusive:
-        group_name = typing.cast(str, group.name)
-        exclusive_arg = context.exclusive_args.get(group_name)
+    if arg.group.exclusive:
+        exclusive_arg = context.exclusive_args.get(arg.group.name)
 
         if exclusive_arg and exclusive_arg != arg:
             raise BadArgumentError(
@@ -632,7 +621,7 @@ def consume_arg(
                 arg=arg,
             )
 
-        context.exclusive_args[group_name] = arg
+        context.exclusive_args[arg.group.name] = arg
 
     action_handler = determine_action_handler(arg.action)
 
@@ -641,7 +630,7 @@ def consume_arg(
         Output: parse_state.output,
         ParseContext: context,
         ParseState: parse_state,
-        Arg: arg,
+        FinalArg: arg,
         Value: Value(result),
         typing.Any: result,
     }
@@ -651,13 +640,13 @@ def consume_arg(
     kwargs = fulfill_deps(action_handler, fulfilled_deps).kwargs
     result = action_handler(**kwargs)
 
-    context.set_result(field_name, result, option, assert_type(arg.has_value, bool))
+    context.set_result(arg.field_name, result, option, arg.has_value)
 
     check_deprecated(parse_state, arg, option)
 
 
 def check_deprecated(
-    parse_state: ParseState, arg: Arg | Command, option: RawOption | None = None
+    parse_state: ParseState, arg: FinalArg | Command, option: RawOption | None = None
 ) -> None:
     if not arg.deprecated:
         return
@@ -693,27 +682,29 @@ def store_false():
     return False
 
 
-def store_count(context: ParseContext, arg: Arg):
-    return context.result.get(typing.cast(str, arg.field_name), 0) + 1
+def store_count(context: ParseContext, arg: FinalArg):
+    return context.result.get(arg.field_name, 0) + 1
 
 
 def store_set(value: Value[typing.Any]):
     return value.value
 
 
-def store_append(context: ParseContext, arg: Arg, value: Value[typing.Any]):
-    result = context.result.setdefault(typing.cast(str, arg.field_name), [])
+def store_append(context: ParseContext, arg: FinalArg, value: Value[typing.Any]):
+    result = context.result.setdefault(arg.field_name, [])
     result.append(value.value)
     return result
 
 
-def determine_action_handler(action: ArgActionType | None):
-    assert action
-
+def determine_action_handler(action: ArgActionType):
     if isinstance(action, ArgAction):
         return process_options[action]
 
     return action
+
+
+def format_subcommand_names(names: list[str]):
+    return ", ".join(f"[cappa.subcommand]{a}[/cappa.subcommand]" for a in names)
 
 
 process_options: dict[ArgAction, typing.Callable] = {

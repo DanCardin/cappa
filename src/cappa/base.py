@@ -8,15 +8,10 @@ from rich.theme import Theme
 from typing_extensions import dataclass_transform
 
 from cappa import argparse, parser
+from cappa.final import FinalArg
 from cappa.class_inspect import detect
 from cappa.command import Command
-from cappa.help import (
-    HelpFormatable,
-    HelpFormatter,
-    create_completion_arg,
-    create_help_arg,
-    create_version_arg,
-)
+from cappa.help import HelpFormatable, HelpFormatter
 from cappa.invoke import Dep, resolve_callable
 from cappa.output import Output
 from cappa.state import State
@@ -401,9 +396,9 @@ def collect(
     if concrete_backend is argparse.backend:
         completion = False
 
-    help_arg = create_help_arg(help)
-    version_arg = create_version_arg(version)
-    completion_arg = create_completion_arg(completion)
+    help_arg = FinalArg.create_help_arg(help)
+    version_arg = FinalArg.create_version_arg(version)
+    completion_arg = FinalArg.create_completion_arg(completion)
 
     return command.add_meta_actions(
         help=help_arg, version=version_arg, completion=completion_arg

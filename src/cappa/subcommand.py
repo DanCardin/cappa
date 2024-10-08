@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import dataclasses
 import typing
-from typing import TextIO
 
-from typing_extensions import Annotated, Self, TypeAlias
+from typing_extensions import Annotated, TypeAlias
 
-from cappa.arg import Group
+from cappa.arg_fields import Group
 from cappa.class_inspect import Field, extract_dataclass_metadata
-from cappa.completion.types import Completion
+from cappa.final import FinalSubcommand
 from cappa.state import State
 from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import T, assert_type, find_annotations
@@ -71,7 +70,7 @@ class Subcommand:
         help_formatter: HelpFormatable | None = None,
         propagated_arguments: list[Arg] | None = None,
         state: State | None = None,
-    ) -> Self:
+    ) -> FinalSubcommand:
         if type_view is None:
             type_view = TypeView(...)
 
@@ -87,37 +86,14 @@ class Subcommand:
         )
         group = infer_group(self)
 
-        return dataclasses.replace(
-            self,
+        return FinalSubcommand(
             field_name=field_name,
             types=types,
             required=required,
             options=options,
             group=group,
+            hidden=self.hidden,
         )
-
-    def map_result(
-        self,
-        prog: str,
-        parsed_args,
-        state: State | None = None,
-        input: TextIO | None = None,
-    ):
-        option_name = parsed_args.pop("__name__")
-        option = self.options[option_name]
-        return option.map_result(option, prog, parsed_args, state=state, input=input)
-
-    def available_options(self) -> list[Command]:
-        return [o for o in self.options.values() if not o.hidden]
-
-    def names(self) -> list[str]:
-        return [n for n, o in self.options.items() if not o.hidden]
-
-    def names_str(self, delimiter: str = ", ") -> str:
-        return f"{delimiter.join(self.names())}"
-
-    def completion(self, partial: str):
-        return [Completion(o) for o in self.options if partial in o]
 
 
 def infer_types(arg: Subcommand, type_view: TypeView) -> typing.Iterable[type]:

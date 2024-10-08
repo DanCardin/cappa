@@ -5,7 +5,7 @@ import re
 import typing
 
 if typing.TYPE_CHECKING:
-    from cappa.arg import Arg
+    from cappa.final import FinalArg
 
 
 @dataclasses.dataclass
@@ -13,7 +13,7 @@ class ShellHandler:
     name: str
     template: str
 
-    def backend_template(self, prog: str, arg: Arg) -> str:
+    def backend_template(self, prog: str, arg: FinalArg) -> str:
         safe_name = re.sub(r"\W*", "", prog.replace("-", "_"), flags=re.ASCII)
 
         assert isinstance(arg.long, list)

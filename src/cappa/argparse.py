@@ -5,13 +5,13 @@ import sys
 import typing
 from collections.abc import Callable
 
-from cappa.arg import Arg, ArgAction
-from cappa.command import Command, Subcommand
+from cappa.command import Command
+from cappa.final import ArgAction, FinalArg, FinalSubcommand
 from cappa.help import generate_arg_groups
 from cappa.invoke import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.parser import RawOption, Value
-from cappa.typing import assert_never, assert_type
+from cappa.typing import assert_never
 
 if sys.version_info < (3, 9):  # pragma: no cover
     # Backport https://github.com/python/cpython/pull/3680
@@ -91,7 +91,7 @@ class ArgumentParser(argparse.ArgumentParser):
         raise HelpExit(self.command.help_formatter(self.command, self.prog))
 
 
-def custom_action(arg: Arg, action: Callable):
+def custom_action(arg: FinalArg, action: Callable):
     class CustomAction(argparse.Action):
         def __call__(  # type: ignore
             self,
@@ -106,7 +106,7 @@ def custom_action(arg: Arg, action: Callable):
                 Output: parser.output,
                 Value: Value(values),
                 Command: namespace.__command__,
-                Arg: arg,
+                FinalArg: arg,
             }
             if option_string:
                 fulfilled_deps[RawOption] = RawOption.from_str(option_string)
@@ -148,7 +148,7 @@ def backend(
         version = next(
             a
             for a in command.arguments
-            if isinstance(a, Arg) and a.action is ArgAction.version
+            if isinstance(a, FinalArg) and a.action is ArgAction.version
         )
         parser.version = version.value_name  # type: ignore
     except StopIteration:
@@ -199,9 +199,9 @@ def add_arguments(
             argparse_group = argparse_group.add_mutually_exclusive_group()
 
         for arg in args:
-            if isinstance(arg, Arg):
+            if isinstance(arg, FinalArg):
                 add_argument(argparse_group, arg, dest_prefix=dest_prefix)
-            elif isinstance(arg, Subcommand):
+            elif isinstance(arg, FinalSubcommand):
                 add_subcommands(
                     parser, group_name, arg, output=output, dest_prefix=dest_prefix
                 )
@@ -211,7 +211,7 @@ def add_arguments(
 
 def add_argument(
     parser: argparse.ArgumentParser | argparse._ArgumentGroup,
-    arg: Arg,
+    arg: FinalArg,
     dest_prefix="",
     **extra_kwargs,
 ):
@@ -220,26 +220,24 @@ def add_argument(
 
     names: list[str] = []
     if arg.short:
-        short = assert_type(arg.short, list)
-        names.extend(short)
+        names.extend(arg.short)
 
     if arg.long:
-        long = assert_type(arg.long, list)
-        names.extend(long)
+        names.extend(arg.long)
 
     is_positional = not names
 
     num_args = backend_num_args(arg.num_args)
 
     kwargs: dict[str, typing.Any] = {
-        "dest": dest_prefix + assert_type(arg.field_name, str),
+        "dest": dest_prefix + arg.field_name,
         "help": arg.help,
         "metavar": arg.value_name,
         "action": get_action(arg),
         "default": argparse.SUPPRESS,
     }
 
-    if not is_positional and arg.required and assert_type(arg.num_args, int) >= 0:
+    if not is_positional and arg.required and arg.num_args >= 0:
         kwargs["required"] = arg.required
 
     if num_args is not None and not ArgAction.is_non_value_consuming(arg.action):
@@ -257,14 +255,14 @@ def add_argument(
 def add_subcommands(
     parser: argparse.ArgumentParser,
     group: str,
-    subcommands: Subcommand,
+    subcommands: FinalSubcommand,
     output: Output,
     dest_prefix="",
 ):
     subcommand_dest = subcommands.field_name
     subparsers = parser.add_subparsers(
         title=group,
-        required=assert_type(subcommands.required, bool),
+        required=subcommands.required,
         parser_class=ArgumentParser,
     )
 
@@ -319,7 +317,7 @@ def join_help(*segments):
     return " ".join([s for s in segments if s])
 
 
-def get_action(arg: Arg) -> argparse.Action | type[argparse.Action] | str:
+def get_action(arg: FinalArg) -> argparse.Action | type[argparse.Action] | str:
     action = arg.action
     if isinstance(action, ArgAction):
         return action.value
@@ -328,7 +326,7 @@ def get_action(arg: Arg) -> argparse.Action | type[argparse.Action] | str:
     return custom_action(arg, action)
 
 
-def add_deprecated_kwarg(arg: Arg | Command) -> dict[str, typing.Any]:
+def add_deprecated_kwarg(arg: FinalArg | Command) -> dict[str, typing.Any]:
     if sys.version_info < (3, 13) or not arg.deprecated:
         return {}
 

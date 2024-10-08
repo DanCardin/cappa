@@ -12,89 +12,25 @@ from rich.table import Table
 from rich.text import Text
 from typing_extensions import Self, TypeAlias
 
-from cappa.arg import Arg, ArgAction, Group
-from cappa.default import Default
+from cappa.final import ArgAction, FinalArg, FinalSubcommand
 from cappa.output import Displayable
-from cappa.subcommand import Subcommand
 from cappa.type_view import Empty
-from cappa.typing import assert_type
 
 if typing.TYPE_CHECKING:
     from cappa.command import Command
 
 HelpFormatable: TypeAlias = typing.Callable[["Command", str], typing.List[Displayable]]
 ArgGroup: TypeAlias = typing.Tuple[
-    typing.Tuple[str, bool], typing.List[typing.Union[Arg, Subcommand]]
+    typing.Tuple[str, bool], typing.List[typing.Union[FinalArg, FinalSubcommand]]
 ]
 Dimension: TypeAlias = typing.Tuple[int, int, int, int]
 ArgFormat: TypeAlias = typing.Union[
     str,
-    typing.Sequence[typing.Union[str, typing.Callable[[Arg], typing.Union[str, None]]]],
-    typing.Callable[[Arg], typing.Union[str, None]],
+    typing.Sequence[
+        typing.Union[str, typing.Callable[[FinalArg], typing.Union[str, None]]]
+    ],
+    typing.Callable[[FinalArg], typing.Union[str, None]],
 ]
-
-
-def create_version_arg(version: str | Arg | None = None) -> Arg | None:
-    if not version:
-        return None
-
-    if isinstance(version, str):
-        version = Arg(
-            value_name=version,
-            short=["-v"],
-            long=["--version"],
-            help="Show the version and exit.",
-            group=Group(1, "Help", section=2),
-            action=ArgAction.version,
-        )
-
-    if version.value_name is Empty:
-        raise ValueError(
-            "Expected explicit version `Arg` to supply version number as its name, like `Arg('1.2.3', ...)`"
-        )
-
-    if version.long is True:
-        version = replace(version, long="--version")
-
-    return version.normalize(
-        action=ArgAction.version, field_name="version", default=None
-    )
-
-
-def create_help_arg(help: bool | Arg | None = True) -> Arg | None:
-    if not help:
-        return None
-
-    if isinstance(help, bool):
-        help = Arg(
-            short=["-h"],
-            long=["--help"],
-            help="Show this message and exit.",
-            group=Group(0, "Help", section=2),
-            action=ArgAction.help,
-        )
-
-    return help.normalize(action=ArgAction.help, field_name="help", default=None)
-
-
-def create_completion_arg(completion: bool | Arg = True) -> Arg | None:
-    if not completion:
-        return None
-
-    if isinstance(completion, bool):
-        completion = Arg(
-            long=["--completion"],
-            choices=["generate", "complete"],
-            group=Group(2, "Help", section=2),
-            help="Use `--completion generate` to print shell-specific completion source.",
-            action=ArgAction.completion,
-        )
-
-    return completion.normalize(
-        field_name="completion",
-        action=ArgAction.completion,
-        default=None,
-    )
 
 
 @dataclass(frozen=True)
@@ -142,7 +78,7 @@ def add_long_args(help_formatter: HelpFormatter, arg_groups: list[ArgGroup]) -> 
             Text(style="cappa.group"),
         )
         for arg in args:
-            if isinstance(arg, Arg):
+            if isinstance(arg, FinalArg):
                 table.add_row(
                     Padding(format_arg_name(arg, ", "), help_formatter.left_padding),
                     Markdown(format_arg(help_formatter, arg), style=""),
@@ -156,7 +92,7 @@ def add_long_args(help_formatter: HelpFormatter, arg_groups: list[ArgGroup]) -> 
     return [table]
 
 
-def format_arg(help_formatter: HelpFormatter, arg: Arg) -> str:
+def format_arg(help_formatter: HelpFormatter, arg: FinalArg) -> str:
     arg_format = help_formatter.arg_format
     if not isinstance(arg_format, Iterable) or isinstance(arg_format, str):
         arg_format = (arg_format,)
@@ -164,7 +100,6 @@ def format_arg(help_formatter: HelpFormatter, arg: Arg) -> str:
     segments = []
     for format_segment in arg_format:
         default = ""
-        assert isinstance(arg.default, Default)
         if arg.show_default and arg.default.default not in (None, Empty):
             default = help_formatter.default_format.format(default=arg.default.default)
 
@@ -206,11 +141,11 @@ def format_short_help(command: Command, prog: str) -> Displayable:
 
 
 def generate_arg_groups(command: Command, include_hidden=False) -> list[ArgGroup]:
-    def by_group_key(arg: Arg | Subcommand):
-        return assert_type(arg.group, Group).key
+    def by_group_key(arg: FinalArg | FinalSubcommand):
+        return arg.group.key
 
-    def by_group(arg: Arg | Subcommand):
-        group = assert_type(arg.group, Group)
+    def by_group(arg: FinalArg | FinalSubcommand):
+        group = arg.group
         return (group.name, group.exclusive)
 
     sorted_args = sorted(command.all_arguments, key=by_group_key)
@@ -229,8 +164,8 @@ def add_short_args(prog: str, arg_groups: list[ArgGroup]) -> str:
     return " ".join(segments)
 
 
-def format_arg_name(arg: Arg | Subcommand, delimiter, *, n=0) -> str:
-    if isinstance(arg, Arg):
+def format_arg_name(arg: FinalArg | FinalSubcommand, delimiter, *, n=0) -> str:
+    if isinstance(arg, FinalArg):
         has_value = not ArgAction.is_non_value_consuming(arg.action)
 
         arg_names = arg.names_str(delimiter, n=n)
@@ -256,7 +191,3 @@ def format_arg_name(arg: Arg | Subcommand, delimiter, *, n=0) -> str:
 
     arg_names = arg.names_str(",")
     return f"{{[cappa.subcommand]{arg_names}[/cappa.subcommand]}}"
-
-
-def format_subcommand_names(names: list[str]):
-    return ", ".join(f"[cappa.subcommand]{a}[/cappa.subcommand]" for a in names)

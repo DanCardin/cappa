@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import dataclasses
-import enum
 import typing
 from collections.abc import Callable
 from functools import cached_property
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Sequence, Union
 
-from typing_extensions import TypeAlias
-
+from cappa.arg_fields import ArgAction, ArgActionType, Group
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
@@ -22,6 +20,7 @@ from cappa.default import (
     PromptType,
     ValueFrom,
 )
+from cappa.destructure import Destructured, destructure
 from cappa.parse import Parser, evaluate_parse, parse_literal, parse_value
 from cappa.state import State
 from cappa.type_view import Empty, EmptyType, TypeView
@@ -32,86 +31,8 @@ from cappa.typing import (
     find_annotations,
 )
 
-
-@enum.unique
-class ArgAction(enum.Enum):
-    """`Arg` action typee.
-
-    Options:
-      - set: Stores the given CLI value directly.
-      - store_true: Stores a literal `True` value, causing options to not attempt to
-        consume additional CLI arguments
-      - store_false: Stores a literal `False` value, causing options to not attempt to
-        consume additional CLI arguments
-      - append: Produces a list, and accumulates the given value on top of prior values.
-      - count: Increments an integer starting at 0
-      - help: Cancels argument parsing and prints the help text
-      - version: Cancels argument parsing and prints the CLI version
-      - completion: Cancels argument parsing and enters "completion mode"
-    """
-
-    set = "store"
-    store_true = "store_true"
-    store_false = "store_false"
-    append = "append"
-    count = "count"
-
-    help = "help"
-    version = "version"
-    completion = "completion"
-
-    @classmethod
-    def meta_actions(cls) -> typing.Set[ArgAction]:
-        return {cls.help, cls.version, cls.completion}
-
-    @classmethod
-    def is_custom(cls, action: ArgAction | Callable | None):
-        return action is not None and not isinstance(action, ArgAction)
-
-    @classmethod
-    def is_non_value_consuming(cls, action: ArgAction | Callable | None):
-        return action in {
-            ArgAction.store_true,
-            ArgAction.store_false,
-            ArgAction.count,
-            ArgAction.version,
-            ArgAction.help,
-        }
-
-    @property
-    def is_bool_action(self):
-        return self in {self.store_true, self.store_false}
-
-
-ArgActionType: TypeAlias = Union[ArgAction, Callable]
-
-
-@dataclasses.dataclass(frozen=True)
-class Group:
-    """Object used to control argument/subcommand grouping in generated help text.
-
-    Args:
-        order: A number representing the relative ordering among different argument
-            groups. Groups with the same order will be displayed alphabetically by
-            name.
-        name: The display name of the group in help text.
-        exclusive: Whether arguments in the group should be considered mutually exclusive
-            of one another.
-        section: A secondary level of ordering. Sections have a higher order precedence
-            than ``order``, in order to facilitate meta-ordering amongst kinds of groups
-            (such as "meta" arguments (``--help``, ``--version``, etc) and subcommands).
-            The default ``section`` for any normal argument/``Group`` is 0, for
-            ``Subcommand``s it is 1, and for "meta" arguments it is 2.
-    """
-
-    order: int = dataclasses.field(default=0, compare=False)
-    name: str = ""
-    exclusive: bool = False
-    section: int = 0
-
-    @cached_property
-    def key(self):
-        return (self.section, self.order, self.name, self.exclusive)
+if TYPE_CHECKING:
+    from cappa.final import FinalArg
 
 
 @dataclasses.dataclass(frozen=True)
@@ -211,7 +132,7 @@ class Arg(typing.Generic[T]):
         default_short: bool = False,
         default_long: bool = False,
         state: State | None = None,
-    ) -> list[Arg]:
+    ) -> list[FinalArg[T]]:
         args = find_annotations(type_view, cls) or [Arg()]
 
         exclusive = len(args) > 1
@@ -259,7 +180,7 @@ class Arg(typing.Generic[T]):
         default_long: bool = False,
         exclusive: bool = False,
         state: State | None = None,
-    ) -> Arg:
+    ) -> FinalArg[T]:
         if type_view is None:
             type_view = TypeView(typing.Any)
 
@@ -271,9 +192,7 @@ class Arg(typing.Generic[T]):
         long = infer_long(self, type_view, field_name, default_long)
         choices = infer_choices(self, type_view)
         action = action or infer_action(self, type_view, long, default)
-        num_args = infer_num_args(
-            type_view, field_name, arg=self, action=action, long=long
-        )
+        num_args = infer_num_args(type_view, field_name, self, action, long)
         required = infer_required(self, default)
 
         parse = infer_parse(self, type_view, state=state)
@@ -290,23 +209,30 @@ class Arg(typing.Generic[T]):
                 "`Arg.propagate` requires a non-positional named option (`short` or `long`)."
             )
 
-        return dataclasses.replace(
-            self,
+        from cappa.final import FinalArg
+
+        return FinalArg(
             default=default,
             field_name=field_name,
             value_name=value_name,
+            type_view=type_view,
+            parse=parse,
+            group=group,
+            action=action,
+            num_args=num_args,
             required=required,
+            has_value=has_value,
+            count=self.count,
+            hidden=self.hidden,
             short=short,
             long=long,
             choices=choices,
-            action=action,
-            num_args=num_args,
-            parse=parse,
             help=help,
+            propagate=self.propagate,
+            deprecated=self.deprecated,
             completion=completion,
-            group=group,
-            has_value=has_value,
-            type_view=type_view,
+            destructured=self.destructured,
+            show_default=self.show_default,
         )
 
     @classmethod
@@ -417,7 +343,7 @@ def infer_default(
     return Empty
 
 
-def infer_required(arg: Arg, default: Default):
+def infer_required(arg: Arg, default: Default) -> bool:
     required = arg.required
     if required is True:
         return True
@@ -434,12 +360,10 @@ def infer_required(arg: Arg, default: Default):
     return False
 
 
-def infer_short(
-    arg: Arg, name: str, default: bool = False
-) -> list[str] | typing.Literal[False]:
+def infer_short(arg: Arg, name: str, default: bool = False) -> list[str] | None:
     short = arg.short or default
     if not short:
-        return False
+        return None
 
     if isinstance(short, bool):
         short_name = name[0]
@@ -455,13 +379,13 @@ def infer_short(
 
 def infer_long(
     arg: Arg, type_view: TypeView, name: str, default: bool
-) -> list[str] | typing.Literal[False]:
+) -> list[str] | None:
     long = arg.long or default
 
     if not long:
         # bools get automatically coerced into flags, otherwise stay off.
         if not type_view.is_subclass_of(bool):
-            return False
+            return None
 
         long = True
 
@@ -563,12 +487,9 @@ def infer_num_args(
         if len(distinct_num_args) == 1:
             return distinct_num_args.pop()
 
-        invalid_kinds = ", ".join(
-            [
-                f"`{type_arg}` produces `num_args={n}`"
-                for type_arg, n in num_args_variants
-            ]
-        )
+        invalid_kinds = ", ".join([
+            f"`{type_arg}` produces `num_args={n}`" for type_arg, n in num_args_variants
+        ])
         raise ValueError(
             f"On field '{field_name}', mismatch of arity between union variants. {invalid_kinds}."
         )
@@ -628,7 +549,7 @@ def infer_completion(
 
 
 def infer_group(
-    arg: Arg, short: list[str] | bool, long: list[str] | bool, exclusive: bool = False
+    arg: Arg, short: list[str] | None, long: list[str] | None, exclusive: bool = False
 ) -> Group:
     order = 0
     name = None
@@ -666,7 +587,9 @@ def infer_value_name(arg: Arg, field_name: str, num_args: int | None) -> str:
     return field_name
 
 
-def explode_negated_bool_args(args: typing.Sequence[Arg]) -> typing.Iterable[Arg]:
+def explode_negated_bool_args(
+    args: typing.Sequence[FinalArg],
+) -> typing.Iterable[FinalArg]:
     """Expand `--foo/--no-foo` solo arguments into dual-arguments.
 
     Acts as a transform from `Arg(long='--foo/--no-foo')` to
@@ -675,10 +598,8 @@ def explode_negated_bool_args(args: typing.Sequence[Arg]) -> typing.Iterable[Arg
     for arg in args:
         yielded = False
         if isinstance(arg.action, ArgAction) and arg.action.is_bool_action and arg.long:
-            long = typing.cast(typing.List[str], arg.long)
-
-            negatives = [item for item in long if "--no-" in item]
-            positives = [item for item in long if "--no-" not in item]
+            negatives = [item for item in arg.long if "--no-" in item]
+            positives = [item for item in arg.long if "--no-" not in item]
             if negatives and positives:
                 assert isinstance(arg.default, Default)
 
@@ -711,6 +632,3 @@ def infer_has_value(arg: Arg, action: ArgActionType):
         return False
 
     return True
-
-
-from cappa.destructure import Destructured, destructure  # noqa: E402
