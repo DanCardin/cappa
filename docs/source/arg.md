@@ -45,7 +45,7 @@ can be used and are interpreted to handle different kinds of CLI input.
    :noindex:
 ```
 
-## Action
+## `Arg.action`
 
 Obliquely referenced through other `Arg` options like `count`, every `Arg` has a
 corresponding "action". The action is automatically inferred, most of the time,
@@ -150,7 +150,7 @@ table below shows how their parsed output will end up looking when mapped to rea
 | append | -1       | [[1]]  |
 ```
 
-## Num Args
+## `Arg.num_args`
 
 `num_args` controls the number of arguments that the parser will consume in
 order to fulfill a specific field. `num_args=1` is the default behavior,
@@ -172,7 +172,7 @@ However, an explicitly provided value is always preferred to the inferred value.
 See [annotations](./annotation.md) for more details.
 ```
 
-## Default
+## `Arg.default`
 
 Controls the default argument value at the CLI level. Generally, you can avoid
 direct use of cappa's default by simply using the source class' native default
@@ -210,7 +210,7 @@ supplied value at the CLI level.
    :noindex:
 ```
 
-## Groups (and Mutual Exclusion)
+## `Arg.group`: Groups (and Mutual Exclusion)
 
 `Arg(group=...)` can be used to customize the way arguments/options are grouped
 together and interpreted.
@@ -290,7 +290,7 @@ An explicit `group=` can still be used in concert with the above syntax to contr
 the `order` and name of the resultant group.
 ```
 
-## Parse
+## `Arg.parse`
 
 `Arg.parse` can be used to provide **specific** instruction to cappa as to how to
 handle the raw value given from the CLI parser backend.
@@ -322,6 +322,7 @@ Note cappa itself contains a number of component `parse_*` functions inside the 
 module, which can be used in combination with your own custom `parse` functions.
 ```
 
+(parsing-json)=
 ### Parsing JSON
 
 Another example of a potentially useful parsing concept could be to parse json string input.
@@ -347,7 +348,155 @@ ambiguous what CLI input shape that ought to map to. However, by combining that 
 a dedicated `parse=json.loads` annotation, `example.py '{"foo": "bar"}'` now yields
 `Example({'foo': 'bar'})`.
 
-### `Arg.has_value`
+(composing-parsers)=
+### Composing Multiple Parsers
+
+`Arg.parse` accepts **either** a single parser function, like above, or a sequence of parsers
+which will be called...in sequence. The return value of earlier parsers in the chain will be
+routed into the input of later parsers.
+
+```python
+import json
+from dataclasses import dataclass
+from typing import Annotated
+
+import cappa
+
+def get_key(value: dict[str, str]) -> str:
+    return value.get("todo", "")
+
+@dataclass
+class Example:
+    todo: Annotated[str, cappa.Arg(parse=[json.loads, get_key])]
+
+todo = cappa.parse(Todo)
+print(todo)
+```
+
+(unpack-arguments)=
+### `unpack_arguments`: Invoking constructors with `*` and `**` operators
+
+In some cases, you might want to construct objects that have required keyword arguments (pydantic
+models!) or otherwise who's constructors do not accept the single argument that would typically be
+provided to single CLI fields' parser. This is the use case for [cappa.unpack_arguments](cappa.unpack_arguments).
+
+Cappa will unpack the arguments based on the incoming type of data (e.g. sequence vs mapping).
+
+```{note}
+(Arg.destructure)[#argument-destructuring] is a **similar** feature, in that it allows one to compose
+complex types into the CLI structure; but it in essentially opposite uses. `unpack_arguments` produces
+a complex type from a single CLI argument, whereas a "destructured" argument composes together multiple
+CLI arguments into one object without requiring a separate command.
+```
+
+#### *args Unpacking
+Sequence unpacking (`*`) can be used to provide values to constructors that accept multiple arguments
+positionally. For example:
+
+```python
+from dataclasses import dataclass
+from typing import Annotated
+from cappa import unpack_arguments, Arg, parse
+
+@dataclass
+class Point:
+    x: int
+    y: int
+
+
+@dataclass
+class CLI:
+    point: Annotated[Point, Arg(num_args=2, parse=unpack_arguments)]
+
+print(parse(CLI))
+```
+
+```bash
+$ cli.py 1, 2
+CLI(Point(1, 2))
+```
+
+**Without** `unpack_arguments`, the `Point(...)` constructor call would have
+been handed `[1, 2]`. Essentially the above is roughly equivalent to
+
+```python
+class Point:
+    ...
+    @classmethod
+    def from_list(cls, value: list[int]):
+        return cls(*value)
+
+...
+class CLI:
+    point: Annotated[Point, Arg(num_args=2, parse=Point.from_list)]
+```
+
+#### **kwargs Unpacking
+
+Mapping unpacking (`**`) can be used for constructors which accept multiple arguments
+by keyword. For example, **Pydantic** classes' constructors **require** keyword-only
+arguments. This poses a challenge to a single CLI argument representing that constructor
+value. One way around this could be accepting a JSON string, parsing the string as JSON,
+and then unpacking the result into the constructor, effectively combining [Parsing JSON](#parsing-json)
+and [Composing Multiple Parsers](#composing-parsers).
+
+```python
+from pydantic import BaseModel
+from typing import Annotated
+from cappa import unpack_arguments, Arg, parse
+
+class Point(BaseModel:
+    x: int
+    y: int
+
+
+@dataclass
+class CLI:
+    point: Annotated[Point, Arg(parse=[json.loads, unpack_arguments])]
+
+print(parse(CLI))
+```
+
+```bash
+$ cli.py '{"x": 1, "y": 2}'
+CLI(Point(1, 2))
+```
+
+Similarly, you could imagine swapping `json.loads` for some alternate parser which accepted/parsed
+`x=1,y=2` or other input formats.
+
+### Parse Dependencies
+
+Parse functions can are provided the same dependency injection system given by `invoke` and
+[actions](#arg-action). Thus, by accepting an additional argument to the parser annotated with
+a supported type annotation, they'll be provided that runtime value automatically.
+
+This enables user-defined parsers that have the same amount of information that built-in parsers
+have when making decisions, namely the type information.
+
+Currently supported injectable values include:
+
+* [TypeView](https://github.com/litestar-org/type-lens/blob/main/type_lens/type_view.py)
+
+```python
+from cappa.type_view import TypeView
+
+def parse(value, type_view: TypeView):
+    value = json.loads(value)
+    if type_view.is_mapping:
+        return value
+    raise ValueError("Requires a JSON mapping, string input!")
+
+class CLI:
+    arg: Annotated[int, Arg(parse=parse)]
+```
+
+```{note}
+More injectable dependencies **could** be supported. In particular the `Arg` instance comes to mind,
+it's just not immediately obvious what that would be. File an issue if you have a usecase!
+```
+
+## `Arg.has_value`
 
 `Arg(has_value=True/False)` can be used to explicitly control whether the argument in question
 corresponds to a destination-type attribute as a value.
@@ -357,9 +506,10 @@ help text, and as such has a `has_value=False`.
 
 While there may not be much point in manually setting this attribute to `True` (because it will default
 to `True` in most cases), you **could** conceivably manually combine `has_value=False` and a
-custom [action](#Action), to avoid cappa trying to map your `Arg` back to a specific attribute.
+custom [action](#action), to avoid cappa trying to map your `Arg` back to a specific attribute.
 
-### `Arg.destructured`/`Arg.destructure()`
+(argument-destructuring)=
+## `Arg.destructured`/`Arg.destructure()`
 
 **Generally** a single class/type corresponds to a command, and that type's attributes correspond to
 the arguments/options for that command.
@@ -409,4 +559,11 @@ feature, as it exists today.
 
 Additionally, this feature only works with the native backend. This **probably** has a workable
 solution for argparse, so file an issue if this affects you!
+```
+
+```{note}
+(unpack_arguments)[#unpack-arguments] is a **similar** feature, in that it allows one to compose
+complex types into the CLI structure; but it in essentially opposite uses. `unpack_arguments` produces
+a complex type from a single CLI argument, whereas a "destructured" argument composes together multiple
+CLI arguments into one object without requiring a separate command.
 ```

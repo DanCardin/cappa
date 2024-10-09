@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Union
 
 import pytest
+from type_lens.type_view import TypeView
 from typing_extensions import Annotated
 
 import cappa
@@ -59,7 +60,7 @@ def test_parse_failure(backend):
 
 @backends
 def test_parse_optional(backend):
-    """An explicit exit takes message precedence, and do not include extra cappa text."""
+    """Optionals are handled by the given/inferred parse method."""
 
     @dataclass
     class ArgTest:
@@ -97,3 +98,35 @@ def test_parse_returns_none(backend):
 
     result = parse(ArgTest, "2", backend=backend)
     assert result == ArgTest(None)
+
+
+def parser_test_typed_parse(value: str):
+    return float(value)
+
+
+@backends
+def test_typed_parse(backend):
+    """A parse function with a typed argument."""
+
+    @dataclass
+    class ArgTest:
+        num: Annotated[float, cappa.Arg(parse=parser_test_typed_parse)]
+
+    result = parse(ArgTest, "4.1", backend=backend)
+    assert result == ArgTest(num=4.1)
+
+
+def parser_test_type_aware_parse(value: str, type_view: TypeView):
+    return str(type_view)
+
+
+@backends
+def test_type_aware_parse(backend):
+    """A parse function that receives type information."""
+
+    @dataclass
+    class ArgTest:
+        num: Annotated[str, cappa.Arg(parse=parser_test_type_aware_parse)]
+
+    result = parse(ArgTest, "4.1", backend=backend)
+    assert result == ArgTest(num="TypeView(str)")

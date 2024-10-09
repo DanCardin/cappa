@@ -60,6 +60,7 @@ def restructure(root_arg: Arg, action: ArgActionType):
         action_result = action_handler(**kwargs)
 
         assert arg.parse
+        assert callable(arg.parse)
         result[arg.field_name] = arg.parse(action_result)
         return result
 
