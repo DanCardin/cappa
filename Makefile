@@ -1,7 +1,5 @@
 .PHONY: install test lint format
 
-PACKAGE_VERSION = $(shell python -c 'import importlib.metadata; print(importlib.metadata.version("responsaas"))')
-
 install:
 	uv sync --all-extras
 
