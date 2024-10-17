@@ -103,17 +103,17 @@ def custom_action(arg: Arg, action: Callable):
         ):
             # XXX: This should ideally be able to inject parser state, but here, we dont
             #      have access to the same state as the native parser.
-            fullfilled_deps: dict = {
+            fulfilled_deps: dict = {
                 Output: parser.output,
                 Value: Value(values),
                 Command: namespace.__command__,
                 Arg: arg,
             }
             if option_string:
-                fullfilled_deps[RawOption] = RawOption.from_str(option_string)
+                fulfilled_deps[RawOption] = RawOption.from_str(option_string)
 
-            deps = fulfill_deps(action, fullfilled_deps)
-            result = action(**deps)
+            deps = fulfill_deps(action, fulfilled_deps)
+            result = action(**deps.kwargs)
             setattr(namespace, self.dest, result)
 
     return CustomAction

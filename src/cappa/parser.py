@@ -586,7 +586,7 @@ def consume_arg(
     if option:
         fulfilled_deps[RawOption] = option
 
-    kwargs = fulfill_deps(action_handler, fulfilled_deps)
+    kwargs = fulfill_deps(action_handler, fulfilled_deps).kwargs
     result = action_handler(**kwargs)
     if arg.has_value:
         context.result[field_name] = result

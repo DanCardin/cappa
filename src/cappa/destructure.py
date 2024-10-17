@@ -56,8 +56,8 @@ def restructure(root_arg: Arg, action: ArgActionType):
             Arg: arg,
             Value: value,
         }
-        kwargs = fulfill_deps(action_handler, fulfilled_deps)
-        action_result = action_handler(**kwargs)
+        deps = fulfill_deps(action_handler, fulfilled_deps)
+        action_result = action_handler(**deps.kwargs)
 
         assert arg.parse
         assert callable(arg.parse)

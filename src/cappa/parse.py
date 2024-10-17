@@ -262,7 +262,7 @@ def evaluate_parse(
                 parser,
                 {TypeView: type_view},
                 allow_empty=True,
-            ),
+            ).kwargs,
         )
         for parser in parsers
     ]
