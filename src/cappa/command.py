@@ -85,7 +85,7 @@ class Command(typing.Generic[T]):
             return obj
 
         obj = class_inspect.get_command_capable_object(obj)
-        if hasattr(obj, "__cappa__"):
+        if getattr(obj, "__cappa__", None):
             return obj.__cappa__  # type: ignore
 
         assert not isinstance(obj, Command)

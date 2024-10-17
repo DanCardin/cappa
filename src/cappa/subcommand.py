@@ -107,9 +107,7 @@ def infer_types(arg: Subcommand, type_view: TypeView) -> typing.Iterable[type]:
         return typing.cast(typing.Iterable[type], arg.types)
 
     if type_view.is_union:
-        return tuple(
-            [t.annotation for t in type_view.inner_types if not t.is_none_type]
-        )
+        return tuple(t.annotation for t in type_view.inner_types if not t.is_none_type)
 
     return (type_view.annotation,)
 

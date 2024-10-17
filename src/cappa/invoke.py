@@ -31,6 +31,7 @@ class Dep(typing.Generic[C]):
 class Resolved(typing.Generic[C]):
     callable: Callable[..., C]
     kwargs: dict[str, typing.Any | Resolved] = field(default_factory=dict)
+    args: tuple[typing.Any, ...] = field(default=())
     result: typing.Any = ...
     is_resolved: bool = False
 
@@ -63,7 +64,7 @@ class Resolved(typing.Generic[C]):
                     # what we just need to wrap...
                     callable = contextlib.contextmanager(callable)
 
-                result = callable(**finalized_kwargs)
+                result = callable(*self.args, **finalized_kwargs)
                 is_context_manager = isinstance(
                     result, contextlib.AbstractContextManager
                 )
@@ -153,13 +154,13 @@ def resolve_callable(
         global_deps = resolve_global_deps(deps, implicit_deps)
 
         fulfilled_deps = {**implicit_deps, **global_deps}
-        kwargs = fulfill_deps(fn, fulfilled_deps)
+        resolved = fulfill_deps(fn, fulfilled_deps)
     except InvokeResolutionError as e:
         raise InvokeResolutionError(
             f"Failed to invoke {parsed_command.cmd_cls} due to resolution failure."
         ) from e
 
-    return (Resolved(fn, kwargs), tuple(global_deps.values()))
+    return (resolved, tuple(global_deps.values()))
 
 
 def resolve_global_deps(
@@ -178,7 +179,7 @@ def resolve_global_deps(
     for source_function, dep in deps.items():
         # Deps need to be fulfilled, whereas raw values are taken directly.
         if isinstance(dep, Dep):
-            value = Resolved(dep.callable, fulfill_deps(dep.callable, implicit_deps))
+            value = fulfill_deps(dep.callable, implicit_deps)
         else:
             value = Resolved(source_function, result=dep, is_resolved=True)
 
@@ -262,11 +263,12 @@ def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
 
 def fulfill_deps(
     fn: Callable, fulfilled_deps: dict, allow_empty: bool = False
-) -> typing.Any:
+) -> Resolved:
+    args: list[typing.Any] = []
     result: dict[str, typing.Any] = {}
 
     try:
-        function_view = CallableView.from_callable(fn, include_extras=True)
+        callable_view = CallableView.from_callable(fn, include_extras=True)
     except NameError as e:  # pragma: no cover
         name = getattr(e, "name", None) or str(e)
         raise InvokeResolutionError(
@@ -276,46 +278,44 @@ def fulfill_deps(
         # ValueError is common amongst builtins. Perhaps TypeView ought to be handling this.
         # AttributeError is currently an issue with Enums, I think TypeView should **definitely**
         # handle this.
-        return result
+        return Resolved(fn, result)
 
-    for param_view in function_view.parameters:
+    for index, param_view in enumerate(callable_view.parameters):
         type_view = param_view.type_view
-        deps = find_annotations(type_view, Dep)
 
-        if not deps:
-            # Non-annotated args are either implicit dependencies (and thus already fulfilled),
-            # or arguments that we cannot fulfill
-            if type_view.fallback_origin not in fulfilled_deps:
-                if param_view.has_default or allow_empty:
-                    # if there's a default, we can just skip it and let the default fulfill the value.
-                    continue
+        # "Native" supported annotations
+        if type_view.fallback_origin in fulfilled_deps:
+            result[param_view.name] = fulfilled_deps[type_view.fallback_origin]
 
-                param_annotation = (
-                    param_view.type_view.repr_type
-                    if param_view.has_annotation
-                    else "<empty>"
-                )
-                raise InvokeResolutionError(
-                    f"`{param_view.name}: {param_annotation}` "
-                    f"is not a valid dependency for Dep({fn.__name__})."
-                )
-
-            value = fulfilled_deps[type_view.fallback_origin]
-
-        else:
+        # "Dep(foo)" annotations
+        elif deps := find_annotations(type_view, Dep):
             assert len(deps) == 1
             dep = deps[0]
 
             # Whereas everything else should be a resolvable explicit Dep, which might have either
             # already been fullfullfilled, or yet need to be.
-            if dep in fulfilled_deps:
-                value = fulfilled_deps[dep]
-            else:
-                value = Resolved(
-                    dep.callable, fulfill_deps(dep.callable, fulfilled_deps)
-                )
-                fulfilled_deps[dep] = value
+            if dep not in fulfilled_deps:
+                fulfilled_deps[dep] = fulfill_deps(dep.callable, fulfilled_deps)
 
-        result[param_view.name] = value
+            result[param_view.name] = fulfilled_deps[dep]
 
-    return result
+        # If there's a default, we can just skip it and let the default fulfill the value.
+        # Alternatively, `allow_empty` might be True to indicate we shouldn't error.
+        elif param_view.has_default or allow_empty:
+            continue
+
+        # Non-annotated args are either implicit dependencies (and thus already fulfilled),
+        # or arguments that we cannot fulfill and should error.
+        else:
+            param_annotation = (
+                param_view.type_view.repr_type
+                if param_view.has_annotation
+                else "<empty>"
+            )
+
+            raise InvokeResolutionError(
+                f"`{param_view.name}: {param_annotation}` "
+                f"is not a valid dependency for Dep({fn.__name__})."
+            )
+
+    return Resolved(fn, kwargs=result, args=tuple(args))
