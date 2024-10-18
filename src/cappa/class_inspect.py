@@ -6,7 +6,7 @@ import inspect
 import typing
 from enum import Enum
 
-from typing_extensions import Self
+from typing_extensions import Annotated, Self
 
 from cappa.type_view import CallableView, Empty, EmptyType
 from cappa.typing import T, find_annotations
@@ -232,9 +232,9 @@ def get_command_capable_object(obj):
         function_args = []
 
         @functools.wraps(obj)
-        def call(self, **deps):
+        def call(self, *args, **deps):
             kwargs = dataclasses.asdict(self)
-            return obj(**kwargs, **deps)
+            return obj(*args, **kwargs, **deps)
 
         callable_view = CallableView.from_callable(obj, include_extras=True)
 
@@ -246,6 +246,9 @@ def get_command_capable_object(obj):
         call.__signature__ = signature  # type: ignore
 
         for param_view in callable_view.parameters:
+            if not param_view.has_annotation:
+                continue
+
             if find_annotations(param_view.type_view, Dep):
                 continue
 
@@ -262,10 +265,42 @@ def get_command_capable_object(obj):
                 )
             )
 
-        return dataclasses.make_dataclass(
+        result = dataclasses.make_dataclass(
             obj.__name__,
             function_args,
             namespace={"__call__": call},
         )
+        result.__doc__ = obj.__doc__
+        result.__cappa__ = getattr(obj, "__cappa__", None)  # type: ignore
+        return result
+
+    method_subcommands = collect_method_subcommands(obj)
+    if method_subcommands:
+        from cappa.subcommand import Subcommand
+
+        return dataclasses.make_dataclass(
+            obj.__name__,
+            [
+                (
+                    "__cappa_subcommand__",
+                    Annotated[
+                        typing.Union[method_subcommands],  # pyright: ignore
+                        Subcommand("command", required=True),
+                    ],
+                    dataclasses.field(
+                        repr=False, kw_only=True, compare=False, default=None
+                    ),
+                ),
+            ],
+            bases=(obj,),
+        )
 
     return obj
+
+
+def collect_method_subcommands(cls: type) -> tuple[typing.Callable, ...]:
+    return tuple(
+        method
+        for _, method in inspect.getmembers(cls, callable)
+        if hasattr(method, "__cappa__")
+    )
