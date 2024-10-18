@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import inspect
 import typing
 
 from rich.theme import Theme
@@ -293,11 +294,12 @@ def command(
     """
 
     def wrapper(_decorated_cls):
-        if not detect(_decorated_cls):
+        if inspect.isclass(_decorated_cls) and not detect(_decorated_cls):
             _decorated_cls = dataclasses.dataclass(_decorated_cls)
 
-        instance = Command(
-            cmd_cls=_decorated_cls,
+        command: Command = Command.get(_decorated_cls)
+        instance = dataclasses.replace(
+            command,
             invoke=invoke,
             name=name,
             help=help,
@@ -310,7 +312,14 @@ def command(
         )
         _decorated_cls.__cappa__ = instance
 
-        return _decorated_cls
+        # Functions (and in particular class methods, must return a function object in order
+        # to be attached as methods) cannot be nested, so we can just directly return it.
+        if inspect.isfunction(_decorated_cls):
+            return _decorated_cls
+
+        # Whereas classes will **generally** be the **exact** object as `_decorated_cls` was,
+        # except in the case of dynamically generated subclasses used for detecting methods.
+        return instance.cmd_cls
 
     if _cls is not None:
         return wrapper(_cls)
