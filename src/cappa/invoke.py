@@ -11,7 +11,7 @@ from cappa.command import Command, HasCommand
 from cappa.output import Exit, Output
 from cappa.subcommand import Subcommand
 from cappa.type_view import CallableView
-from cappa.typing import find_annotations
+from cappa.typing import find_annotations, get_method_class
 
 C = typing.TypeVar("C", bound=HasCommand)
 
@@ -298,6 +298,14 @@ def fulfill_deps(
                 fulfilled_deps[dep] = fulfill_deps(dep.callable, fulfilled_deps)
 
             result[param_view.name] = fulfilled_deps[dep]
+
+        # Method `self` arguments can be assumed to be typed as the literal class they reside inside,
+        # These classes should always be already fulfilled by the root command structure.
+        elif inspect.ismethod(fn) and index == 0:
+            cls = get_method_class(fn)
+
+            value = fulfilled_deps[cls]
+            args.append(value)
 
         # If there's a default, we can just skip it and let the default fulfill the value.
         # Alternatively, `allow_empty` might be True to indicate we shouldn't error.

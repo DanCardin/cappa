@@ -43,7 +43,11 @@ class ClassHelpText:
                 summary, body = doc
                 body = body.strip()
 
-        ast_args = get_attribute_docstrings(command)
+        try:
+            ast_args = get_attribute_docstrings(command)
+        except Exception:
+            ast_args = {}
+
         args.update(ast_args)
 
         return cls(summary=summary, body=body, args=args)
@@ -73,16 +77,12 @@ def get_doc(cls):
 def get_attribute_docstrings(command: type) -> dict[str, str]:
     result: dict[str, str] = {}
 
-    try:
-        raw_source = inspect.getsource(command)
-    except OSError:
-        return result
-
+    raw_source = inspect.getsource(command)
     source = textwrap.dedent(raw_source)
     module = ast.parse(source)
 
     cls_node = module.body[-1]
-    assert isinstance(cls_node, ast.ClassDef), cls_node
+    assert isinstance(cls_node, ast.ClassDef)
 
     last_assignment: ast.AnnAssign | None = None
     for node in cls_node.body:
