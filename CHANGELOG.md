@@ -13,6 +13,7 @@ s.
     more information, and in a nicer interface.
 
 - feat: User defined parsers can access the `TypeView` by accepting it as an argument.
+- feat: Add new API for defining subcommands as methods.
 
 ## 0.23
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+import inspect
 import typing
 from dataclasses import dataclass
 
@@ -66,3 +67,7 @@ def detect_choices(type_view: TypeView) -> list[str] | None:
         return [str(t) for t in type_view.args]
 
     return None
+
+
+def get_method_class(fn):
+    return inspect._findclass(fn)  # type: ignore
