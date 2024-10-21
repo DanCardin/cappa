@@ -2,11 +2,11 @@
 [![codecov](https://codecov.io/gh/DanCardin/cappa/graph/badge.svg?token=jCpAbqWQgU)](https://codecov.io/gh/DanCardin/cappa)
 [![Documentation Status](https://readthedocs.org/projects/cappa/badge/?version=latest)](https://cappa.readthedocs.io/en/latest/?badge=latest)
 
-- [Full documentation here](https://cappa.readthedocs.io/en/latest/).
-- [Comparison vs existing libraries.](https://cappa.readthedocs.io/en/latest/comparison.html).
-- [Annotation inference details](https://cappa.readthedocs.io/en/latest/annotation.html)
-- ["invoke" (click-like) details](https://cappa.readthedocs.io/en/latest/invoke.html)
-- [Class compatibility (dataclasses/pydantic/etc)](https://cappa.readthedocs.io/en/latest/class_compatibility.html)
+- [Full Documentation](https://cappa.readthedocs.io/en/latest/)
+- [Comparison vs click/typer/argparse/etc](https://cappa.readthedocs.io/en/latest/comparison.html)
+- [Annotations Inference Docs](https://cappa.readthedocs.io/en/latest/annotation.html)
+- ["invoke" API Docs](https://cappa.readthedocs.io/en/latest/invoke.html)
+- [Class Compatibility (dataclasses/pydantic/etc)](https://cappa.readthedocs.io/en/latest/class_compatibility.html)
 
 Cappa is a declarative command line parsing library, which uses runtime type inspection
 to infer (default) CLI argument behavior, and provide automatic [help text](https://cappa.readthedocs.io/en/latest/help.html)
