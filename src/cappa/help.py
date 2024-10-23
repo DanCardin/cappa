@@ -160,7 +160,7 @@ def format_arg(help_formatter: HelpFormatter, arg: Arg) -> str:
     segments = []
     for format_segment in arg_format:
         default = ""
-        if arg.default is not None and arg.default is not Empty:
+        if arg.show_default and arg.default is not None and arg.default is not Empty:
             default = help_formatter.default_format.format(default=arg.default)
 
         choices = ""

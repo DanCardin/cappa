@@ -14,6 +14,7 @@ s.
 
 - feat: User defined parsers can access the `TypeView` by accepting it as an argument.
 - feat: Add new API for defining subcommands as methods.
+- feat: Add Arg.show_default option to optionally avoid displaying default in help text.
 
 ## 0.23
 

@@ -134,6 +134,7 @@ class Arg(typing.Generic[T]):
         deprecated: If supplied, the argument will be marked as deprecated. If given `True`,
             a default message will be generated, otherwise a supplied string will be
             used as the deprecation message.
+        show_default: Whether to show the default value in help text. Defaults to `True`.
         destructured: When set, destructures the annotated type into current-level arguments.
             See `Arg.destructure`.
         has_value: Whether the argument has a value that should be saved back to the destination
@@ -159,6 +160,7 @@ class Arg(typing.Generic[T]):
     required: bool | None = None
     field_name: str | EmptyType = Empty
     deprecated: bool | str = False
+    show_default: bool = True
 
     destructured: Destructured | None = None
     has_value: bool | None = None
