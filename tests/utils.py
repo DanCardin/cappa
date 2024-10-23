@@ -1,4 +1,5 @@
 import contextlib
+from dataclasses import dataclass
 from typing import Union
 from unittest.mock import patch
 
@@ -57,3 +58,17 @@ def ignore_docstring_parser(monkeypatch):
 
 def strip_trailing_whitespace(text):
     return "\n".join([line.rstrip() for line in text.split("\n")])
+
+
+@dataclass
+class TestOutput:
+    stdout: str
+    stderr: str
+
+    @classmethod
+    def from_capsys(cls, capsys):
+        outerr = capsys.readouterr()
+
+        out = strip_trailing_whitespace(outerr.out)
+        err = strip_trailing_whitespace(outerr.err)
+        return cls(out, err)
