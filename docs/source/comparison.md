@@ -100,9 +100,14 @@ If `tiangolo` hadn't based typer on click, it's not crazy to imagine that
 `Dep` feature of `cappa` looks and feels a lot like the `Depends` feature of
 FastAPI.
 
+Further, cappa provides more comprehensive type inference (e.g. translating complex
+types like `foo: tuple[int, str] | None` into their logical CLI argument shapes.
+As the input shapes become more complex, typer's inference begins to lose out (at
+time of writing).
+
 ## Why not argparse?
 
-The imperitive style of argparse can just be tedious to read/write, and hard to
+The imperative style of argparse can just be tedious to read/write, and hard to
 intuit what the shape of the resultant CLI will look like. `Cappa` currently
 uses argparse as the underlying argument parsing library, because it is the most
 straightforward, maintained, python library for building this sort of
@@ -145,7 +150,52 @@ things like completions, and error reporting.
 
 ### [Clipstick](https://github.com/sander76/clipstick)
 
-Explicitly avoid use of Annotated, which ultimately limits its flexibly. Without
+Explicitly avoids use of Annotated, which ultimately limits its flexibly. Without
 additional configuration data, there's only so much it can support.
 
 Otherwise it seems very similarly inspired and thus looks rather nice.
+
+### Pydantic-based options
+
+I hope it should be uncontroversial to say that either option are a clear subset of
+at least the CLI shapes you can produce with click/argparse. And cappa is meant to
+reside in that category.
+
+These options probably do their job (of producing a pydantic model given CLI arguments)
+consisely and well! But they dont **seem** to be targeted at producing CLIs of
+arbitrary shape like click/argparse/typer.
+
+And you can use pydantic models with cappa, so I think you can arrive at many of
+the same benefits as you might find in either option, namely flexible input value
+parsing and loading defaults from environment variables, but you can do so for any
+CLI shape you might want to produce.
+
+#### [Pydantic-CLI](https://github.com/mpkocher/pydantic-cli)
+
+Doesn't support positional arguments, only supports inferring "simple" types. While
+it does support subcommands, it seems to do so in a way that's single-level only?
+
+Again, it seems much more oriented at translating CLI arguments into an
+instance of a pydantic model, **rather than** describing an arbitrary CLI
+shape while utilizing types/models.
+
+#### [Pydantic-Settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/#the-basics)
+
+Again, you can tell that (I think) from the way nested models are translated into a
+flattened list of options, that it's very focused on instantiating a pydantic model
+from a given set of CLI arguments, rather than describing an arbitrarily shaped CLI.
+
+It does appear to support subcommands and positional arguments, but it's (imo) done
+sort of weirdly, which seems to be the result of bolting the CLI parsing onto pydantic rather
+than the other way around. 
+
+There appear to be a lot of maybe convenient automatic parsing features that translate
+arguments from various json or other input formats into the model fields. If you **dont**
+want all these different input modes, it's not immediately obvious how to turn them all
+off and arrive at more "normal" CLI input parsing.
+
+Cappa provides more comprehensive type inference (e.g. translating complex types like
+`foo: tuple[int, str] | None` into their logical CLI argument shapes. Pydantic-settings
+seems to prefer accepting arbitrary inputs as JSON automatically and using pydantic's
+native parsing capabilities to attempt to interpret the values, rather than translating
+them into "traditional" CLI behaviors.
