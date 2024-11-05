@@ -7,11 +7,19 @@ import typing
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from typing_extensions import Annotated
+
 from cappa.command import Command, HasCommand
 from cappa.output import Exit, Output
 from cappa.subcommand import Subcommand
 from cappa.type_view import CallableView
-from cappa.typing import find_annotations, get_method_class
+from cappa.typing import T, find_annotations, get_method_class
+
+
+class SelfType: ...
+
+
+Self = Annotated[T, SelfType]
 
 C = typing.TypeVar("C", bound=HasCommand)
 
@@ -150,6 +158,7 @@ def resolve_callable(
 
         implicit_deps[Output] = output
         implicit_deps[Command] = parsed_command
+        implicit_deps[SelfType] = implicit_deps[parsed_command.cmd_cls]
 
         global_deps = resolve_global_deps(deps, implicit_deps)
 
@@ -284,7 +293,10 @@ def fulfill_deps(
         type_view = param_view.type_view
 
         # "Native" supported annotations
-        if type_view.fallback_origin in fulfilled_deps:
+        if type_view.metadata and type_view.metadata[0] is SelfType:
+            result[param_view.name] = fulfilled_deps[SelfType]
+
+        elif type_view.fallback_origin in fulfilled_deps:
             result[param_view.name] = fulfilled_deps[type_view.fallback_origin]
 
         # "Dep(foo)" annotations
