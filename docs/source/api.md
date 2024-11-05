@@ -2,7 +2,7 @@
 
 ```{eval-rst}
 .. autoapimodule:: cappa
-   :members: parse, invoke, invoke_async, collect, command, Command, Subcommand, Dep, Arg, ArgAction, Exit, Env, Completion, Output, FileMode, unpack_arguments, Group, Prompt, Confirm, ValueFrom, Default, State
+   :members: parse, invoke, invoke_async, collect, command, Command, Subcommand, Dep, Arg, ArgAction, Exit, Env, Completion, Output, FileMode, unpack_arguments, Group, Prompt, Confirm, ValueFrom, Default, State, Self
 ```
 
 ```{eval-rst}
