@@ -53,7 +53,7 @@ class ArgAction(enum.Enum):
     completion = "completion"
 
     @classmethod
-    def value_actions(cls) -> typing.Set[ArgAction]:
+    def meta_actions(cls) -> typing.Set[ArgAction]:
         return {cls.help, cls.version, cls.completion}
 
     @classmethod
@@ -106,7 +106,7 @@ class Group:
         return (self.section, self.order, self.name, self.exclusive)
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Arg(typing.Generic[T]):
     """Describe a CLI argument.
 
@@ -161,7 +161,12 @@ class Arg(typing.Generic[T]):
         has_value: Whether the argument has a value that should be saved back to the destination
             type. For most `Arg`, this will default to `True`, however `--help` is an example
             of an `Arg` for which it is false.
+        propagate: Specifies that an argument can be matched to all child. Global arguments only
+            propagate down. When used at the top-level, in effect it creates a "global" argument.
     """
+
+    def __hash__(self):
+        return id(self)
 
     value_name: str | EmptyType = Empty
     short: bool | str | list[str] | None = False
@@ -182,6 +187,7 @@ class Arg(typing.Generic[T]):
     field_name: str | EmptyType = Empty
     deprecated: bool | str = False
     show_default: bool = True
+    propagate: bool = False
 
     destructured: Destructured | None = None
     has_value: bool | None = None
@@ -269,6 +275,11 @@ class Arg(typing.Generic[T]):
         value_name = infer_value_name(self, field_name, num_args)
         has_value = infer_has_value(self, action)
 
+        if self.propagate and not short and not long:
+            raise ValueError(
+                "`Arg.propagate` requires a non-positional named option (`short` or `long`)."
+            )
+
         return dataclasses.replace(
             self,
             default=default,
@@ -305,6 +316,10 @@ class Arg(typing.Generic[T]):
             return delimiter.join(self.names(n=n))
 
         return typing.cast(str, self.value_name)
+
+    @cached_property
+    def is_option(self) -> bool:
+        return bool(self.short or self.long)
 
 
 def verify_type_compatibility(arg: Arg, field_name: str, type_view: TypeView):
@@ -671,7 +686,7 @@ def infer_has_value(arg: Arg, action: ArgActionType):
     if arg.has_value is not None:
         return arg.has_value
 
-    if isinstance(action, ArgAction) and action in ArgAction.value_actions():
+    if isinstance(action, ArgAction) and action in ArgAction.meta_actions():
         return False
 
     return True

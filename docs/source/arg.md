@@ -45,6 +45,7 @@ can be used and are interpreted to handle different kinds of CLI input.
    :noindex:
 ```
 
+(arg-action)=
 ## `Arg.action`
 
 Obliquely referenced through other `Arg` options like `count`, every `Arg` has a
@@ -210,6 +211,7 @@ supplied value at the CLI level.
    :noindex:
 ```
 
+(arg-group)=
 ## `Arg.group`: Groups (and Mutual Exclusion)
 
 `Arg(group=...)` can be used to customize the way arguments/options are grouped
@@ -567,3 +569,95 @@ complex types into the CLI structure; but it in essentially opposite uses. `unpa
 a complex type from a single CLI argument, whereas a "destructured" argument composes together multiple
 CLI arguments into one object without requiring a separate command.
 ```
+
+## `Arg.propagate`
+
+Argument propagation is a way of making higher-level arguments available during the parsing of child
+subcommands. When an argument is marked as `Arg(propagate=True)`, access to that argument will
+be made available in all **child** subcommands, while still recording the value itself to the
+object on which it was defined.
+
+```python
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Annotated
+import cappa
+
+@dataclass
+class Main:
+    file: Annotated[str, cappa.Arg(long=True, propagate=True)]
+    subcommand: cappa.Subcommands[One | Two | None] = None
+
+@dataclass
+class One:
+    ...
+
+@dataclass
+class Two:
+    subcommand: cappa.Subcommands[Nested | None] = None
+
+@dataclass
+class Nested:
+    ...
+
+print(cappa.parse(Main))
+```
+
+Given the above example, all of the following would be valid, and produce `Main(file='config.txt', ...)`:
+
+- `main.py --file config.txt`
+- `main.py one --file config.txt`
+- `main.py two --file config.txt`
+- `main.py two nested --file config.txt`
+
+
+If defined on a top-level command object (like above), that argument will effectively
+be available globally within the CLI, again while actually propagating the value
+back to the place at which it was defined.
+
+However if the propagated argument is **not** defined at the top-level, it will
+not propagate "upwards" to parent commands; only downward to child subcommands.
+
+```{note}
+`Arg.propagate` is not currently enabled/allowed for positional arguments (file an issue if this
+is a problem for you!) largely because it's not clear that the feature makes any sense except
+on (particularly optional) options.
+
+`Arg.propagate` is not implemented in the `argparse` backend.
+```
+
+### Propagated Arg Help
+
+By default propagated arguments are added to child subcommand's help as though the argument
+was defined like any other argument.
+
+If you want propagated arguments categorically separated from normal arguments, you can
+assign them a distinct [group](#arg-group), which will cause them to be displayed separately.
+
+For example:
+```python
+group = cappa.Group(name="Global", section=1)
+
+@dataclass
+class Command:
+    other1: Annotated[int, cappa.Arg(long=True)] = 1
+    other2: Annotated[int, cappa.Arg(long=True)] = 1
+    foo: Annotated[int, cappa.Arg(long=True, propagate=True, group=group)] = 1
+    bar: Annotated[str, cappa.Arg(long=True, propagate=True, group=group)] = 1
+```
+
+Would yield:
+
+```
+  Options
+    [--other1 OTHER1]          (Default: 1)
+    [--other2 OTHER2]          (Default: 1)
+
+  Global
+    [--foo FOO]                (Default: 1)
+    [--bar BAR]                (Default: 1)
+```
+
+Note, this is no different from use of `Arg.group` in any other context, except in that
+the argument only exists at the declaration point, so any grouping configuration will
+also propagate down into the way child commands render those arguments as well.

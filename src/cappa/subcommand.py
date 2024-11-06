@@ -12,6 +12,7 @@ from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import T, assert_type, find_annotations
 
 if typing.TYPE_CHECKING:
+    from cappa.arg import Arg
     from cappa.command import Command
     from cappa.help import HelpFormatable
 
@@ -48,33 +49,25 @@ class Subcommand:
     types: typing.Iterable[type] | EmptyType = Empty
 
     @classmethod
-    def collect(
-        cls,
-        field: Field,
-        type_view: TypeView,
-        help_formatter: HelpFormatable | None = None,
-    ) -> Subcommand | None:
-        subcommand = find_annotations(type_view, Subcommand) or None
+    def detect(cls, field: Field, type_view: TypeView) -> Subcommand | None:
+        subcommands = find_annotations(type_view, Subcommand) or None
 
         field_metadata = extract_dataclass_metadata(field, Subcommand)
         if field_metadata:
-            subcommand = field_metadata
+            subcommands = field_metadata
 
-        if not subcommand:
+        if not subcommands:
             return None
 
-        assert len(subcommand) == 1
-        return subcommand[0].normalize(
-            type_view,
-            field_name=field.name,
-            help_formatter=help_formatter,
-        )
+        assert len(subcommands) == 1
+        return subcommands[0]
 
     def normalize(
         self,
         type_view: TypeView | None = None,
         field_name: str | None = None,
         help_formatter: HelpFormatable | None = None,
+        propagated_arguments: list[Arg] | None = None,
     ) -> Self:
         if type_view is None:
             type_view = TypeView(...)
@@ -82,7 +75,12 @@ class Subcommand:
         field_name = field_name or assert_type(self.field_name, str)
         types = infer_types(self, type_view)
         required = infer_required(self, type_view)
-        options = infer_options(self, types, help_formatter=help_formatter)
+        options = infer_options(
+            self,
+            types,
+            help_formatter=help_formatter,
+            propagated_arguments=propagated_arguments,
+        )
         group = infer_group(self)
 
         return dataclasses.replace(
@@ -133,12 +131,15 @@ def infer_options(
     arg: Subcommand,
     types: typing.Iterable[type],
     help_formatter: HelpFormatable | None = None,
+    propagated_arguments: list[Arg] | None = None,
 ) -> dict[str, Command]:
     from cappa.command import Command
 
     if arg.options:
         return {
-            name: Command.collect(type_command)
+            name: Command.collect(
+                type_command, propagated_arguments=propagated_arguments
+            )
             for name, type_command in arg.options.items()
         }
 
@@ -146,7 +147,9 @@ def infer_options(
     for type_ in types:
         type_command: Command = Command.get(type_, help_formatter=help_formatter)
         type_name = type_command.real_name()
-        options[type_name] = Command.collect(type_command)
+        options[type_name] = Command.collect(
+            type_command, propagated_arguments=propagated_arguments
+        )
 
     return options
 
