@@ -6,7 +6,7 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import TestOutput, backends, parse
+from tests.utils import CapsysOutput, backends, parse
 
 
 @backends
@@ -20,7 +20,7 @@ def test_show_default_default_true(backend, capsys):
     with pytest.raises(cappa.HelpExit):
         parse(Command, "--help", backend=backend)
 
-    output = TestOutput.from_capsys(capsys)
+    output = CapsysOutput.from_capsys(capsys)
     assert "(Default: False)" in output.stdout
 
 
@@ -35,7 +35,7 @@ def test_show_default_set_false(backend, capsys):
     with pytest.raises(cappa.HelpExit):
         parse(Command, "--help", backend=backend)
 
-    output = TestOutput.from_capsys(capsys)
+    output = CapsysOutput.from_capsys(capsys)
     assert "(Default: False)" not in output.stdout
 
 
@@ -50,7 +50,7 @@ def test_show_default_no_option_shows_for_false_default(backend, capsys):
     with pytest.raises(cappa.HelpExit):
         parse(Command, "--help", backend=backend)
 
-    stdout = TestOutput.from_capsys(capsys).stdout.replace(" ", "")
+    stdout = CapsysOutput.from_capsys(capsys).stdout.replace(" ", "")
     assert "[--foo](Default:True)" not in stdout
     assert "[--no-foo](Default:False)" in stdout
 
@@ -66,6 +66,6 @@ def test_show_default_no_option_shows_for_true_default(backend, capsys):
     with pytest.raises(cappa.HelpExit):
         parse(Command, "--help", backend=backend)
 
-    stdout = TestOutput.from_capsys(capsys).stdout.replace(" ", "")
+    stdout = CapsysOutput.from_capsys(capsys).stdout.replace(" ", "")
     assert "[--foo](Default:True)" in stdout
     assert "[--no-foo](Default:False)" not in stdout
