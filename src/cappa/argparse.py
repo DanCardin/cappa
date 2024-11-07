@@ -194,9 +194,9 @@ def add_arguments(
     parser: argparse.ArgumentParser, command: Command, output: Output, dest_prefix=""
 ):
     arg_groups = generate_arg_groups(command, include_hidden=True)
-    for group, args in arg_groups:
-        argparse_group = parser.add_argument_group(title=group.name)
-        if group.exclusive:
+    for (group_name, group_exclusive), args in arg_groups:
+        argparse_group = parser.add_argument_group(title=group_name)
+        if group_exclusive:
             argparse_group = argparse_group.add_mutually_exclusive_group()
 
         for arg in args:
@@ -204,7 +204,7 @@ def add_arguments(
                 add_argument(argparse_group, arg, dest_prefix=dest_prefix)
             elif isinstance(arg, Subcommand):
                 add_subcommands(
-                    parser, group.name, arg, output=output, dest_prefix=dest_prefix
+                    parser, group_name, arg, output=output, dest_prefix=dest_prefix
                 )
             else:
                 assert_never(arg)

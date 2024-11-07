@@ -6,6 +6,7 @@ import dataclasses
 import enum
 import typing
 from collections.abc import Callable
+from functools import cached_property
 from typing import Sequence, Union
 
 from typing_extensions import TypeAlias
@@ -77,7 +78,7 @@ class ArgAction(enum.Enum):
 ArgActionType: TypeAlias = Union[ArgAction, Callable]
 
 
-@dataclasses.dataclass(order=True)
+@dataclasses.dataclass(frozen=True)
 class Group:
     """Object used to control argument/subcommand grouping in generated help text.
 
@@ -88,11 +89,21 @@ class Group:
         name: The display name of the group in help text.
         exclusive: Whether arguments in the group should be considered mutually exclusive
             of one another.
+        section: A secondary level of ordering. Sections have a higher order precedence
+            than ``order``, in order to facilitate meta-ordering amongst kinds of groups
+            (such as "meta" arguments (``--help``, ``--version``, etc) and subcommands).
+            The default ``section`` for any normal argument/``Group`` is 0, for
+            ``Subcommand``s it is 1, and for "meta" arguments it is 2.
     """
 
-    order: int = 0
+    order: int = dataclasses.field(default=0, compare=False)
     name: str = ""
     exclusive: bool = False
+    section: int = 0
+
+    @cached_property
+    def key(self):
+        return (self.section, self.order, self.name, self.exclusive)
 
 
 @dataclasses.dataclass
@@ -581,11 +592,13 @@ def infer_group(
 ) -> Group:
     order = 0
     name = None
+    section = 0
 
     if isinstance(arg.group, Group):
         name = arg.group.name
         order = arg.group.order
         exclusive = arg.group.exclusive
+        section = arg.group.section
 
     if isinstance(arg.group, str):
         name = arg.group
@@ -600,7 +613,7 @@ def infer_group(
             name = "Arguments"
             order = 1
 
-    return Group(name=name, order=order, exclusive=exclusive)
+    return Group(name=name, order=order, exclusive=exclusive, section=section)
 
 
 def infer_value_name(arg: Arg, field_name: str, num_args: int | None) -> str:

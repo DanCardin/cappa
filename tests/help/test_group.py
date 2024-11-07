@@ -23,3 +23,18 @@ def test_string_group(backend, capsys):
 
     out = capsys.readouterr().out
     assert re.match(r".*Strings:?\s*\n\s*NAME.*", out, re.DOTALL)
+
+
+@backends
+def test_tuple_group(backend, capsys):
+    @dataclass
+    class Args:
+        name: Annotated[str, cappa.Arg(group=(1, "Strings"))]
+
+    with pytest.raises(cappa.HelpExit) as e:
+        parse(Args, "--help", backend=backend)
+
+    assert e.value.code == 0
+
+    out = capsys.readouterr().out
+    assert re.match(r".*Strings:?\s*\n\s*NAME.*", out, re.DOTALL)
