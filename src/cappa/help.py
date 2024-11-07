@@ -16,12 +16,15 @@ from cappa.arg import Arg, ArgAction, Group
 from cappa.output import Displayable
 from cappa.subcommand import Subcommand
 from cappa.type_view import Empty
+from cappa.typing import assert_type
 
 if typing.TYPE_CHECKING:
     from cappa.command import Command
 
 HelpFormatable: TypeAlias = typing.Callable[["Command", str], typing.List[Displayable]]
-ArgGroup: TypeAlias = typing.Tuple[Group, typing.List[typing.Union[Arg, Subcommand]]]
+ArgGroup: TypeAlias = typing.Tuple[
+    typing.Tuple[str, bool], typing.List[typing.Union[Arg, Subcommand]]
+]
 Dimension: TypeAlias = typing.Tuple[int, int, int, int]
 ArgFormat: TypeAlias = typing.Union[
     str,
@@ -40,7 +43,7 @@ def create_version_arg(version: str | Arg | None = None) -> Arg | None:
             short=["-v"],
             long=["--version"],
             help="Show the version and exit.",
-            group=(4, "Help"),
+            group=Group(1, "Help", section=2),
             action=ArgAction.version,
         )
 
@@ -66,7 +69,7 @@ def create_help_arg(help: bool | Arg | None = True) -> Arg | None:
             short=["-h"],
             long=["--help"],
             help="Show this message and exit.",
-            group=(4, "Help"),
+            group=Group(0, "Help", section=2),
             action=ArgAction.help,
         )
 
@@ -81,7 +84,7 @@ def create_completion_arg(completion: bool | Arg = True) -> Arg | None:
         completion = Arg(
             long=["--completion"],
             choices=["generate", "complete"],
-            group=(4, "Help"),
+            group=Group(2, "Help", section=2),
             help="Use `--completion generate` to print shell-specific completion source.",
             action=ArgAction.completion,
         )
@@ -132,9 +135,9 @@ def add_long_args(help_formatter: HelpFormatter, arg_groups: list[ArgGroup]) -> 
     table.add_column(justify="left", ratio=1)
     table.add_column(style="cappa.help", ratio=2)
 
-    for group, args in arg_groups:
+    for (group_name, _), args in arg_groups:
         table.add_row(
-            Text(group.name, style="cappa.group", justify="left"),
+            Text(group_name, style="cappa.group", justify="left"),
             Text(style="cappa.group"),
         )
         for arg in args:
@@ -201,13 +204,17 @@ def format_short_help(command: Command, prog: str) -> Displayable:
 
 
 def generate_arg_groups(command: Command, include_hidden=False) -> list[ArgGroup]:
-    def by_group(arg: Arg | Subcommand) -> Group:
-        assert isinstance(arg.group, Group)
-        return arg.group
+    def by_group_key(arg: Arg | Subcommand):
+        return assert_type(arg.group, Group).key
 
+    def by_group(arg: Arg | Subcommand):
+        group = assert_type(arg.group, Group)
+        return (group.name, group.exclusive)
+
+    sorted_args = sorted(command.arguments, key=by_group_key)
     return [
         (g, [a for a in args if include_hidden or not a.hidden])
-        for g, args in groupby(sorted(command.arguments, key=by_group), key=by_group)
+        for g, args in groupby(sorted_args, key=by_group)
     ]
 
 

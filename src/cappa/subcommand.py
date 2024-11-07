@@ -16,26 +16,36 @@ if typing.TYPE_CHECKING:
     from cappa.help import HelpFormatable
 
 
+DEFAULT_SUBCOMMAND_GROUP = Group(3, "Subcommands", section=1)
+
+
 @dataclasses.dataclass
 class Subcommand:
     """Describe a CLI subcommand.
 
     Arguments:
-        name: Defaults to the name of the class, converted to dash case, but
+        field_name: Defaults to the name of the class, converted to dash case, but
             can be overridden here.
-        types: Defaults to the class's annotated types, but can be overridden here.
         required: Defaults to automatically inferring requiredness, based on whether the
             class's value has a default. By setting this, you can force a particular value.
+        group: The subcommand group, for use in controlling help text for the subcommand, and
+            where it is displayed. This can be any of: the string name (``'Subcommands'``),
+            a 2-tuple of the `order` and the name (``(3, "Subcommands")``), or a :class:`Group`
+            instance (``Group(3, 'Subcommands')``)
         hidden: Whether the argument should be hidden in help text. Defaults to False.
+        options: A mapping of the subcommand names to the corresponding `Command` to which
+            the subcommands refer. Unless imperatively constructing the CLI structure, this
+            field should generally always be inferred automatically.
+        types: Defaults to the class's annotated types, but can be overridden here.
     """
 
     field_name: str | EmptyType = Empty
     required: bool | None = None
-    group: str | tuple[int, str] | Group = (3, "Subcommands")
+    group: str | tuple[int, str] | Group = DEFAULT_SUBCOMMAND_GROUP
     hidden: bool = False
 
-    types: typing.Iterable[type] | EmptyType = Empty
     options: dict[str, Command] = dataclasses.field(default_factory=dict)
+    types: typing.Iterable[type] | EmptyType = Empty
 
     @classmethod
     def collect(
