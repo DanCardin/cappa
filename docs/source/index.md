@@ -32,6 +32,7 @@ Completions <completion>
 Output, Exiting, and Exit Codes <exiting>
 Parser Backends (Cappa/Argparse) <backends>
 Testing <testing>
+Function/Method Based Commands <functions_and_methods>
 ```
 
 ```{toctree}

@@ -1,5 +1,8 @@
-# Methods
+# Function/Method Based Commands
 
+## Methods
+
+Methods can be used as a shorthand to define (typically terminal) subcommands.
 With methods, the enclosing class corresponds to the parent object CLI arguments,
 exactly like normal class based definition. Unlike with free functions, (explicitly
 annotated) methods are able to act as subcommands, who's arguments (similarly to free functions)
