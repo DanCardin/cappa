@@ -235,10 +235,10 @@ The `group` argument can be any of:
       arg2: Annotated[str, Arg(group=(4, 'Special'))]
   ```
 
-- `Group`: Instances of `Group` are the normalized form of the above two shorthand
+- [Group](Group): Instances of `Group` are the normalized form of the above two shorthand
   options (which are ultimately coerced into `Group`s).
 
-  `Group` additionally has an `exclusive: bool` option, which can be used to indicate
+  [Group](Group) additionally has an `exclusive: bool` option, which can be used to indicate
   that options within a group are mutually exclusive to one other.
 
   ```{note}

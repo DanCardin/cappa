@@ -79,6 +79,17 @@ ArgActionType: TypeAlias = Union[ArgAction, Callable]
 
 @dataclasses.dataclass(order=True)
 class Group:
+    """Object used to control argument/subcommand grouping in generated help text.
+
+    Args:
+        order: A number representing the relative ordering among different argument
+            groups. Groups with the same order will be displayed alphabetically by
+            name.
+        name: The display name of the group in help text.
+        exclusive: Whether arguments in the group should be considered mutually exclusive
+            of one another.
+    """
+
     order: int = 0
     name: str = ""
     exclusive: bool = False
@@ -113,9 +124,8 @@ class Arg(typing.Generic[T]):
             complex types that the type system's built-in parsing cannot handle.
 
         group: Optional group names for the argument. This affects how they're displayed
-            in the backend's help text.
-        exclusive_group: Indicates two args are mutually exclusive to one another.
-            Note this **also** implies `group` with the same value.
+            in the backend's help text. Note this can also be a `Group` instance in order
+            to control group order and/or group exclusivity.
         hidden: Whether the argument should be hidden in help text. Defaults to False.
 
         action: Generally automatically inferred from the data type. This allows to
