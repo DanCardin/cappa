@@ -61,7 +61,7 @@ def strip_trailing_whitespace(text):
 
 
 @dataclass
-class TestOutput:
+class CapsysOutput:
     stdout: str
     stderr: str
 

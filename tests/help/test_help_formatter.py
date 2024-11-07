@@ -8,7 +8,7 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import parse, strip_trailing_whitespace
+from tests.utils import CapsysOutput, parse, strip_trailing_whitespace
 
 
 @dataclass
@@ -83,7 +83,10 @@ def test_override_help_format(capsys):
             "--help",
             completion=False,
             help_formatter=cappa.HelpFormatter.default.with_arg_format(
-                ("{default}", "{help}")
+                (
+                    "{default}",
+                    "{help}",
+                )
             ),
         )
 
@@ -175,7 +178,10 @@ def test_callable_help_formatter(capsys):
             "--help",
             completion=False,
             help_formatter=cappa.HelpFormatter().with_arg_format(
-                ("{help}", help_formatter)
+                (
+                    "{help}",
+                    help_formatter,
+                )
             ),
         )
 
@@ -193,3 +199,17 @@ def test_callable_help_formatter(capsys):
             [-h, --help]  Show this message and exit.
         """
     )
+
+
+def test_explicitly_wrapped_formatter(capsys):
+    @dataclass
+    class Args:
+        name: Annotated[str, cappa.Arg(help="Optional.")] = "arg"
+
+    help_formatter = cappa.HelpFormatter(default_format="Default - {default}!")
+    with pytest.raises(cappa.HelpExit) as e:
+        parse(Args, "--help", help_formatter=help_formatter)
+
+    assert e.value.code == 0
+    output = CapsysOutput.from_capsys(capsys)
+    assert "Optional. Default - arg!\n" in output.stdout

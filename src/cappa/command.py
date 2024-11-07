@@ -81,17 +81,23 @@ class Command(typing.Generic[T]):
     def get(
         cls, obj: type[T] | Command[T], help_formatter: HelpFormatable | None = None
     ) -> Command[T]:
-        if isinstance(obj, cls):
-            return obj
+        help_formatter = help_formatter or HelpFormatter.default
 
-        obj = class_inspect.get_command_capable_object(obj)
-        if getattr(obj, "__cappa__", None):
-            return obj.__cappa__  # type: ignore
+        instance = None
+        if isinstance(obj, cls):
+            instance = obj
+        else:
+            obj = class_inspect.get_command_capable_object(obj)
+            if getattr(obj, "__cappa__", None):
+                instance = obj.__cappa__  # type: ignore
+
+        if instance:
+            return dataclasses.replace(instance, help_formatter=help_formatter)
 
         assert not isinstance(obj, Command)
         return cls(
             obj,
-            help_formatter=help_formatter or HelpFormatter.default,
+            help_formatter=help_formatter,
         )
 
     def real_name(self) -> str:

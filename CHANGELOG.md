@@ -2,6 +2,11 @@
 
 ## 0.24
 
+### 0.24.1
+
+- feat: Add Group.section to enable ordering of groups separately from the items within them.
+- fix: invoke(help_formatter=...) not applying to explicitly decorated commands.
+
 ### 0.24.0
 - feat: Support native inference parser for dataclass-like annotation
 s.
