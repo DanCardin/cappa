@@ -42,3 +42,33 @@ def test_optional_set_of_choices(backend, capsys):
 
     result = capsys.readouterr().out
     assert "Valid options: one, two." in result
+
+
+@backends
+def test_variadic_tuple_choices(backend, capsys):
+    @dataclass
+    class ArgTest:
+        choice: Annotated[
+            tuple[Literal["one", "two"], ...] | None, cappa.Arg(short=True)
+        ] = None
+
+    with pytest.raises(cappa.HelpExit):
+        parse(ArgTest, "--help", backend=backend)
+
+    result = capsys.readouterr().out
+    assert "Valid options: one, two." in result
+
+
+@backends
+def test_tuple_choices(backend, capsys):
+    @dataclass
+    class ArgTest:
+        choice: Annotated[
+            tuple[Literal["one", "two"], int] | None, cappa.Arg(short=True)
+        ] = None
+
+    with pytest.raises(cappa.HelpExit):
+        parse(ArgTest, "--help", backend=backend)
+
+    result = capsys.readouterr().out
+    assert "Valid options: one, two." not in result

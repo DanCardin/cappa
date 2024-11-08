@@ -2,6 +2,10 @@
 
 ## 0.24
 
+### 0.24.2
+
+- fix: Literal contained inside non-variadic tuple should not imply "choices".
+
 ### 0.24.1
 
 - feat: Add Group.section to enable ordering of groups separately from the items within them.
