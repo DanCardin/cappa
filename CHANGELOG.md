@@ -5,6 +5,7 @@
 ### 0.24.2
 
 - fix: Literal contained inside non-variadic tuple should not imply "choices".
+- fix: Optional non-variadic tuple should be allowed (None shouldn't fail arity check).
 
 ### 0.24.1
 
