@@ -13,7 +13,7 @@ from cappa.type_view import CallableView, Empty, EmptyType
 from cappa.typing import T, find_annotations
 
 if typing.TYPE_CHECKING:
-    pass
+    from cappa.command import Command
 
 __all__ = [
     "detect",
@@ -309,3 +309,11 @@ def collect_method_subcommands(cls: type) -> tuple[typing.Callable, ...]:
         for _, method in inspect.getmembers(cls, callable)
         if hasattr(method, "__cappa__")
     )
+
+
+def has_command(obj) -> bool:
+    return hasattr(obj, "__cappa__")
+
+
+def get_command(obj) -> Command | None:
+    return getattr(obj, "__cappa__", None)
