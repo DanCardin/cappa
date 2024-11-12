@@ -5,8 +5,9 @@ import sys
 import typing
 from collections.abc import Callable
 
-from cappa import class_inspect
 from cappa.arg import Arg, Group
+from cappa.class_inspect import fields as get_fields
+from cappa.class_inspect import get_command, get_command_capable_object
 from cappa.docstring import ClassHelpText
 from cappa.env import Env
 from cappa.help import HelpFormatable, HelpFormatter, format_short_help
@@ -87,9 +88,8 @@ class Command(typing.Generic[T]):
         if isinstance(obj, cls):
             instance = obj
         else:
-            obj = class_inspect.get_command_capable_object(obj)
-            if getattr(obj, "__cappa__", None):
-                instance = obj.__cappa__  # type: ignore
+            obj = get_command_capable_object(obj)
+            instance = get_command(obj)
 
         if instance:
             return dataclasses.replace(instance, help_formatter=help_formatter)
@@ -121,7 +121,7 @@ class Command(typing.Generic[T]):
         if not command.description:
             kwargs["description"] = help_text.body
 
-        fields = class_inspect.fields(command.cmd_cls)
+        fields = get_fields(command.cmd_cls)
         function_view = CallableView.from_callable(command.cmd_cls, include_extras=True)
 
         if command.arguments:

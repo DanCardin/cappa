@@ -7,6 +7,7 @@ import typing
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from cappa.class_inspect import has_command
 from cappa.command import Command, HasCommand
 from cappa.output import Exit, Output
 from cappa.subcommand import Subcommand
@@ -301,11 +302,12 @@ def fulfill_deps(
 
         # Method `self` arguments can be assumed to be typed as the literal class they reside inside,
         # These classes should always be already fulfilled by the root command structure.
-        elif inspect.ismethod(fn) and index == 0:
+        elif index == 0 and inspect.ismethod(fn):
             cls = get_method_class(fn)
 
-            value = fulfilled_deps[cls]
-            args.append(value)
+            if has_command(fn.__self__):
+                value = fulfilled_deps[cls]
+                args.append(value)
 
         # If there's a default, we can just skip it and let the default fulfill the value.
         # Alternatively, `allow_empty` might be True to indicate we shouldn't error.

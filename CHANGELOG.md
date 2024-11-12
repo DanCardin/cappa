@@ -2,6 +2,10 @@
 
 ## 0.24
 
+### 0.24.3
+
+- fix: Incorrect handling of methods in Arg.parse.
+
 ### 0.24.2
 
 - fix: Literal contained inside non-variadic tuple should not imply "choices".
