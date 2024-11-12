@@ -522,6 +522,9 @@ def infer_num_args(
         distinct_num_args = set()
         num_args_variants = []
         for type_arg in type_view.inner_types:
+            if type_arg.is_none_type:
+                continue
+
             num_args = infer_num_args(
                 arg,
                 type_arg,

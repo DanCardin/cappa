@@ -56,7 +56,7 @@ def detect_choices(type_view: TypeView) -> list[str] | None:
     if type_view.is_subclass_of(enum.Enum):
         return [v.value for v in type_view.annotation]
 
-    if type_view.is_subclass_of((tuple, list, set)):
+    if type_view.is_subclass_of((list, set)) or type_view.is_variadic_tuple:
         type_view = type_view.inner_types[0]
 
     if type_view.is_union:
