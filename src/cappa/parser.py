@@ -578,15 +578,6 @@ def consume_arg(
     if orig_num_args == 1:
         if result:
             result = result[0]
-            if arg.choices and result not in arg.choices:
-                choices = ", ".join(f"'{c}'" for c in arg.choices)
-                raise BadArgumentError(
-                    f"Invalid choice: '{result}' (choose from {choices})",
-                    value=result,
-                    command=parse_state.current_command,
-                    arg=arg,
-                )
-
             if parse_state.provide_completions and not parse_state.has_values():
                 if arg.completion:
                     completions: list[Completion] | list[FileCompletion] = (
@@ -645,6 +636,7 @@ def consume_arg(
         ParseState: parse_state,
         Arg: arg,
         Value: Value(result),
+        typing.Any: result,
     }
     if option:
         fulfilled_deps[RawOption] = option

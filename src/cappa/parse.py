@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 import functools
 import types
 import typing
@@ -92,6 +93,9 @@ def parse_value(typ: MaybeTypeView) -> Parser[T]:
     if type_view.is_none_type:
         return parse_none
 
+    if type_view.is_subclass_of(enum.Enum):
+        return parse_enum(type_view)
+
     if type_view.is_subclass_of(datetime):
         return datetime.fromisoformat  # type: ignore
 
@@ -130,12 +134,22 @@ def parse_literal(typ: MaybeTypeView) -> Parser[T]:
             if raw_value == value:
                 return type_arg
 
-        options = ", ".join(f"'{t}'" for t in type_view.args)
-        raise ValueError(
-            f"Invalid choice: '{value}' (choose from literal values {options})"
-        )
+        raise choices_error(type_view.args, value)
 
     return literal_mapper
+
+
+def parse_enum(typ):
+    type_view = _as_type_view(typ)
+    choices = tuple(v.value for v in type_view.annotation)
+
+    def enum_mapper(value):
+        try:
+            return type_view.annotation(value)
+        except ValueError:
+            raise choices_error(choices, value)
+
+    return enum_mapper
 
 
 def parse_list(typ: MaybeTypeView[list[T]]) -> Parser[list[T]]:
@@ -278,3 +292,8 @@ def evaluate_parse(
         return result
 
     return sequence_parsers
+
+
+def choices_error(choices, value):
+    options = ", ".join(f"{t!r}" for t in choices)
+    return ValueError(f"Invalid choice: '{value}' (choose from {options})")

@@ -26,6 +26,4 @@ def test_literal(backend):
         parse(ArgTest, "thename", backend=backend)
 
     message = str(e.value.message).lower()
-    assert (
-        "invalid choice: 'thename' (choose from 'one', 'two', 'three', '4')" in message
-    )
+    assert "invalid choice: 'thename' (choose from 'one', 'two', 'three', 4)" in message

@@ -250,8 +250,8 @@ def add_argument(
     elif is_positional and not arg.required:
         kwargs["nargs"] = "?"
 
-    if arg.choices:
-        kwargs["choices"] = arg.choices
+    # if arg.choices:
+    #     kwargs["choices"] = arg.choices
 
     deprecated_kwarg = add_deprecated_kwarg(arg)
     kwargs.update(deprecated_kwarg)

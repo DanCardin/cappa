@@ -37,7 +37,7 @@ def test_invalid_string(backend):
     err = textwrap.dedent(
         """\
         Invalid value for 'name': Possible variants
-         - Literal['one']: Invalid choice: 'thename' (choose from literal values 'one')
+         - Literal['one']: Invalid choice: 'thename' (choose from 'one')
          - int: invalid literal for int() with base 10: 'thename'"""
     )
     assert err in str(e.value.message)

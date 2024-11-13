@@ -15,7 +15,7 @@ from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
 from cappa.env import Env
-from cappa.parse import evaluate_parse, parse_value
+from cappa.parse import Parser, evaluate_parse, parse_literal, parse_value
 from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import (
     Doc,
@@ -582,7 +582,18 @@ def infer_parse(arg: Arg, type_view: TypeView) -> Callable:
     else:
         parse = parse_value(type_view)
 
-    return evaluate_parse(parse, type_view)
+    # This is the original arg choices, e.g. explicitly provided. Inferred choices
+    # need to be handled internally to the parsers.
+    if arg.choices:
+        if not isinstance(parse, Sequence):
+            parse = [parse]
+
+        literal_type = typing.Literal[tuple(arg.choices)]  # type: ignore
+        parse = [*parse, parse_literal(literal_type)]  # type: ignore
+
+    return evaluate_parse(
+        typing.cast(Union[Sequence[Parser], Parser], parse), type_view
+    )
 
 
 def infer_help(arg: Arg, fallback_help: str | None) -> str | None:
