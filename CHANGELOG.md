@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.25
+
+### 0.25.0
+
+- feat: Add `Arg.propagate`.
+
 ## 0.24
 
 ### 0.24.3

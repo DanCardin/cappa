@@ -216,6 +216,9 @@ def add_argument(
     dest_prefix="",
     **extra_kwargs,
 ):
+    if arg.propagate:
+        raise ValueError("The argparse backend does not support the `Arg.propagate`.")
+
     names: list[str] = []
     if arg.short:
         short = assert_type(arg.short, list)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import typing
 from collections import deque
+from functools import cached_property
 
 from cappa.arg import Arg, ArgAction, ArgActionType, Group
 from cappa.command import Command, Subcommand
@@ -34,9 +35,8 @@ class HelpAction(RuntimeError):
     command_name: str
 
     @classmethod
-    def from_context(cls, context: ParseContext, command: Command):
-        name = " ".join(c.real_name() for c in context.command_stack)
-        raise cls(command, name)
+    def from_parse_state(cls, parse_state: ParseState, command: Command):
+        raise cls(command, parse_state.prog)
 
 
 @dataclasses.dataclass
@@ -71,34 +71,34 @@ def backend(
     prog: str,
     provide_completions: bool = False,
 ) -> tuple[typing.Any, Command[T], dict[str, typing.Any]]:
-    args = RawArg.collect(argv, provide_completions=provide_completions)
-
-    context = ParseContext.from_command(args, [command], output)
-    context.provide_completions = provide_completions
+    parse_state = ParseState.from_command(
+        argv, command, output=output, provide_completions=provide_completions
+    )
+    context = ParseContext.from_command(parse_state.current_command)
 
     try:
         try:
-            parse(context)
+            parse(parse_state, context)
         except HelpAction as e:
             raise HelpExit(
                 e.command.help_formatter(e.command, e.command_name),
                 code=0,
-                prog=context.prog,
+                prog=parse_state.prog,
             )
         except VersionAction as e:
             raise Exit(
-                typing.cast(str, e.version.value_name), code=0, prog=context.prog
+                typing.cast(str, e.version.value_name), code=0, prog=parse_state.prog
             )
         except BadArgumentError as e:
-            if context.provide_completions and e.arg:
+            if parse_state.provide_completions and e.arg:
                 completions = e.arg.completion(e.value) if e.arg.completion else []
                 raise CompletionAction(*completions)
 
-            raise Exit(str(e), code=2, prog=context.prog, command=e.command)
+            raise Exit(str(e), code=2, prog=parse_state.prog, command=e.command)
     except CompletionAction as e:
         from cappa.completion.base import execute, format_completions
 
-        if context.provide_completions:
+        if provide_completions:
             completions = format_completions(*e.completions)
             raise Exit(completions, code=0)
 
@@ -107,91 +107,47 @@ def backend(
     if provide_completions:
         raise Exit(code=0)
 
-    return (context, context.command_stack[-1] or command, context.result)
+    return (parse_state, parse_state.current_command or command, context.result)
 
 
 @dataclasses.dataclass
-class ParseContext:
+class ParseState:
+    """The overall state of the argument parse."""
+
     remaining_args: deque[RawArg | RawOption]
-    options: dict[str, Arg]
-    arguments: deque[Arg | Subcommand]
-    missing_options: set[str]
-
+    command_stack: list[Command]
     output: Output
-
-    consumed_args: list[RawArg | RawOption] = dataclasses.field(default_factory=list)
-    exclusive_args: dict[str, Arg] = dataclasses.field(default_factory=dict)
-
-    result: dict[str, typing.Any] = dataclasses.field(default_factory=dict)
-    command_stack: list[Command] = dataclasses.field(default_factory=list)
-
     provide_completions: bool = False
 
     @classmethod
     def from_command(
         cls,
-        args: deque[RawArg | RawOption],
-        command_stack: list[Command],
+        argv: list[str],
+        command: Command,
         output: Output,
-    ) -> ParseContext:
-        command = command_stack[-1]
-        options, missing_options = cls.collect_options(command)
-        arguments = deque(cls.collect_arguments(command))
+        provide_completions: bool = False,
+    ):
+        args = RawArg.collect(argv, provide_completions=provide_completions)
         return cls(
             args,
-            options,
-            arguments,
+            command_stack=[command],
             output=output,
-            missing_options=missing_options,
-            command_stack=command_stack,
+            provide_completions=provide_completions,
         )
 
-    @staticmethod
-    def collect_options(command: Command) -> tuple[dict[str, Arg], set[str]]:
-        result = {}
-        unique_names = set()
-        for arg in command.arguments:
-            field_name = typing.cast(str, arg.field_name)
-            if not isinstance(arg, Arg):
-                continue
-
-            if arg.short or arg.long:
-                if arg.action not in ArgAction.value_actions():
-                    unique_names.add(field_name)
-                result[field_name] = arg
-
-            for opts in (arg.short, arg.long):
-                if not opts:
-                    continue
-
-                for key in typing.cast(typing.List[str], opts):
-                    if key in result:
-                        raise ValueError(f"Conflicting option string: {key}")
-
-                    result[key] = arg
-
-        return result, unique_names
-
-    @staticmethod
-    def collect_arguments(command: Command) -> list[Arg | Subcommand]:
-        result = []
-        for arg in command.arguments:
-            if (
-                isinstance(arg, Arg)
-                and not arg.short
-                and not arg.long
-                and not arg.destructured
-            ) or isinstance(arg, Subcommand):
-                result.append(arg)
-        return result
+    @property
+    def current_command(self):
+        return self.command_stack[-1]
 
     @property
     def prog(self):
         return " ".join(c.real_name() for c in self.command_stack)
 
-    @property
-    def command(self):
-        return self.command_stack[-1]
+    def push_command(self, command: Command):
+        self.command_stack.append(command)
+
+    def push_arg(self, arg: RawArg):
+        self.remaining_args.appendleft(arg)
 
     def has_values(self) -> bool:
         return bool(self.remaining_args)
@@ -202,12 +158,117 @@ class ParseContext:
         return self.remaining_args[0]
 
     def next_value(self):
-        arg = self.remaining_args.popleft()
-        self.consumed_args.append(arg)
-        return arg
+        return self.remaining_args.popleft()
+
+
+@dataclasses.dataclass
+class ParseContext:
+    """The parsing context specific to a command."""
+
+    command: Command
+    arguments: deque[Arg | Subcommand]
+    missing_options: set[str]
+    options: dict[str, Arg]
+    propagated_options: set[str]
+    parent_context: ParseContext | None = None
+    exclusive_args: dict[str, Arg] = dataclasses.field(default_factory=dict)
+
+    result: dict[str, typing.Any] = dataclasses.field(default_factory=dict)
+
+    @classmethod
+    def from_command(
+        cls,
+        command: Command,
+        parent_context: ParseContext | None = None,
+    ) -> ParseContext:
+        options, missing_options, propagated_options = cls.collect_options(command)
+        arguments = deque(command.positional_arguments)
+        return cls(
+            command=command,
+            parent_context=parent_context,
+            options=options,
+            propagated_options=propagated_options,
+            arguments=arguments,
+            missing_options=missing_options,
+        )
+
+    @staticmethod
+    def collect_options(
+        command: Command,
+    ) -> tuple[dict[str, Arg], set[str], set[str]]:
+        result = {}
+        unique_names = set()
+        propagated_options = set()
+
+        def add_option_names(arg: Arg):
+            for opts in (arg.short, arg.long):
+                if not opts:
+                    continue
+
+                for key in typing.cast(typing.List[str], opts):
+                    if key in result:
+                        raise ValueError(f"Conflicting option string: {key}")
+
+                    result[key] = arg
+
+        for arg in command.options:
+            field_name = typing.cast(str, arg.field_name)
+
+            if arg.action not in ArgAction.meta_actions():
+                unique_names.add(field_name)
+            result[field_name] = arg
+            add_option_names(arg)
+
+        for arg in command.propagated_arguments:
+            field_name = typing.cast(str, arg.field_name)
+
+            if field_name in result:
+                continue
+
+            propagated_options.add(field_name)
+            result[field_name] = arg
+            add_option_names(arg)
+
+        return result, unique_names, propagated_options
+
+    @cached_property
+    def propagated_context(self) -> dict[str, ParseContext]:
+        parent_context = (
+            self.parent_context.propagated_context if self.parent_context else {}
+        )
+        self_options = {
+            assert_type(o.field_name, str): o
+            for o in self.command.options
+            if o.propagate
+        }
+        self_context = dict.fromkeys(self_options, self)
+        return {**parent_context, **self_context}
 
     def next_argument(self):
         return self.arguments.popleft()
+
+    def set_result(
+        self,
+        field_name: str,
+        value: typing.Any,
+        option: RawOption | None = None,
+        has_value: bool = True,
+    ):
+        context = self
+        if option:
+            if field_name in self.propagated_options:
+                context = self.propagated_context[field_name]
+
+            if field_name in context.missing_options:
+                context.missing_options.remove(field_name)
+
+        if has_value:
+            context.result[field_name] = value
+
+    def push(self, command: Command, name: str) -> ParseContext:
+        nested_context = ParseContext.from_command(command, parent_context=self)
+        nested_context.result["__name__"] = name
+        return nested_context
 
 
 @dataclasses.dataclass
@@ -276,19 +337,19 @@ class RawOption:
         return cls(name=name, is_long=is_long, value=value)
 
 
-def parse(context: ParseContext) -> None:
+def parse(parse_state: ParseState, context: ParseContext) -> None:
     while True:
-        while isinstance(context.peek_value(), RawOption):
-            arg = typing.cast(RawOption, context.next_value())
+        while isinstance(parse_state.peek_value(), RawOption):
+            arg = typing.cast(RawOption, parse_state.next_value())
 
             if arg.is_long:
-                parse_option(context, arg)
+                parse_option(parse_state, context, arg)
             else:
-                parse_short_option(context, arg)
+                parse_short_option(parse_state, context, arg)
 
-        parse_args(context)
+        parse_args(parse_state, context)
 
-        if not context.has_values():
+        if not parse_state.has_values():
             break
 
     # Options are not explicitly iterated over because they can occur multiple times non-contiguouesly.
@@ -303,18 +364,20 @@ def parse(context: ParseContext) -> None:
         raise BadArgumentError(
             f"The following arguments are required: {names}",
             value="",
-            command=context.command,
+            command=parse_state.current_command,
             arg=required_missing_options[0],
         )
 
 
-def parse_option(context: ParseContext, raw: RawOption) -> None:
+def parse_option(
+    parse_state: ParseState, context: ParseContext, raw: RawOption
+) -> None:
     if raw.name not in context.options:
         possible_values = [
             name for name in context.options if name.startswith(raw.name)
         ]
 
-        if context.provide_completions:
+        if parse_state.provide_completions:
             options = [
                 Completion(option, help=context.options[option].help)
                 for option in possible_values
@@ -325,27 +388,31 @@ def parse_option(context: ParseContext, raw: RawOption) -> None:
         if possible_values:
             message += f" (Did you mean: {', '.join(possible_values)})"
 
-        raise BadArgumentError(message, value=raw.name, command=context.command)
+        raise BadArgumentError(
+            message, value=raw.name, command=parse_state.current_command
+        )
 
     arg = context.options[raw.name]
 
-    consume_arg(context, arg, raw)
+    consume_arg(parse_state, context, arg, raw)
 
 
-def parse_short_option(context: ParseContext, arg: RawOption) -> None:
-    if arg.name == "-" and context.provide_completions:
-        return parse_option(context, arg)
+def parse_short_option(
+    parse_state: ParseState, context: ParseContext, arg: RawOption
+) -> None:
+    if arg.name == "-" and parse_state.provide_completions:
+        return parse_option(parse_state, context, arg)
 
     virtual_options, virtual_arg = generate_virtual_args(arg, context.options)
     *first_virtual_options, last_virtual_option = virtual_options
 
     for opt in first_virtual_options:
-        parse_option(context, opt)
+        parse_option(parse_state, context, opt)
 
     if virtual_arg:
-        context.remaining_args.appendleft(virtual_arg)
+        parse_state.push_arg(virtual_arg)
 
-    parse_option(context, last_virtual_option)
+    parse_option(parse_state, context, last_virtual_option)
     return None
 
 
@@ -391,25 +458,25 @@ def generate_virtual_args(
     return (result, raw_arg)
 
 
-def parse_args(context: ParseContext) -> None:
+def parse_args(parse_state: ParseState, context: ParseContext) -> None:
     while context.arguments:
-        if isinstance(context.peek_value(), RawOption):
+        if isinstance(parse_state.peek_value(), RawOption):
             break
 
         arg = context.next_argument()
 
         if isinstance(arg, Subcommand):
-            consume_subcommand(context, arg)
+            consume_subcommand(parse_state, context, arg)
         else:
-            consume_arg(context, arg)
+            consume_arg(parse_state, context, arg)
     else:
-        value = context.peek_value()
+        value = parse_state.peek_value()
         if value is None or isinstance(value, RawOption):
             return
 
         raw_values = []
-        while context.peek_value():
-            next_val = context.next_value()
+        while parse_state.peek_value():
+            next_val = parse_state.next_value()
             if not isinstance(next_val, RawArg):
                 break
             raw_values.append(next_val.raw)
@@ -417,13 +484,15 @@ def parse_args(context: ParseContext) -> None:
         raise BadArgumentError(
             f"Unrecognized arguments: {', '.join(raw_values)}",
             value=raw_values,
-            command=context.command,
+            command=parse_state.current_command,
         )
 
 
-def consume_subcommand(context: ParseContext, arg: Subcommand) -> typing.Any:
+def consume_subcommand(
+    parse_state: ParseState, context: ParseContext, arg: Subcommand
+) -> typing.Any:
     try:
-        value = context.next_value()
+        value = parse_state.next_value()
     except IndexError:
         if not arg.required:
             return
@@ -431,7 +500,7 @@ def consume_subcommand(context: ParseContext, arg: Subcommand) -> typing.Any:
         raise BadArgumentError(
             f"A command is required: {{{format_subcommand_names(arg.names())}}}",
             value="",
-            command=context.command,
+            command=parse_state.current_command,
             arg=arg,
         )
 
@@ -445,31 +514,27 @@ def consume_subcommand(context: ParseContext, arg: Subcommand) -> typing.Any:
         raise BadArgumentError(
             message,
             value=value.raw,
-            command=context.command,
+            command=parse_state.current_command,
             arg=arg,
         )
 
     command = arg.options[value.raw]
-    check_deprecated(context, command)
+    check_deprecated(parse_state, command)
 
-    context.command_stack.append(command)
+    parse_state.push_command(command)
+    nested_context = context.push(command, value.raw)
 
-    nested_context = ParseContext.from_command(
-        context.remaining_args,
-        command_stack=context.command_stack,
-        output=context.output,
-    )
-    nested_context.provide_completions = context.provide_completions
-    nested_context.result["__name__"] = value.raw
-
-    parse(nested_context)
+    parse(parse_state, nested_context)
 
     name = typing.cast(str, arg.field_name)
     context.result[name] = nested_context.result
 
 
 def consume_arg(
-    context: ParseContext, arg: Arg, option: RawOption | None = None
+    parse_state: ParseState,
+    context: ParseContext,
+    arg: Arg,
+    option: RawOption | None = None,
 ) -> typing.Any:
     field_name = typing.cast(str, arg.field_name)
 
@@ -493,11 +558,11 @@ def consume_arg(
     if requires_values:
         result = []
         while num_args:
-            if isinstance(context.peek_value(), RawOption):
+            if isinstance(parse_state.peek_value(), RawOption):
                 break
 
             try:
-                next_val = typing.cast(RawArg, context.next_value())
+                next_val = typing.cast(RawArg, parse_state.next_value())
             except IndexError:
                 break
 
@@ -518,11 +583,11 @@ def consume_arg(
                 raise BadArgumentError(
                     f"Invalid choice: '{result}' (choose from {choices})",
                     value=result,
-                    command=context.command,
+                    command=parse_state.current_command,
                     arg=arg,
                 )
 
-            if context.provide_completions and not context.has_values():
+            if parse_state.provide_completions and not parse_state.has_values():
                 if arg.completion:
                     completions: list[Completion] | list[FileCompletion] = (
                         arg.completion(result)
@@ -537,7 +602,7 @@ def consume_arg(
             raise BadArgumentError(
                 f"Option '{arg.value_name}' requires an argument",
                 value="",
-                command=context.command,
+                command=parse_state.current_command,
                 arg=arg,
             )
     else:
@@ -551,7 +616,7 @@ def consume_arg(
             raise BadArgumentError(
                 message,
                 value=result,
-                command=context.command,
+                command=parse_state.current_command,
                 arg=arg,
             )
 
@@ -565,21 +630,19 @@ def consume_arg(
                 f"Argument '{arg.names_str('/')}' is not allowed with argument"
                 f" '{exclusive_arg.names_str('/')}'",
                 value=result,
-                command=context.command,
+                command=parse_state.current_command,
                 arg=arg,
             )
 
         context.exclusive_args[group_name] = arg
 
-    if option and field_name in context.missing_options:
-        context.missing_options.remove(field_name)
-
     action_handler = determine_action_handler(arg.action)
 
     fulfilled_deps: dict = {
-        Command: context.command,
-        Output: context.output,
+        Command: parse_state.current_command,
+        Output: parse_state.output,
         ParseContext: context,
+        ParseState: parse_state,
         Arg: arg,
         Value: Value(result),
     }
@@ -588,14 +651,14 @@ def consume_arg(
 
     kwargs = fulfill_deps(action_handler, fulfilled_deps).kwargs
     result = action_handler(**kwargs)
-    if arg.has_value:
-        context.result[field_name] = result
 
-    check_deprecated(context, arg, option)
+    context.set_result(field_name, result, option, assert_type(arg.has_value, bool))
+
+    check_deprecated(parse_state, arg, option)
 
 
 def check_deprecated(
-    context: ParseContext, arg: Arg | Command, option: RawOption | None = None
+    parse_state: ParseState, arg: Arg | Command, option: RawOption | None = None
 ) -> None:
     if not arg.deprecated:
         return
@@ -615,7 +678,7 @@ def check_deprecated(
     if isinstance(arg.deprecated, str):
         message += f": {arg.deprecated}"
 
-    context.output.error(message)
+    parse_state.output.error(message)
 
 
 @dataclasses.dataclass
@@ -655,7 +718,7 @@ def determine_action_handler(action: ArgActionType | None):
 
 
 process_options: dict[ArgAction, typing.Callable] = {
-    ArgAction.help: HelpAction.from_context,
+    ArgAction.help: HelpAction.from_parse_state,
     ArgAction.version: VersionAction.from_arg,
     ArgAction.completion: CompletionAction.from_value,
     ArgAction.set: store_set,

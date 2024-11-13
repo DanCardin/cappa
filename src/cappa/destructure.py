@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from type_lens import TypeView
 
 from cappa.arg import Arg, ArgActionType
 from cappa.invoke import fulfill_deps
 from cappa.output import Output
-from cappa.parser import ParseContext, Value, determine_action_handler
+from cappa.parser import ParseContext, ParseState, Value, determine_action_handler
 from cappa.typing import assert_type
 
 
@@ -24,7 +24,7 @@ def destructure(arg: Arg, type_view: TypeView):
     command: Command = Command.get(type_view.annotation)
     virtual_args = Command.collect(command).arguments
 
-    arg.parse = lambda v: command.cmd_cls(**v)
+    arg = replace(arg, parse=lambda v: command.cmd_cls(**v))
 
     result = [arg]
     for virtual_arg in virtual_args:
@@ -34,8 +34,11 @@ def destructure(arg: Arg, type_view: TypeView):
             )
 
         assert virtual_arg.action
-        virtual_arg.action = restructure(arg, virtual_arg.action)
-        virtual_arg.has_value = False
+        virtual_arg = replace(
+            virtual_arg,
+            action=restructure(arg, virtual_arg.action),
+            has_value=False,
+        )
 
         result.append(virtual_arg)
 
@@ -45,13 +48,15 @@ def destructure(arg: Arg, type_view: TypeView):
 def restructure(root_arg: Arg, action: ArgActionType):
     action_handler = determine_action_handler(action)
 
-    def restructure_action(context: ParseContext, arg: Arg, value: Value):
+    def restructure_action(
+        parse_state: ParseState, context: ParseContext, arg: Arg, value: Value
+    ):
         root_field_name = assert_type(root_arg.field_name, str)
         result = context.result.setdefault(root_field_name, {})
 
         fulfilled_deps: dict = {
-            Command: context.command,
-            Output: context.output,
+            Command: parse_state.current_command,
+            Output: parse_state.output,
             ParseContext: context,
             Arg: arg,
             Value: value,

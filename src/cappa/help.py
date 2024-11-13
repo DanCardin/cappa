@@ -53,7 +53,7 @@ def create_version_arg(version: str | Arg | None = None) -> Arg | None:
         )
 
     if version.long is True:
-        version.long = "--version"
+        version = replace(version, long="--version")
 
     return version.normalize(
         action=ArgAction.version, field_name="version", default=None
@@ -211,7 +211,7 @@ def generate_arg_groups(command: Command, include_hidden=False) -> list[ArgGroup
         group = assert_type(arg.group, Group)
         return (group.name, group.exclusive)
 
-    sorted_args = sorted(command.arguments, key=by_group_key)
+    sorted_args = sorted(command.all_arguments, key=by_group_key)
     return [
         (g, [a for a in args if include_hidden or not a.hidden])
         for g, args in groupby(sorted_args, key=by_group)
@@ -229,16 +229,15 @@ def add_short_args(prog: str, arg_groups: list[ArgGroup]) -> str:
 
 def format_arg_name(arg: Arg | Subcommand, delimiter, *, n=0) -> str:
     if isinstance(arg, Arg):
-        is_option = arg.short or arg.long
         has_value = not ArgAction.is_non_value_consuming(arg.action)
 
         arg_names = arg.names_str(delimiter, n=n)
-        if not is_option:
+        if not arg.is_option:
             arg_names = arg_names.upper()
 
         text = f"[cappa.arg]{arg_names}[/cappa.arg]"
 
-        if is_option and has_value:
+        if arg.is_option and has_value:
             name = typing.cast(str, arg.value_name).upper()
             text = f"{text} [cappa.arg.name]{name}[/cappa.arg.name]"
 
