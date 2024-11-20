@@ -72,3 +72,18 @@ def test_tuple_choices(backend, capsys):
 
     result = capsys.readouterr().out
     assert "Valid options: one, two." not in result
+
+
+@backends
+def test_literal_parse_sequence(backend):
+    @dataclass
+    class LiteralParse:
+        log_level: Annotated[
+            str,
+            cappa.Arg(
+                short="-L", long=True, choices=["DEBUG"], parse=[str.upper, str.strip]
+            ),
+        ] = "DEBUG"
+
+    result = parse(LiteralParse, "--log-level", "  debug  ", backend=backend)
+    assert result == LiteralParse(log_level="DEBUG")

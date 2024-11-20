@@ -2,6 +2,10 @@
 
 ## 0.25
 
+### 0.25.1
+
+- fix: Perform choices validation after parse/mapping time.
+
 ### 0.25.0
 
 - feat: Add `Arg.propagate`.
