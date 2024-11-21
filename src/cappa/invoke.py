@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from cappa.class_inspect import has_command
 from cappa.command import Command, HasCommand
 from cappa.output import Exit, Output
+from cappa.state import State
 from cappa.subcommand import Subcommand
 from cappa.type_view import CallableView
 from cappa.typing import find_annotations, get_method_class
@@ -36,8 +37,14 @@ class Resolved(typing.Generic[C]):
     result: typing.Any = ...
     is_resolved: bool = False
 
+    def call(self, *args, output: Output | None = None):
+        with self.get(*args, output=output) as value:
+            return value
+
     @contextlib.contextmanager
-    def get(self, output: Output) -> typing.Generator[typing.Any, None, None]:
+    def get(
+        self, *args, output: Output | None = None
+    ) -> typing.Generator[typing.Any, None, None]:
         """Get the resolved value.
 
         The value itself is cached in the event it's used as a dependency to more
@@ -55,7 +62,7 @@ class Resolved(typing.Generic[C]):
             # wrapping context manager, we need to enter all contexts, and only
             # exit at the end.
             for k, v in self.iter_kwargs(is_resolved=True):
-                finalized_kwargs[k] = stack.enter_context(v.get(output))
+                finalized_kwargs[k] = stack.enter_context(v.get(output=output))
 
             with self.handle_exit(output):
                 callable: Callable = self.callable
@@ -65,7 +72,7 @@ class Resolved(typing.Generic[C]):
                     # what we just need to wrap...
                     callable = contextlib.contextmanager(callable)
 
-                result = callable(*self.args, **finalized_kwargs)
+                result = callable(*args, *self.args, **finalized_kwargs)
                 is_context_manager = isinstance(
                     result, contextlib.AbstractContextManager
                 )
@@ -80,7 +87,7 @@ class Resolved(typing.Generic[C]):
 
     @contextlib.asynccontextmanager
     async def get_async(
-        self, output: Output
+        self, output: Output | None = None
     ) -> typing.AsyncGenerator[typing.Any, None]:
         """Get the resolved value, in an async context.
 
@@ -97,7 +104,7 @@ class Resolved(typing.Generic[C]):
             finalized_kwargs = dict(self.iter_kwargs(is_resolved=False))
             for k, v in self.iter_kwargs(is_resolved=True):
                 finalized_kwargs[k] = await stack.enter_async_context(
-                    v.get_async(output)
+                    v.get_async(output=output)
                 )
 
             with self.handle_exit(output):
@@ -127,11 +134,12 @@ class Resolved(typing.Generic[C]):
 
     @classmethod
     @contextlib.contextmanager
-    def handle_exit(cls, output: Output):
+    def handle_exit(cls, output: Output | None = None):
         try:
             yield
         except Exit as e:
-            output.exit(e)
+            if output:  # pragma: no cover
+                output.exit(e)
             raise e
 
 
@@ -141,6 +149,7 @@ def resolve_callable(
     instance: C,
     *,
     output: Output,
+    state: State,
     deps: typing.Sequence[Callable]
     | typing.Mapping[Callable, Dep | typing.Any]
     | None = None,
@@ -151,6 +160,7 @@ def resolve_callable(
 
         implicit_deps[Output] = output
         implicit_deps[Command] = parsed_command
+        implicit_deps[State] = state
 
         global_deps = resolve_global_deps(deps, implicit_deps)
 

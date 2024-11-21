@@ -44,6 +44,7 @@ Help/Help Inference <help>
 Asyncio <asyncio>
 Manual Construction <manual_construction>
 Sphinx/Docutils Directive <sphinx>
+Shared State <state>
 ```
 
 ```{toctree}

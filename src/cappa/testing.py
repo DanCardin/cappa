@@ -7,6 +7,7 @@ from typing_extensions import Unpack
 
 import cappa
 from cappa.help import HelpFormatable
+from cappa.state import State
 
 __all__ = [
     "CommandRunner",
@@ -30,6 +31,8 @@ class RunnerArgs(typing.TypedDict, total=False):
     help: bool | cappa.Arg
     completion: bool | cappa.Arg
     help_formatter: HelpFormatable
+    input: typing.TextIO | None
+    state: State | None
 
 
 @dataclass
@@ -88,6 +91,8 @@ class CommandRunner:
     help: bool | cappa.Arg = True
     completion: bool | cappa.Arg = True
     help_formatter: HelpFormatable | None = None
+    input: typing.TextIO | None = None
+    state: State | None = None
 
     base_args: list[str] = field(default_factory=lambda: [])
 
@@ -106,6 +111,8 @@ class CommandRunner:
             "help_formatter": kwargs["help_formatter"]
             if "help_formatter" in kwargs
             else self.help_formatter,
+            "input": kwargs.get("input") or self.input,
+            "state": kwargs.get("state") or self.state,
         }
 
     def parse(self, *args: str, **kwargs: Unpack[RunnerArgs]):

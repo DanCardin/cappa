@@ -19,6 +19,7 @@ from cappa.help import (
 )
 from cappa.invoke import Dep, resolve_callable
 from cappa.output import Output
+from cappa.state import State
 
 if typing.TYPE_CHECKING:
     from cappa.arg import Arg
@@ -30,6 +31,7 @@ def parse(
     obj: type[T] | Command[T],
     *,
     argv: list[str] | None = None,
+    input: typing.TextIO | None = None,
     backend: typing.Callable | None = None,
     color: bool = True,
     version: str | Arg | None = None,
@@ -38,6 +40,7 @@ def parse(
     theme: Theme | None = None,
     output: Output | None = None,
     help_formatter: HelpFormatable | None = None,
+    state: State | None = None,
 ) -> T:
     """Parse the command, returning an instance of `obj`.
 
@@ -47,6 +50,8 @@ def parse(
     Arguments:
         obj: A class which can represent a CLI command chain.
         argv: Defaults to the process argv. This command is generally only
+            necessary when testing.
+        input: Defaults to the process stdin. This command is generally only
             necessary when testing.
         backend: A function used to perform the underlying parsing and return a raw
             parsed state. This defaults to the native cappa parser, but can be changed
@@ -66,10 +71,12 @@ def parse(
             Note the `color` and `theme` arguments take precedence over manually constructed `Output`
             attributes.
         help_formatter: Override the default help formatter.
+        state: Optional initial State object.
     """
-    _, _, instance, _ = parse_command(
+    _, _, instance, _, _ = parse_command(
         obj=obj,
         argv=argv,
+        input=input,
         backend=backend,
         color=color,
         version=version,
@@ -78,6 +85,7 @@ def parse(
         theme=theme,
         output=output,
         help_formatter=help_formatter,
+        state=state,
     )
     return instance
 
@@ -89,6 +97,7 @@ def invoke(
     | typing.Mapping[typing.Callable, Dep | typing.Any]
     | None = None,
     argv: list[str] | None = None,
+    input: typing.TextIO | None = None,
     backend: typing.Callable | None = None,
     color: bool = True,
     version: str | Arg | None = None,
@@ -97,6 +106,7 @@ def invoke(
     theme: Theme | None = None,
     output: Output | None = None,
     help_formatter: HelpFormatable | None = None,
+    state: State | None = None,
 ):
     """Parse the command, and invoke the selected async command or subcommand.
 
@@ -109,74 +119,7 @@ def invoke(
             deps are evaluated in order and unconditionally.
         argv: Defaults to the process argv. This command is generally only
             necessary when testing.
-        backend: A function used to perform the underlying parsing and return a raw
-            parsed state. This defaults to the native cappa parser, but can be changed
-            to the argparse parser at `cappa.argparse.backend`.
-        color: Whether to output in color.
-        version: If a string is supplied, adds a -v/--version flag which returns the
-            given string as the version. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
-            fields to add a corresponding version argument. Note the `name` is assumed to **be**
-            the CLI's version, e.x. `Arg('1.2.3', help="Prints the version")`.
-        help: If `True` (default to True), adds a -h/--help flag. If an `Arg` is supplied,
-            uses the `short`/`long`/`help` fields to add a corresponding help argument.
-        completion: Enables completion when using the cappa `backend` option. If `True`
-            (default to True), adds a --completion flag. An `Arg` can be supplied to customize
-            the argument's behavior.
-        theme: Optional rich theme to customized output formatting.
-        output: Optional `Output` instance. A default `Output` will constructed if one is not provided.
-            Note the `color` and `theme` arguments take precedence over manually constructed `Output`
-            attributes.
-        help_formatter: Override the default help formatter.
-    """
-    command, parsed_command, instance, concrete_output = parse_command(
-        obj=obj,
-        argv=argv,
-        backend=backend,
-        color=color,
-        version=version,
-        help=help,
-        completion=completion,
-        theme=theme,
-        output=output,
-        help_formatter=help_formatter,
-    )
-    resolved, global_deps = resolve_callable(
-        command, parsed_command, instance, output=concrete_output, deps=deps
-    )
-    for dep in global_deps:
-        with dep.get(concrete_output):
-            pass
-
-    with resolved.get(concrete_output) as value:
-        return value
-
-
-async def invoke_async(
-    obj: type | Command,
-    *,
-    deps: typing.Sequence[typing.Callable]
-    | typing.Mapping[typing.Callable, Dep | typing.Any]
-    | None = None,
-    argv: list[str] | None = None,
-    backend: typing.Callable | None = None,
-    color: bool = True,
-    version: str | Arg | None = None,
-    help: bool | Arg = True,
-    completion: bool | Arg = True,
-    theme: Theme | None = None,
-    output: Output | None = None,
-    help_formatter: HelpFormatable | None = None,
-):
-    """Parse the command, and invoke the selected command or subcommand.
-
-    In the event that a subcommand is selected, only the selected subcommand
-    function is invoked.
-
-    Arguments:
-        obj: A class which can represent a CLI command chain.
-        deps: Optional extra depdnencies to load ahead of invoke processing. These
-            deps are evaluated in order and unconditionally.
-        argv: Defaults to the process argv. This command is generally only
+        input: Defaults to the process stdin. This command is generally only
             necessary when testing.
         backend: A function used to perform the underlying parsing and return a raw
             parsed state. This defaults to the native cappa parser, but can be changed
@@ -196,10 +139,12 @@ async def invoke_async(
             Note the `color` and `theme` arguments take precedence over manually constructed `Output`
             attributes.
         help_formatter: Override the default help formatter.
+        state: Optional initial State object.
     """
-    command, parsed_command, instance, concrete_output = parse_command(
+    command, parsed_command, instance, concrete_output, state = parse_command(
         obj=obj,
         argv=argv,
+        input=input,
         backend=backend,
         color=color,
         version=version,
@@ -208,22 +153,31 @@ async def invoke_async(
         theme=theme,
         output=output,
         help_formatter=help_formatter,
+        state=state,
     )
     resolved, global_deps = resolve_callable(
-        command, parsed_command, instance, output=concrete_output, deps=deps
+        command,
+        parsed_command,
+        instance,
+        output=concrete_output,
+        state=state,
+        deps=deps,
     )
     for dep in global_deps:
-        async with dep.get_async(concrete_output):
+        with dep.get(output=concrete_output):
             pass
 
-    async with resolved.get_async(concrete_output) as value:
-        return value
+    return resolved.call(output=concrete_output)
 
 
-def parse_command(
-    obj: type | Command[T],
+async def invoke_async(
+    obj: type | Command,
     *,
+    deps: typing.Sequence[typing.Callable]
+    | typing.Mapping[typing.Callable, Dep | typing.Any]
+    | None = None,
     argv: list[str] | None = None,
+    input: typing.TextIO | None = None,
     backend: typing.Callable | None = None,
     color: bool = True,
     version: str | Arg | None = None,
@@ -232,9 +186,89 @@ def parse_command(
     theme: Theme | None = None,
     output: Output | None = None,
     help_formatter: HelpFormatable | None = None,
-) -> tuple[Command, Command[T], T, Output]:
+    state: State | None = None,
+):
+    """Parse the command, and invoke the selected command or subcommand.
+
+    In the event that a subcommand is selected, only the selected subcommand
+    function is invoked.
+
+    Arguments:
+        obj: A class which can represent a CLI command chain.
+        deps: Optional extra depdnencies to load ahead of invoke processing. These
+            deps are evaluated in order and unconditionally.
+        argv: Defaults to the process argv. This command is generally only
+            necessary when testing.
+        input: Defaults to the process stdin. This command is generally only
+            necessary when testing.
+        backend: A function used to perform the underlying parsing and return a raw
+            parsed state. This defaults to the native cappa parser, but can be changed
+            to the argparse parser at `cappa.argparse.backend`.
+        color: Whether to output in color.
+        version: If a string is supplied, adds a -v/--version flag which returns the
+            given string as the version. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
+            fields to add a corresponding version argument. Note the `name` is assumed to **be**
+            the CLI's version, e.x. `Arg('1.2.3', help="Prints the version")`.
+        help: If `True` (default to True), adds a -h/--help flag. If an `Arg` is supplied,
+            uses the `short`/`long`/`help` fields to add a corresponding help argument.
+        completion: Enables completion when using the cappa `backend` option. If `True`
+            (default to True), adds a --completion flag. An `Arg` can be supplied to customize
+            the argument's behavior.
+        theme: Optional rich theme to customized output formatting.
+        output: Optional `Output` instance. A default `Output` will constructed if one is not provided.
+            Note the `color` and `theme` arguments take precedence over manually constructed `Output`
+            attributes.
+        help_formatter: Override the default help formatter.
+        state: Optional initial State object.
+    """
+    command, parsed_command, instance, concrete_output, state = parse_command(
+        obj=obj,
+        argv=argv,
+        input=input,
+        backend=backend,
+        color=color,
+        version=version,
+        help=help,
+        completion=completion,
+        theme=theme,
+        output=output,
+        help_formatter=help_formatter,
+        state=state,
+    )
+    resolved, global_deps = resolve_callable(
+        command,
+        parsed_command,
+        instance,
+        output=concrete_output,
+        state=state,
+        deps=deps,
+    )
+    for dep in global_deps:
+        async with dep.get_async(output=concrete_output):
+            pass
+
+    async with resolved.get_async(output=concrete_output) as value:
+        return value
+
+
+def parse_command(
+    obj: type | Command[T],
+    *,
+    argv: list[str] | None = None,
+    input: typing.TextIO | None = None,
+    backend: typing.Callable | None = None,
+    color: bool = True,
+    version: str | Arg | None = None,
+    help: bool | Arg = True,
+    completion: bool | Arg = True,
+    theme: Theme | None = None,
+    output: Output | None = None,
+    help_formatter: HelpFormatable | None = None,
+    state: State | None = None,
+) -> tuple[Command, Command[T], T, Output, State]:
     concrete_backend = _coalesce_backend(backend)
     concrete_output = _coalesce_output(output, theme, color)
+    state = State.ensure(state)
 
     command: Command = collect(
         obj,
@@ -243,14 +277,17 @@ def parse_command(
         completion=completion,
         backend=concrete_backend,
         help_formatter=help_formatter,
+        state=state,
     )
-    command, parsed_command, instance = Command.parse_command(
+    command, parsed_command, instance, state = Command.parse_command(
         command,
         argv=argv,
+        input=input,
         backend=concrete_backend,
         output=concrete_output,
+        state=state,
     )
-    return command, parsed_command, instance, concrete_output
+    return command, parsed_command, instance, concrete_output, state
 
 
 @dataclass_transform()
@@ -334,6 +371,7 @@ def collect(
     help: bool | Arg = True,
     completion: bool | Arg = True,
     help_formatter: HelpFormatable | None = None,
+    state: State | None = None,
 ) -> Command[T]:
     """Retrieve the `Command` object from a cappa-capable source class.
 
@@ -352,9 +390,12 @@ def collect(
             the argument's behavior.
         color: Whether to output in color.
         help_formatter: Override the default help formatter.
+        state: Optional initial State object.
     """
+    state = State.ensure(state)
+
     command: Command[T] = Command.get(obj, help_formatter=help_formatter)
-    command = Command.collect(command)
+    command = Command.collect(command, state=state)
 
     concrete_backend = _coalesce_backend(backend)
     if concrete_backend is argparse.backend:

@@ -130,3 +130,17 @@ def test_type_aware_parse(backend):
 
     result = parse(ArgTest, "4.1", backend=backend)
     assert result == ArgTest(num="TypeView(str)")
+
+
+def parse_exit(_):
+    raise cappa.Exit("asdf")
+
+
+@backends
+def test_parse_exit(backend):
+    @dataclass
+    class ArgTest:
+        num: Annotated[str, cappa.Arg(parse=parse_exit)]
+
+    with pytest.raises(cappa.Exit):
+        parse(ArgTest, "4.1", backend=backend)

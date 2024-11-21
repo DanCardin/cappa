@@ -177,16 +177,20 @@ See [annotations](./annotation.md) for more details.
 
 Controls the default argument value at the CLI level. Generally, you can avoid
 direct use of cappa's default by simply using the source class' native default
-mechanism. (i.e. `foo: int = 0` or `foo: int = field(default=0)` for
-dataclasses).
+mechanism. (i.e. `foo: int = 0`, `foo: int = field(default=0)`, or
+`foo: list[str] = field(default_factory=list)`  for dataclasses).
 
-However it can be convenient to use cappa's default because it does not affect
-the optionality of the field in question in the resultant class constructor.
+However it **can** be convenient to use cappa's default because it does not affect
+whether the underlying class definition makes that field required in the class'
+constructor.
 
 ```{note}
-The `default` value is not parsed by `parse`. That is to say, if no value is
-selected at the CLI and the default value is used instead, it will not be
-coerced into the annotated type automatically.
+The `default` value is not **typically** parsed by the given `parse` function.
+That is to say, if no value is selected at the CLI and the default value is used
+instead; it will not be coerced into the annotated type automatically.
+
+(`Env`, `Prompt`, and `Confirm` are exceptions to this rule, explained in their
+sections below).
 
 The reason for this is twofold:
 
@@ -196,20 +200,102 @@ The reason for this is twofold:
    would infer `parse=Foo` and attempt to pass `Foo(Foo(''))` during parsing.
 ```
 
-### Environment Variable Fallback
+Additionally there are a number of natively integrated objects that can be used
+as default to create more complex behaviors given a **missing** CLI argument.
+The below objects will not be evaluated unless the user did not supply a value
+for the argument it's attached to.
 
-You can also use the default field to supply supported kinds of
-default-value-getting behaviors.
+- [cappa.Default](cappa.Default)
+- [cappa.Env](cappa.Env)
+- [cappa.Prompt](cappa.Prompt)/[cappa.Confirm](cappa.Confirm)
+- [cappa.ValueFrom](cappa.ValueFrom)
 
-`Env` is one such example, where with
+### `Default`
+
+All other types of default are ultimately shorthand forms of `Default`. The
+`Default` construct allows for specifying an ordered chain of default fallback
+options, with an optional static fallback item at the end.
+
+For example:
+
+- `foo: int = 4` is the same as `default=Default(default=4)`. This unconditionally defaults to 4.
+
+- `foo: Annotated[int, Arg(default=Env("FOO"))] = 4` is the same as
+  `Arg(default=Default(Env("FOO"), default=4)`. This attempts to read the environment variable `FOO`,
+  and falls back to 4 if the env var is unset.
+
+- `foo: Annotated[int, Arg(default=Env("FOO") | Prompt("Gimme"))]` is the same as
+  `Arg(default=Default(Env("FOO"), Prompt("Gimme"))`. This attempts to read the environment variable `FOO`,
+  followed by a user prompt if the env var is unset.
+
+As shown above, any combination of defaultable values can be used as fallbacks of one another by using
+the `|` operator to chain them together.
+
+As noted above, a value produced by `Default.default` **does not** invoke the `Arg.parse` parser. This is
+for similar reasons as to native dataclass defaults. The programmer is supplying the default value
+which should not **need** to be parsed.
+
+### `Env`
+
+[cappa.Env](cappa.Env) performs environment variable lookups in an attempt to provide a value to the
+class field.
+
 `Arg(..., default=Env("FOO", default='default value'))`, cappa will attempt to
 look up the environment variable `FOO` for the default value, if there was no
 supplied value at the CLI level.
 
-```{eval-rst}
-.. autoapiclass:: cappa.Env
-   :noindex:
+As noted above, a value produced by `Env` **does** invoke the `Arg.parse` parser. This is
+because `Env` values will always be returned as a string, very similarly to a normal pre-parse
+CLI value.
+
+### `Prompt`/`Confirm`
+
+[cappa.Prompt](cappa.Prompt) and [cappa.Confirm](cappa.Confirm) can be used to ask for user input
+to fulfill the value.
+
+```{note}
+`rich.prompt.Prompt` and `rich.prompt.Confirm` can also be used transparently for the same purpose.
 ```
+
+```python
+import cappa
+
+class Example:
+    value: Annotated[int, cappa.Arg(default=cappa.Prompt("A number value"))]
+    is_ok: Annotated[bool, cappa.Arg(default=cappa.Confirm("You sure?"))]
+```
+
+As noted above, a value produced by `Prompt`/`Confirm` **does** invoke the `Arg.parse` parser. This is
+because these values will always be returned as a string, very similarly to a normal pre-parse
+CLI value.
+
+### `ValueFrom`
+
+[cappa.ValueFrom](cappa.ValueFrom) is a means for calling an arbitrary function at mapping time,
+to allow for dynamic default values.
+
+```{info}
+A dataclass `field(default_factory=list)` is internally the same thing as `default=ValueFrom(list)`!
+```
+
+```python
+from pathlib import Path
+import cappa
+
+def load_default(key):
+    config = json.loads(Path("config.json").read_text())
+    return config[key]
+
+class Example:
+    value: Annotated[int, cappa.Arg(default=cappa.ValueFrom(load_default, key='value'))]
+```
+
+This construct is able to be automatically supplied with [cappa.State](State), in the even shared
+parse state is required to evaluate a field's default.
+
+As noted above, a value produced by `ValueFrom` **does not** invoke the `Arg.parse` parser. This is
+because the called function is programmer-supplied and can/should just return the correct end
+value.
 
 (arg-group)=
 ## `Arg.group`: Groups (and Mutual Exclusion)

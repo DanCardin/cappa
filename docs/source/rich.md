@@ -17,7 +17,7 @@ You can define your own rich `Theme` object and supply it into
 [invoke](cappa.invoke) or [parse](cappa.parse), which will used when rendering
 help-text output (and error messaging).
 
-Cappa's theme defines and uses the follwing style groups, which you would need
+Cappa's theme defines and uses the following style groups, which you would need
 to also supply:
 
 - `cappa.prog`
@@ -29,8 +29,7 @@ to also supply:
 
 ## Prompt/Confirm
 
-Cappa does not come with a native prompt/confirm option. However it does ship
-with built-in integration with `rich.prompt.Prompt`.
+Cappa integrates directly with `rich.prompt.Prompt`/`rich.prompt.Confirm`.
 
 You can directly make use of confirm/prompt from within your code anywhere, and
 it should "just work"
@@ -59,12 +58,8 @@ In the event the value for that argument was omitted at the command-line, the
 prompt will be evaluated.
 
 ```{note}
-Input prompts can be a hazzard for testing. `cappa.rich.TestPrompt` can be used
-in any CLI-level testing, which relocates rich's `default` and `stream` arguments
-off the `.ask` function.
-
-You can create a `TestPrompt("message", input='text input', default='some default')`
-to simulate a user inputting values to stdin inside tests.
+Input prompts can be a hazard for testing. As such, you can supply `input=StringIO(...)` to
+either of `parse`/`invoke` as a way to write tests that exercise the prompt code.
 ```
 
 ## Pretty Tracebacks

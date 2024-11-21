@@ -9,6 +9,7 @@ from typing import Any, ClassVar, cast
 from rich.console import Console
 
 import cappa
+from cappa.default import Default
 from cappa.help import HelpFormatter, generate_arg_groups
 from cappa.output import Displayable, theme
 from cappa.type_view import Empty
@@ -126,7 +127,8 @@ def render_to_docutils(command: cappa.Command, document):
                     name += f" {value_name.upper()}"
                     option_content += nodes.literal(text=name)
 
-                if arg.default is not Empty and arg.default is not None:
+                assert isinstance(arg.default, Default)
+                if arg.default.default not in (Empty, None):
                     default = str(arg.default)
 
                     option_content += nodes.inline(text=" (")
