@@ -39,7 +39,9 @@ class DataclassField(Field):
     @classmethod
     def collect(cls, typ: type) -> list[Self]:
         fields = []
-        for f in typ.__dataclass_fields__.values():  # type: ignore
+        for f in dataclasses.fields(typ):
+            if not f.init:
+                continue
             field = cls(
                 name=f.name,
                 annotation=f.type,
