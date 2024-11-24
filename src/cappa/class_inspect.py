@@ -13,6 +13,8 @@ from cappa.type_view import CallableView, Empty, EmptyType
 from cappa.typing import T, find_annotations
 
 if typing.TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from cappa.command import Command
 
 __all__ = [
@@ -31,7 +33,7 @@ class Field:
     annotation: type
     default: typing.Any | EmptyType = Empty
     default_factory: typing.Any | EmptyType = Empty
-    metadata: dict = dataclasses.field(default_factory=dict)
+    metadata: Mapping = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass
@@ -49,7 +51,7 @@ class DataclassField(Field):
                 default_factory=f.default_factory
                 if f.default_factory is not dataclasses.MISSING
                 else Empty,
-                metadata=f.metadata,
+                metadata=dict(f.metadata),
             )
             fields.append(field)
         return fields
