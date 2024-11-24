@@ -13,8 +13,6 @@ from cappa.type_view import CallableView, Empty, EmptyType
 from cappa.typing import T, find_annotations
 
 if typing.TYPE_CHECKING:
-    from collections.abc import Mapping
-
     from cappa.command import Command
 
 __all__ = [
