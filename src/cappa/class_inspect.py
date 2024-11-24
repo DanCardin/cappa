@@ -33,7 +33,7 @@ class Field:
     annotation: type
     default: typing.Any | EmptyType = Empty
     default_factory: typing.Any | EmptyType = Empty
-    metadata: Mapping = dataclasses.field(default_factory=dict)
+    metadata: dict = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass
