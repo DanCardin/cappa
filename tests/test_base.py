@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import ClassVar
 
 import pytest
 
@@ -154,6 +155,20 @@ def test_prog_basename(capsys, backend):
 def test_collect_composes_with_parse(backend):
     @dataclass
     class Example: ...
+
+    command = cappa.collect(Example, backend=backend)
+    result = cappa.parse(command, argv=[], backend=backend)
+
+    assert result == Example()
+
+
+@backends
+def test_collect_skips_non_init_fields(backend):
+    @dataclass
+    class Example:
+        skipped1: ClassVar[str] = "skipped1"
+        skipped2: str = field(default="", init=False)
+        present: str = ""
 
     command = cappa.collect(Example, backend=backend)
     result = cappa.parse(command, argv=[], backend=backend)
