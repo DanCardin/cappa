@@ -232,14 +232,14 @@ def add_argument(
     num_args = backend_num_args(arg.num_args)
 
     kwargs: dict[str, typing.Any] = {
-        "dest": dest_prefix + arg.field_name,
+        "dest": dest_prefix + assert_type(arg.field_name, str),
         "help": arg.help,
         "metavar": arg.value_name,
         "action": get_action(arg),
         "default": argparse.SUPPRESS,
     }
 
-    if not is_positional and arg.required:
+    if not is_positional and arg.required and assert_type(arg.num_args, int) >= 0:
         kwargs["required"] = arg.required
 
     if num_args is not None and not ArgAction.is_non_value_consuming(arg.action):

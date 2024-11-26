@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
+import pytest
 from typing_extensions import Annotated
 
 import cappa
@@ -34,3 +35,22 @@ def test_num_args_unbounded_length_num_args(backend):
     # Or the -- separator can be used to terminate it
     t1 = parse(Args, "-a", "1", "2", "3", "--", "foo", backend=backend)
     assert t1 == Args(a=["1", "2", "3"], foo="foo")
+
+
+@backends
+def test_unbounded_positional_args(backend):
+    @dataclass
+    class Args:
+        a: list[str]
+
+    with pytest.raises(cappa.Exit) as e:
+        parse(Args, backend=backend)
+    error = str(e.value.message).lower()
+
+    if backend:
+        assert error == "the following arguments are required: a"
+    else:
+        assert error == "argument 'a' requires at least one values, found 0"
+
+    t1 = parse(Args, "a", backend=backend)
+    assert t1 == Args(["a"])

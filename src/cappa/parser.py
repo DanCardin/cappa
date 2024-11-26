@@ -597,11 +597,18 @@ def consume_arg(
                 arg=arg,
             )
     else:
-        if orig_num_args > 0 and len(result) != orig_num_args:
+        missing_arg_requirement = (
+            # Positive fixed-arg amount
+            (orig_num_args > 0 and len(result) != orig_num_args)
+            # Unbounded but required arg
+            or (orig_num_args < 0 and arg.required and not result)
+        )
+        if missing_arg_requirement:
             quoted_result = [f"'{r}'" for r in result]
             names_str = arg.names_str("/")
 
-            message = f"Argument '{names_str}' requires {orig_num_args} values, found {len(result)}"
+            num_args_value = "at least one" if orig_num_args < 0 else orig_num_args
+            message = f"Argument '{names_str}' requires {num_args_value} values, found {len(result)}"
             if quoted_result:
                 message += f" ({', '.join(quoted_result)} so far)"
             raise BadArgumentError(
