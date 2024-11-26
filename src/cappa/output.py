@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import sys
 import typing
 from dataclasses import dataclass, field
@@ -9,7 +8,6 @@ from rich.console import Console, NewLine
 from rich.markdown import Markdown
 from rich.markup import escape
 from rich.padding import Padding
-from rich.prompt import Confirm, Prompt
 from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
@@ -28,8 +26,6 @@ __all__ = [
     "output_format",
     "theme",
 ]
-
-prompt_types = (Prompt, Confirm)
 
 
 Displayable: TypeAlias = typing.Union[str, Text, Table, NewLine, Markdown, Padding]
@@ -175,19 +171,6 @@ class Output:
             return
 
         console.print(message, overflow="ignore", crop=False)
-
-
-class TestPrompt(Prompt):
-    def __init__(self, prompt, *, input, default=..., **kwargs):
-        self.file = io.StringIO()
-        self.default = default
-        self.stream = io.StringIO(input)
-
-        console = Console(file=self.file)
-        super().__init__(prompt=prompt, console=console, **kwargs)
-
-    def __call__(self, *, stream: typing.TextIO | None = None, default=None) -> str:
-        return super().__call__(default=self.default, stream=self.stream)  # pyright: ignore
 
 
 class Exit(SystemExit):

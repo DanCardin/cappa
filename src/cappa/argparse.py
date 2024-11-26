@@ -11,7 +11,6 @@ from cappa.help import generate_arg_groups
 from cappa.invoke import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.parser import RawOption, Value
-from cappa.type_view import Empty
 from cappa.typing import assert_never, assert_type
 
 if sys.version_info < (3, 9):  # pragma: no cover
@@ -237,21 +236,16 @@ def add_argument(
         "help": arg.help,
         "metavar": arg.value_name,
         "action": get_action(arg),
+        "default": argparse.SUPPRESS,
     }
 
     if not is_positional and arg.required:
         kwargs["required"] = arg.required
 
-    if arg.default is not Empty:
-        kwargs["default"] = argparse.SUPPRESS
-
     if num_args is not None and not ArgAction.is_non_value_consuming(arg.action):
         kwargs["nargs"] = num_args
     elif is_positional and not arg.required:
         kwargs["nargs"] = "?"
-
-    # if arg.choices:
-    #     kwargs["choices"] = arg.choices
 
     deprecated_kwarg = add_deprecated_kwarg(arg)
     kwargs.update(deprecated_kwarg)

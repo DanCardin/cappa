@@ -4,18 +4,20 @@ import dataclasses
 import sys
 import typing
 from collections.abc import Callable
+from typing import TextIO
 
 from type_lens.type_view import TypeView
 
 from cappa.arg import Arg, Group
 from cappa.class_inspect import fields as get_fields
 from cappa.class_inspect import get_command, get_command_capable_object
+from cappa.default import Default
 from cappa.docstring import ClassHelpText
-from cappa.env import Env
 from cappa.help import HelpFormatable, HelpFormatter, format_short_help
-from cappa.output import Exit, Output, prompt_types
+from cappa.output import Exit, Output
+from cappa.state import State
 from cappa.subcommand import Subcommand
-from cappa.type_view import CallableView, Empty
+from cappa.type_view import CallableView
 from cappa.typing import assert_type
 
 T = typing.TypeVar("T")
@@ -116,7 +118,10 @@ class Command(typing.Generic[T]):
 
     @classmethod
     def collect(
-        cls, command: Command[T], propagated_arguments: list[Arg] | None = None
+        cls,
+        command: Command[T],
+        propagated_arguments: list[Arg] | None = None,
+        state: State | None = None,
     ) -> Command[T]:
         kwargs: CommandArgs = {}
 
@@ -151,6 +156,7 @@ class Command(typing.Generic[T]):
                             default_short=command.default_short,
                             default_long=command.default_long,
                             fallback_help=arg_help,
+                            state=state,
                         )
                     )
                 else:
@@ -179,6 +185,7 @@ class Command(typing.Generic[T]):
                         fallback_help=arg_help,
                         default_short=command.default_short,
                         default_long=command.default_long,
+                        state=state,
                     )
                     arguments.extend(arg_defs)
 
@@ -192,6 +199,7 @@ class Command(typing.Generic[T]):
                 field_name,
                 help_formatter=command.help_formatter,
                 propagated_arguments=propagating_arguments,
+                state=state,
             )
             for subcommand, type_view, field_name in raw_subcommands
         ]
@@ -213,17 +221,23 @@ class Command(typing.Generic[T]):
         output: Output,
         backend: typing.Callable,
         argv: list[str] | None = None,
-    ) -> tuple[Command, Command[T], T]:
+        input: TextIO | None = None,
+        state: State | None = None,
+    ) -> tuple[Command, Command[T], T, State]:
         if argv is None:  # pragma: no cover
             argv = sys.argv[1:]
 
         prog = command.real_name()
+        state = State.ensure(state)
+
         try:
             parser, parsed_command, parsed_args = backend(
                 command, argv, output=output, prog=prog
             )
             prog = parser.prog
-            result = command.map_result(command, prog, parsed_args)
+            result = command.map_result(
+                command, prog, parsed_args, state=state, input=input
+            )
         except Exit as e:
             command = e.command or command
             prog = e.prog or prog
@@ -234,54 +248,64 @@ class Command(typing.Generic[T]):
             )
             raise
 
-        return command, parsed_command, result
+        return command, parsed_command, result, state
 
-    def map_result(self, command: Command[T], prog: str, parsed_args) -> T:
+    def map_result(
+        self,
+        command: Command[T],
+        prog: str,
+        parsed_args,
+        state: State | None = None,
+        input: TextIO | None = None,
+    ) -> T:
+        state = State.ensure(state)
+
         kwargs = {}
-        for arg in self.value_arguments():
-            is_subcommand = isinstance(arg, Subcommand)
-            parsed_arg = arg.field_name in parsed_args
-            if not parsed_arg:
-                if is_subcommand:
-                    continue
-
-                assert arg.default is not Empty, arg
-                value = arg.default
-
-            else:
+        for arg in self.value_arguments:
+            is_parsed = False
+            if arg.field_name in parsed_args:
                 value = parsed_args[arg.field_name]
-
-            if isinstance(value, (Env, *prompt_types)):
-                value = value()
-                parsed_arg = True
-
-            if is_subcommand:
-                value = arg.map_result(prog, value)
             else:
+                assert isinstance(arg.default, Default), arg
+                is_parsed, value = arg.default(state=state, input=input)
+
+            if not is_parsed:
                 assert arg.parse
                 assert callable(arg.parse)
 
-                if parsed_arg:
-                    try:
-                        value = arg.parse(value)
-                    except Exception as e:
-                        exception_reason = str(e)
-                        raise Exit(
-                            f"Invalid value for '{arg.names_str()}': {exception_reason}",
-                            code=2,
-                            prog=prog,
-                        )
+                try:
+                    value = arg.parse(value)
+                except Exception as e:
+                    exception_reason = str(e)
+                    raise Exit(
+                        f"Invalid value for '{arg.names_str()}': {exception_reason}",
+                        code=2,
+                        prog=prog,
+                    )
 
             kwargs[arg.field_name] = value
 
+        subcommand = self.subcommand
+        if subcommand:
+            field_name = subcommand.field_name
+            if field_name in parsed_args:
+                value = parsed_args[field_name]
+                value = subcommand.map_result(prog, value, state=state)
+                kwargs[field_name] = value
+
         return command.cmd_cls(**kwargs)
 
-    def value_arguments(self):
-        for arg in self.arguments:
-            if isinstance(arg, Arg) and not arg.has_value:
-                continue
+    @property
+    def subcommand(self) -> Subcommand | None:
+        return next(
+            (arg for arg in self.arguments if isinstance(arg, Subcommand)), None
+        )
 
-            yield arg
+    @property
+    def value_arguments(self) -> typing.Iterable[Arg]:
+        for arg in self.arguments:
+            if isinstance(arg, Arg) and arg.has_value:
+                yield arg
 
     @property
     def all_arguments(self) -> typing.Iterable[Arg | Subcommand]:

@@ -9,6 +9,7 @@ from datetime import date, datetime, time
 from typing_extensions import Never
 
 from cappa.file_io import FileMode
+from cappa.state import State
 from cappa.type_view import TypeView
 from cappa.typing import (
     T,
@@ -263,8 +264,11 @@ def parse_file_io(typ: MaybeTypeView[T]) -> Parser[T]:
 def evaluate_parse(
     parsers: Parser[T] | typing.Sequence[Parser[typing.Any]],
     type_view: TypeView[T],
+    state: State | None = None,
 ):
     from cappa.invoke import fulfill_deps
+
+    state = State.ensure(state)
 
     if callable(parsers):
         parsers = [parsers]
@@ -274,7 +278,7 @@ def evaluate_parse(
             parser,
             **fulfill_deps(
                 parser,
-                {TypeView: type_view},
+                {TypeView: type_view, State: state},
                 allow_empty=True,
             ).kwargs,
         )

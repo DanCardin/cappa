@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import dataclasses
 import typing
+from typing import TextIO
 
 from typing_extensions import Annotated, Self, TypeAlias
 
 from cappa.arg import Group
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.types import Completion
+from cappa.state import State
 from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import T, assert_type, find_annotations
 
@@ -68,6 +70,7 @@ class Subcommand:
         field_name: str | None = None,
         help_formatter: HelpFormatable | None = None,
         propagated_arguments: list[Arg] | None = None,
+        state: State | None = None,
     ) -> Self:
         if type_view is None:
             type_view = TypeView(...)
@@ -80,6 +83,7 @@ class Subcommand:
             types,
             help_formatter=help_formatter,
             propagated_arguments=propagated_arguments,
+            state=state,
         )
         group = infer_group(self)
 
@@ -92,10 +96,16 @@ class Subcommand:
             group=group,
         )
 
-    def map_result(self, prog: str, parsed_args):
+    def map_result(
+        self,
+        prog: str,
+        parsed_args,
+        state: State | None = None,
+        input: TextIO | None = None,
+    ):
         option_name = parsed_args.pop("__name__")
         option = self.options[option_name]
-        return option.map_result(option, prog, parsed_args)
+        return option.map_result(option, prog, parsed_args, state=state, input=input)
 
     def available_options(self) -> list[Command]:
         return [o for o in self.options.values() if not o.hidden]
@@ -132,13 +142,16 @@ def infer_options(
     types: typing.Iterable[type],
     help_formatter: HelpFormatable | None = None,
     propagated_arguments: list[Arg] | None = None,
+    state: State | None = None,
 ) -> dict[str, Command]:
     from cappa.command import Command
 
     if arg.options:
         return {
             name: Command.collect(
-                type_command, propagated_arguments=propagated_arguments
+                type_command,
+                propagated_arguments=propagated_arguments,
+                state=state,
             )
             for name, type_command in arg.options.items()
         }

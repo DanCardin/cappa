@@ -14,8 +14,16 @@ from typing_extensions import TypeAlias
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
-from cappa.env import Env
+from cappa.default import (
+    Confirm,
+    ConfirmType,
+    Default,
+    Prompt,
+    PromptType,
+    ValueFrom,
+)
 from cappa.parse import Parser, evaluate_parse, parse_literal, parse_value
+from cappa.state import State
 from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import (
     Doc,
@@ -202,6 +210,7 @@ class Arg(typing.Generic[T]):
         fallback_help: str | None = None,
         default_short: bool = False,
         default_long: bool = False,
+        state: State | None = None,
     ) -> list[Arg]:
         args = find_annotations(type_view, cls) or [Arg()]
 
@@ -218,19 +227,17 @@ class Arg(typing.Generic[T]):
         result = []
         for arg in args:
             field_name = infer_field_name(arg, field)
-            default = infer_default(arg, field, type_view)
+            default = infer_default(arg, type_view, field)
 
-            arg = dataclasses.replace(
-                arg,
-                field_name=field_name,
-                default=default,
-            )
             normalized_arg = arg.normalize(
                 type_view,
                 fallback_help=fallback_help,
                 default_short=default_short,
                 default_long=default_long,
                 exclusive=exclusive,
+                field_name=field_name,
+                default=default,
+                state=state,
             )
 
             if arg.destructured:
@@ -251,22 +258,23 @@ class Arg(typing.Generic[T]):
         default_short: bool = False,
         default_long: bool = False,
         exclusive: bool = False,
+        state: State | None = None,
     ) -> Arg:
         if type_view is None:
             type_view = TypeView(typing.Any)
 
         field_name = typing.cast(str, field_name or self.field_name)
-        default = default if default is not Empty else self.default
+        default = Default.from_value(default if default is not Empty else self.default)
 
         verify_type_compatibility(self, field_name, type_view)
         short = infer_short(self, field_name, default_short)
         long = infer_long(self, type_view, field_name, default_long)
         choices = infer_choices(self, type_view)
         action = action or infer_action(self, type_view, long, default)
-        num_args = infer_num_args(self, type_view, action, long)
-        required = infer_required(self, type_view, default)
+        num_args = infer_num_args(self, type_view, field_name, action, long)
+        required = infer_required(self, default)
 
-        parse = infer_parse(self, type_view)
+        parse = infer_parse(self, type_view, state=state)
         help = infer_help(self, fallback_help)
         completion = infer_completion(self, choices)
 
@@ -375,25 +383,28 @@ def infer_field_name(arg: Arg, field: Field) -> str:
     return field.name
 
 
-def infer_default(arg: Arg, field: Field, type_view: TypeView) -> typing.Any:
-    if arg.default is not Empty:
-        # Annotated[str, Env('FOO')] = "bar" should produce "bar". I.e. the field default
-        # should be used if the `Env` default is not set, but still attempt to read the
-        # `Env` if it **is** set.
-        if (
-            isinstance(arg.default, Env)
-            and arg.default.default is None
-            and field.default is not Empty
-        ):
-            return Env(*arg.default.env_vars, default=field.default)
+def infer_default(
+    arg: Arg, type_view: TypeView, field: Field | None = None
+) -> typing.Any:
+    if field:
+        arg_default = Default.from_value(infer_default(arg, type_view))
+        if field.default is not Empty:
+            return arg_default | field.default
 
-        return arg.default
+        if field.default_factory is not Empty:
+            return arg_default | ValueFrom(field.default_factory)
 
-    if field.default is not Empty:
-        return field.default
+        return arg_default
 
-    if field.default_factory is not Empty:
-        return field.default_factory()
+    default = arg.default
+    if default is not Empty:
+        if isinstance(default, PromptType):
+            return Prompt.from_prompt(default)
+
+        if isinstance(default, ConfirmType):
+            return Confirm.from_confirm(default)
+
+        return default
 
     if type_view.is_optional:
         return None
@@ -404,12 +415,12 @@ def infer_default(arg: Arg, field: Field, type_view: TypeView) -> typing.Any:
     return Empty
 
 
-def infer_required(arg: Arg, type_view: TypeView, default: typing.Any | EmptyType):
+def infer_required(arg: Arg, default: Default):
     required = arg.required
     if required is True:
         return True
 
-    if default is Empty:
+    if not default.sequence and default.default is Empty:
         if required is False:
             raise ValueError(
                 "When specifying `required=False`, a default value must be supplied able to be "
@@ -475,7 +486,7 @@ def infer_choices(arg: Arg, type_view: TypeView) -> list[str] | None:
 
 
 def infer_action(
-    arg: Arg, type_view: TypeView, long, default: typing.Any
+    arg: Arg, type_view: TypeView, long, default: Default
 ) -> ArgActionType:
     if arg.count:
         return ArgAction.count
@@ -487,10 +498,7 @@ def infer_action(
 
     # Coerce raw `bool` into flags by default
     if type_view.is_subclass_of(bool):
-        if isinstance(default, Env):
-            default = default.default
-
-        if default is not Empty and bool(default):
+        if default.default is not Empty and bool(default.default):
             return ArgAction.store_false
 
         return ArgAction.store_true
@@ -519,6 +527,7 @@ def infer_action(
 def infer_num_args(
     arg: Arg,
     type_view: TypeView,
+    field_name: str,
     action: ArgActionType,
     long,
 ) -> int:
@@ -543,6 +552,7 @@ def infer_num_args(
             num_args = infer_num_args(
                 arg,
                 type_arg,
+                field_name,
                 action,
                 long,
             )
@@ -561,7 +571,7 @@ def infer_num_args(
             ]
         )
         raise ValueError(
-            f"On field '{arg.field_name}', mismatch of arity between union variants. {invalid_kinds}."
+            f"On field '{field_name}', mismatch of arity between union variants. {invalid_kinds}."
         )
 
     is_positional = not arg.short and not long
@@ -576,7 +586,7 @@ def infer_num_args(
     return 1
 
 
-def infer_parse(arg: Arg, type_view: TypeView) -> Callable:
+def infer_parse(arg: Arg, type_view: TypeView, state: State | None = None) -> Callable:
     if arg.parse:
         parse = arg.parse
     else:
@@ -592,7 +602,7 @@ def infer_parse(arg: Arg, type_view: TypeView) -> Callable:
         parse = [*parse, parse_literal(literal_type)]  # type: ignore
 
     return evaluate_parse(
-        typing.cast(Union[Sequence[Parser], Parser], parse), type_view
+        typing.cast(Union[Sequence[Parser], Parser], parse), type_view, state=state
     )
 
 
@@ -672,17 +682,19 @@ def explode_negated_bool_args(args: typing.Sequence[Arg]) -> typing.Iterable[Arg
             negatives = [item for item in long if "--no-" in item]
             positives = [item for item in long if "--no-" not in item]
             if negatives and positives:
+                assert isinstance(arg.default, Default)
+
                 positive_arg = dataclasses.replace(
                     arg,
                     long=positives,
                     action=ArgAction.store_true,
-                    show_default=arg.default is True,
+                    show_default=arg.default.default is True,
                 )
                 negative_arg = dataclasses.replace(
                     arg,
                     long=negatives,
                     action=ArgAction.store_false,
-                    show_default=arg.default is False,
+                    show_default=arg.default.default is False,
                 )
 
                 yield positive_arg
