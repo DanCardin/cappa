@@ -271,7 +271,9 @@ class Arg(typing.Generic[T]):
         long = infer_long(self, type_view, field_name, default_long)
         choices = infer_choices(self, type_view)
         action = action or infer_action(self, type_view, long, default)
-        num_args = infer_num_args(self, type_view, field_name, action, long)
+        num_args = infer_num_args(
+            type_view, field_name, arg=self, action=action, long=long
+        )
         required = infer_required(self, default)
 
         parse = infer_parse(self, type_view, state=state)
@@ -525,20 +527,21 @@ def infer_action(
 
 
 def infer_num_args(
-    arg: Arg,
     type_view: TypeView,
     field_name: str,
-    action: ArgActionType,
-    long,
+    arg: Arg | None = None,
+    action: ArgActionType | None = None,
+    long=None,
 ) -> int:
-    if arg.num_args is not None:
-        return arg.num_args
+    if arg:
+        if arg.num_args is not None:
+            return arg.num_args
 
-    if arg.parse:
-        return 1
+        if arg.parse:
+            return 1
 
-    if ArgAction.is_non_value_consuming(action):
-        return 0
+        if ArgAction.is_non_value_consuming(action):
+            return 0
 
     if type_view.is_union:
         # Recursively determine the `num_args` value of each variant. Use the value
@@ -550,11 +553,7 @@ def infer_num_args(
                 continue
 
             num_args = infer_num_args(
-                arg,
-                type_arg,
-                field_name,
-                action,
-                long,
+                type_arg, field_name, arg=arg, action=action, long=long
             )
 
             distinct_num_args.add(num_args)
@@ -574,15 +573,17 @@ def infer_num_args(
             f"On field '{field_name}', mismatch of arity between union variants. {invalid_kinds}."
         )
 
-    is_positional = not arg.short and not long
-    if type_view.is_subclass_of((list, set)) and is_positional:
-        return -1
-
     if type_view.is_tuple and not type_view.is_variadic_tuple:
         return len(type_view.args)
 
-    if type_view.is_variadic_tuple and is_positional:
+    is_positional = arg is None or (not arg.short and not long)
+    is_sequence = type_view.is_variadic_tuple or type_view.is_subclass_of((list, set))
+    if is_positional and is_sequence:
         return -1
+
+    # Options with outer-types as sequences should determine the num_args from the inner type.
+    if type_view.is_subclass_of((list, set, tuple)):
+        return infer_num_args(type_view.inner_types[0], field_name)
     return 1
 
 
@@ -658,9 +659,6 @@ def infer_group(
 def infer_value_name(arg: Arg, field_name: str, num_args: int | None) -> str:
     if arg.value_name is not Empty:
         return arg.value_name
-
-    if num_args == -1:
-        return f"{field_name} ..."
 
     if num_args and num_args > 1:
         return " ".join([field_name] * num_args)

@@ -237,10 +237,16 @@ def format_arg_name(arg: Arg | Subcommand, delimiter, *, n=0) -> str:
         if not arg.is_option:
             arg_names = arg_names.upper()
 
+            if arg.num_args == -1:
+                arg_names = f"{arg_names} ..."
+
         text = f"[cappa.arg]{arg_names}[/cappa.arg]"
 
         if arg.is_option and has_value:
             name = typing.cast(str, arg.value_name).upper()
+            if arg.num_args == -1:
+                name = f"{name} ..."
+
             text = f"{text} [cappa.arg.name]{name}[/cappa.arg.name]"
 
         if not arg.required:

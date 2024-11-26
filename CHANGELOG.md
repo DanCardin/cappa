@@ -4,11 +4,13 @@
 
 ### 0.26.0
 
-- Add `Default` object with associated fallback semantics for sequences of default handlers.
-- Add `ValueFrom` for handling default_factory lazily, as well as arbitrary function dispatch.
-- Add `State` as object accessible to invoke, Arg.parse, and ValueFrom.callable for sharing
+- feat: Add `Default` object with associated fallback semantics for sequences of default handlers.
+- feat: Add `ValueFrom` for handling default_factory lazily, as well as arbitrary function dispatch.
+- feat: Add `State` as object accessible to invoke, Arg.parse, and ValueFrom.callable for sharing
   state amongst different stages of argument parsing.
 - fix: Skip non-init fields in dataclasses.
+- fix: Required positional arguments in the native parser.
+- fix: Infer num_args on unbounded sequence options (e.g. `list[list[str]]` annotation on an option).
 
 ## 0.25
 

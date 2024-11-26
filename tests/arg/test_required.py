@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Union
 
@@ -74,3 +76,31 @@ def test_required_explicit_false_union_none_no_explicit_default(backend):
 
     result = parse(Example, "-c", "c", backend=backend)
     assert result == Example(c="c")
+
+
+@backends
+def test_required_unbounded_list(backend):
+    @dataclass
+    class Example:
+        c: Annotated[list[str], cappa.Arg(required=True)]
+
+    with pytest.raises(cappa.Exit) as e:
+        parse(Example, backend=backend)
+    assert "require" in str(e.value.message)
+
+    result = parse(Example, "c", backend=backend)
+    assert result == Example(["c"])
+
+
+@backends
+def test_required_option(backend):
+    @dataclass
+    class Example:
+        c: Annotated[list[str], cappa.Arg(short=True, required=True)]
+
+    with pytest.raises(cappa.Exit) as e:
+        parse(Example, backend=backend)
+    assert "the following arguments are required: -c" == str(e.value.message).lower()
+
+    result = parse(Example, "-c", "c", backend=backend)
+    assert result == Example(["c"])
