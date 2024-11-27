@@ -13,7 +13,7 @@ from rich.text import Text
 from typing_extensions import Self, TypeAlias
 
 from cappa.arg import Arg, ArgAction, Group
-from cappa.default import Default
+from cappa.default import Default, DefaultFormatter
 from cappa.output import Displayable
 from cappa.subcommand import Subcommand
 from cappa.type_view import Empty
@@ -163,10 +163,12 @@ def format_arg(help_formatter: HelpFormatter, arg: Arg) -> str:
 
     segments = []
     for format_segment in arg_format:
-        default = ""
         assert isinstance(arg.default, Default)
-        if arg.show_default and arg.default.default not in (None, Empty):
-            default = help_formatter.default_format.format(default=arg.default.default)
+        assert isinstance(arg.show_default, DefaultFormatter)
+
+        default = arg.show_default.format_default(
+            arg.default, help_formatter.default_format
+        )
 
         choices = ""
         if arg.choices:

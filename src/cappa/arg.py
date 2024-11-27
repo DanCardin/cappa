@@ -18,6 +18,7 @@ from cappa.default import (
     Confirm,
     ConfirmType,
     Default,
+    DefaultFormatter,
     Prompt,
     PromptType,
     ValueFrom,
@@ -194,7 +195,7 @@ class Arg(typing.Generic[T]):
     required: bool | None = None
     field_name: str | EmptyType = Empty
     deprecated: bool | str = False
-    show_default: bool = True
+    show_default: bool | str | DefaultFormatter = True
     propagate: bool = False
 
     destructured: Destructured | None = None
@@ -290,6 +291,7 @@ class Arg(typing.Generic[T]):
                 "`Arg.propagate` requires a non-positional named option (`short` or `long`)."
             )
 
+        show_default = DefaultFormatter.from_unknown(self.show_default)
         return dataclasses.replace(
             self,
             default=default,
@@ -307,6 +309,7 @@ class Arg(typing.Generic[T]):
             group=group,
             has_value=has_value,
             type_view=type_view,
+            show_default=show_default,
         )
 
     @classmethod
@@ -682,17 +685,23 @@ def explode_negated_bool_args(args: typing.Sequence[Arg]) -> typing.Iterable[Arg
             if negatives and positives:
                 assert isinstance(arg.default, Default)
 
+                not_required = not arg.required
+                show_default = arg.show_default
+                default_is_true = arg.default.default is True and not_required
+                default_is_false = arg.default.default is False and not_required
+                disabled = DefaultFormatter.disabled()
+
                 positive_arg = dataclasses.replace(
                     arg,
                     long=positives,
                     action=ArgAction.store_true,
-                    show_default=arg.default.default is True,
+                    show_default=show_default if default_is_true else disabled,
                 )
                 negative_arg = dataclasses.replace(
                     arg,
                     long=negatives,
                     action=ArgAction.store_false,
-                    show_default=arg.default.default is False,
+                    show_default=show_default if default_is_false else disabled,
                 )
 
                 yield positive_arg
