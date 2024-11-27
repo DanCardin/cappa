@@ -11,6 +11,7 @@
 - fix: Skip non-init fields in dataclasses.
 - fix: Required positional arguments in the native parser.
 - fix: Infer num_args on unbounded sequence options (e.g. `list[list[str]]` annotation on an option).
+- feat: Add DefaultFormatter as optional input to `show_default`.
 
 ## 0.25
 

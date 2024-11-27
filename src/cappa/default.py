@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, Callable, ClassVar, TextIO, Union
+from typing import Any, Callable, ClassVar, Generic, TextIO, Union
 
 import rich.prompt
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self, TypeAlias, TypeVar
 
 from cappa.state import State
 from cappa.type_view import Empty, EmptyType
+
+T = TypeVar("T")
 
 
 @dataclass(frozen=True)
@@ -198,6 +200,33 @@ class ValueFrom(DefaultType):
             kwargs = {**resolved.kwargs, **self.kwargs}
 
         return self.callable(**kwargs)
+
+
+@dataclass
+class DefaultFormatter(Generic[T]):
+    format: str = "{default}"
+    show: bool = True
+
+    @classmethod
+    def disabled(cls):
+        return cls(show=False)
+
+    @classmethod
+    def from_unknown(cls, value: str | bool | Self) -> Self:
+        if isinstance(value, cls):
+            return value
+
+        if isinstance(value, str):
+            return cls(format=value)
+
+        return cls(show=bool(value))
+
+    def format_default(self, default: Default, default_format: str = "") -> str:
+        if not self.show or default.default in (None, Empty):
+            return ""
+
+        default_value = self.format.format(default=default.default)
+        return default_format.format(default=default_value)
 
 
 PromptType = rich.prompt.Prompt

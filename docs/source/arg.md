@@ -297,6 +297,36 @@ As noted above, a value produced by `ValueFrom` **does not** invoke the `Arg.par
 because the called function is programmer-supplied and can/should just return the correct end
 value.
 
+## `Arg.show_default`
+
+Defaults to `True` (e.g. `DefaultFormatter(format='{default}', show=True)`). This field controls **both**:
+
+* Whether to render the argument's default for helptext
+* The formatting for the default value itself.
+
+`show_default` can be provided as any of:
+
+* `bool`: Implies the `DefaultFormatter.show` value  (e.g. `DefaultFormatter(show=<the bool>)`).
+* `str`: Implies the `DefaultFormatter.format` value (e.g. `DefaultFormatter(format=<the str>, show=True)`).
+* `DefaultFormatter`: Is taken as-is.
+
+`DefaultFormatter.show` enables/disables the display of the given `Arg.default`. While
+the literal default value is formatted through `DefaultFormatter.format`.
+
+```{info}
+The `str.format` context is provided as named `default` format arg. That is to say, the literal
+default value can be templated into the string through the named `{default}` syntax.
+
+Normal format specifiers can be used to control formatting of the value, for example `{default:.2f}`
+to limit the precision of a default float value.
+```
+
+```{note}
+The `format` value **can** simply be a static string, to avoid taking the literal default value. An
+reasonable example of this might be `source: Annotated[BinaryIO, Arg(show_default='<stdin>')] = '-'`.
+```
+
+
 (arg-group)=
 ## `Arg.group`: Groups (and Mutual Exclusion)
 

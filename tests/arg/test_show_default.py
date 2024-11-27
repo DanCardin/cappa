@@ -6,6 +6,7 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
+from cappa.default import DefaultFormatter
 from tests.utils import CapsysOutput, backends, parse
 
 
@@ -69,3 +70,31 @@ def test_show_default_no_option_shows_for_true_default(backend, capsys):
     stdout = CapsysOutput.from_capsys(capsys).stdout.replace(" ", "")
     assert "[--foo](Default:True)" in stdout
     assert "[--no-foo](Default:False)" not in stdout
+
+
+@backends
+def test_show_default_string(backend, capsys):
+    @dataclass
+    class Command:
+        foo: Annotated[str, cappa.Arg(show_default="~{default}~")] = "asdf"
+
+    with pytest.raises(cappa.HelpExit):
+        parse(Command, "--help", backend=backend)
+
+    stdout = CapsysOutput.from_capsys(capsys).stdout.replace(" ", "")
+    assert "[FOO](Default:~asdf~)" in stdout
+
+
+@backends
+def test_show_default_explicit(backend, capsys):
+    @dataclass
+    class Command:
+        foo: Annotated[str, cappa.Arg(show_default=DefaultFormatter("!{default}!"))] = (
+            "asdf"
+        )
+
+    with pytest.raises(cappa.HelpExit):
+        parse(Command, "--help", backend=backend)
+
+    stdout = CapsysOutput.from_capsys(capsys).stdout.replace(" ", "")
+    assert "[FOO](Default:!asdf!)" in stdout
