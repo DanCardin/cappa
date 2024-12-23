@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 import pytest
@@ -98,3 +99,16 @@ def test_show_default_explicit(backend, capsys):
 
     stdout = CapsysOutput.from_capsys(capsys).stdout.replace(" ", "")
     assert "[FOO](Default:!asdf!)" in stdout
+
+
+@backends
+def test_static(backend, capsys):
+    @dataclass
+    class Command:
+        foo: Annotated[str | None, cappa.Arg(show_default="always show")] = None
+
+    with pytest.raises(cappa.HelpExit):
+        parse(Command, "--help", backend=backend)
+
+    stdout = CapsysOutput.from_capsys(capsys).stdout
+    assert re.search(r"\[FOO\]\s+\(Default: always show\)", stdout)
