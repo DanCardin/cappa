@@ -2,6 +2,10 @@
 
 ## 0.26
 
+### 0.26.1
+
+- fix: Default formatting when value is None/Empty and formatter is supplied.
+
 ### 0.26.0
 
 - feat: Add `Default` object with associated fallback semantics for sequences of default handlers.

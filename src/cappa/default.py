@@ -222,11 +222,18 @@ class DefaultFormatter(Generic[T]):
         return cls(show=bool(value))
 
     def format_default(self, default: Default, default_format: str = "") -> str:
-        if not self.show or default.default in (None, Empty):
+        if not self.show:
             return ""
 
-        default_value = self.format.format(default=default.default)
-        return default_format.format(default=default_value)
+        default_raw_value = default.default
+        if default_raw_value in (None, Empty):
+            default_raw_value = ""
+
+        default_formatted_value = self.format.format(default=default_raw_value)
+        if default_formatted_value == "":
+            return default_formatted_value
+
+        return default_format.format(default=default_formatted_value)
 
 
 PromptType = rich.prompt.Prompt
