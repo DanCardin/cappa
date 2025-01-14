@@ -597,13 +597,16 @@ def consume_arg(
                 arg=arg,
             )
     else:
-        missing_arg_requirement = (
-            # Positive fixed-arg amount
-            (orig_num_args > 0 and len(result) != orig_num_args)
-            # Unbounded but required arg
-            or (orig_num_args < 0 and arg.required and not result)
-        )
-        if missing_arg_requirement:
+        required_arg = arg.required
+        fixed_arg_mismatch = orig_num_args > 0 and len(result) != orig_num_args
+        unbounded_missing = orig_num_args < 0 and not result
+        if fixed_arg_mismatch or unbounded_missing:
+            option_requiring_values = option and requires_values
+            if not (required_arg or option_requiring_values or result):
+                # Lacking a consumed value for an optional positional arg should avoid
+                # hitting the argument's action, so as to apply it's default handling.
+                return
+
             quoted_result = [f"'{r}'" for r in result]
             names_str = arg.names_str("/")
 

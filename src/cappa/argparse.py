@@ -229,7 +229,7 @@ def add_argument(
 
     is_positional = not names
 
-    num_args = backend_num_args(arg.num_args)
+    num_args = backend_num_args(arg.num_args, assert_type(arg.required, bool))
 
     kwargs: dict[str, typing.Any] = {
         "dest": dest_prefix + assert_type(arg.field_name, str),
@@ -295,12 +295,14 @@ def add_subcommands(
         )
 
 
-def backend_num_args(num_args: int | None) -> int | str | None:
+def backend_num_args(num_args: int | None, required: bool) -> int | str | None:
     if num_args is None or num_args == 1:
         return None
 
     if num_args == -1:
-        return "+"
+        if required:
+            return "+"
+        return "*"
 
     return num_args
 

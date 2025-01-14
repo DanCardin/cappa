@@ -51,3 +51,50 @@ def test_not_parsed(backend):
 
     result = parse(Command, backend=backend)
     assert result == Command(0)
+
+
+def called():
+    return ["42"]
+
+
+@backends
+def test_positional_unbound_num_args(backend):
+    @dataclass
+    class Command:
+        positional: Annotated[
+            list[str],
+            cappa.Arg(
+                short=False,
+                long=False,
+                default=cappa.ValueFrom(called),
+            ),
+        ]
+
+    result = parse(Command, "7", backend=backend)
+    assert result == Command(["7"])
+
+    result = parse(Command, backend=backend)
+    assert result == Command(["42"])
+
+
+def two_tuple():
+    return ("42", "0")
+
+
+def test_optional_positional_2_tuple():
+    @dataclass
+    class Command:
+        positional: Annotated[
+            tuple[str, str],
+            cappa.Arg(
+                short=False,
+                long=False,
+                default=cappa.ValueFrom(two_tuple),
+            ),
+        ]
+
+    result = parse(Command, "7", "8")
+    assert result == Command(("7", "8"))
+
+    result = parse(Command)
+    assert result == Command(("42", "0"))
