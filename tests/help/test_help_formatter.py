@@ -166,6 +166,7 @@ def test_callable_help_formatter(capsys):
     @dataclass
     class Args:
         required: Annotated[int, cappa.Arg(help="Required.")]
+        not_required: Annotated[int | None, cappa.Arg(help="erm.")] = None
 
     def help_formatter(arg: cappa.Arg) -> str | None:
         if arg.field_name == "required":
@@ -190,13 +191,14 @@ def test_callable_help_formatter(capsys):
 
     assert out == textwrap.dedent(
         """\
-        Usage: args REQUIRED [-h]
+        Usage: args REQUIRED [NOT_REQUIRED] [-h]
 
           Arguments
-            REQUIRED      Required. Num args: 1
+            REQUIRED        Required. Num args: 1
+            [NOT_REQUIRED]  erm.
 
           Help
-            [-h, --help]  Show this message and exit.
+            [-h, --help]    Show this message and exit.
         """
     )
 
