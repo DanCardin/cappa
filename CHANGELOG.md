@@ -2,6 +2,10 @@
 
 ## 0.26
 
+### 0.26.2
+
+- fix: Optional positional arguments should not get a default value from their action.
+
 ### 0.26.1
 
 - fix: Default formatting when value is None/Empty and formatter is supplied.
