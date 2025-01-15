@@ -1,36 +1,18 @@
 [project]
 name = "cappa"
-version = "0.26.2"
+version = "0.26.3"
 description = "Declarative CLI argument parser."
 
-urls = {repository = "https://github.com/dancardin/cappa"}
-authors = [
-  {name = "Dan Cardin", email = "ddcardin@gmail.com"},
-]
-license = {file = "LICENSE"}
+urls = { repository = "https://github.com/dancardin/cappa" }
+authors = [{ name = "Dan Cardin", email = "ddcardin@gmail.com" }]
+license = { file = "LICENSE" }
 readme = "README.md"
-keywords = [
-  "CLI",
-  "parser",
-  "argparse",
-  "click",
-  "typer",
-]
-classifiers = [
-  "Topic :: Software Development :: Libraries :: Python Modules",
-]
-
-include = [
-  "py.typed",
-]
+keywords = ["CLI", "parser", "argparse", "click", "typer"]
+classifiers = ["Topic :: Software Development :: Libraries :: Python Modules"]
 
 requires-python = ">=3.8,<4"
 
-dependencies = [
-  "rich",
-  "typing-extensions >= 4.8.0",
-  "type-lens >= 0.2.3",
-]
+dependencies = ["rich", "typing-extensions >= 4.8.0", "type-lens >= 0.2.3"]
 
 [project.optional-dependencies]
 docstring = ["docstring-parser >= 0.15"]
@@ -54,19 +36,7 @@ target-version = "py38"
 
 [tool.ruff.lint]
 select = ["C", "D", "E", "F", "I", "N", "Q", "RET", "RUF", "S", "T", "UP", "YTT"]
-ignore = [
-    "C901",
-    "E501",
-    "S101",
-    "D1",
-    "D203",
-    "D213",
-    "D406",
-    "D407",
-    "D408",
-    "D409",
-    "D413",
-]
+ignore = ["C901", "E501", "S101", "D1", "D203", "D213", "D406", "D407", "D408", "D409", "D413"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["T201"]
@@ -103,9 +73,7 @@ doctest_optionflags = "NORMALIZE_WHITESPACE IGNORE_EXCEPTION_DETAIL ELLIPSIS"
 addopts = "--doctest-modules -vv --ff --strict-markers"
 norecursedirs = ".* build dist *.egg bin"
 pytester_example_dir = "examples"
-markers = [
-  "help",
-]
+markers = ["help"]
 
 [build-system]
 requires = ["hatchling"]

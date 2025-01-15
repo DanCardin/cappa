@@ -235,6 +235,15 @@ As noted above, a value produced by `Default.default` **does not** invoke the `A
 for similar reasons as to native dataclass defaults. The programmer is supplying the default value
 which should not **need** to be parsed.
 
+```{note}
+`Default`'s fallback behavior will fallback to lower priority handlers in the "default sequence" when
+that item's default returns `cappa.Empty`. All the native (`Env`, `Prompt`, `Confirm`)
+handlers will do this natively, when they fail to produce a value.
+
+A `ValueFrom` (described below) accepts a user-provided function, so it **may** need to be aware of
+this and return `cappa.Empty`, depending on the desired behavior.
+```
+
 ### `Env`
 
 [cappa.Env](cappa.Env) performs environment variable lookups in an attempt to provide a value to the
@@ -296,6 +305,13 @@ parse state is required to evaluate a field's default.
 As noted above, a value produced by `ValueFrom` **does not** invoke the `Arg.parse` parser. This is
 because the called function is programmer-supplied and can/should just return the correct end
 value.
+
+```{info}
+If there are scenarios where `ValueFrom` **should** fail to provide a value and fall back to the
+class-level, or `Default`-level default value, it should return `cappa.Empty` in order to indicate
+to cappa that it shouldn't accept the returned value as the **actual** value to used when constructing
+the resulting class instance.
+```
 
 ## `Arg.show_default`
 

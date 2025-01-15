@@ -2,6 +2,9 @@
 
 ## 0.26
 
+### 0.26.3
+- fix: Reexport Empty/EmptyType types at the root.
+
 ### 0.26.2
 
 - fix: Optional positional arguments should not get a default value from their action.

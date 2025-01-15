@@ -9,6 +9,7 @@ from cappa.output import Exit, HelpExit, Output
 from cappa.parse import unpack_arguments
 from cappa.state import State
 from cappa.subcommand import Subcommand, Subcommands
+from cappa.type_view import Empty, EmptyType
 
 # isort: split
 from cappa.arg import Arg, ArgAction, Group
@@ -25,6 +26,8 @@ __all__ = [
     "Confirm",
     "Default",
     "Dep",
+    "Empty",
+    "EmptyType",
     "Env",
     "Exit",
     "FileMode",
