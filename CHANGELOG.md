@@ -2,6 +2,9 @@
 
 ## 0.26
 
+### 0.26.4
+- fix: Ensure `propagate=True` args supply the correct parent context to the arg's action handler.
+
 ### 0.26.3
 - fix: Reexport Empty/EmptyType types at the root.
 

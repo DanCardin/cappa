@@ -6,6 +6,7 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
+from cappa.subcommand import Subcommands
 from tests.utils import CapsysOutput, parse
 
 
@@ -133,3 +134,24 @@ def test_help_contains_propagated_arg(capsys):
     assert "foo" in output.stdout
     assert "Everywhere" in output.stdout
     assert "Nowhere" not in output.stdout
+
+
+def test_count():
+    """Test that actions requiring accumulated prior state (e.g. count) **get** values from the correct context."""
+
+    @dataclass
+    class Command:
+        foo: Annotated[int, cappa.Arg(short=True, propagate=True, count=True)] = 1
+        subcommand: Subcommands[One | None] = None
+
+    result = parse(Command, "-f")
+    assert result == Command(1, None)
+
+    result = parse(Command, "-fff")
+    assert result == Command(3, None)
+
+    result = parse(Command, "one", "-f")
+    assert result == Command(1, One())
+
+    result = parse(Command, "one", "-fff")
+    assert result == Command(3, One())

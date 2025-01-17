@@ -247,6 +247,12 @@ class ParseContext:
     def next_argument(self):
         return self.arguments.popleft()
 
+    def resolve_context(self, field_name: str, option: RawOption | None = None):
+        context = self
+        if option and field_name in self.propagated_options:
+            context = self.propagated_context[field_name]
+        return context
+
     def set_result(
         self,
         field_name: str,
@@ -254,16 +260,11 @@ class ParseContext:
         option: RawOption | None = None,
         has_value: bool = True,
     ):
-        context = self
-        if option:
-            if field_name in self.propagated_options:
-                context = self.propagated_context[field_name]
-
-            if field_name in context.missing_options:
-                context.missing_options.remove(field_name)
+        if option and field_name in self.missing_options:
+            self.missing_options.remove(field_name)
 
         if has_value:
-            context.result[field_name] = value
+            self.result[field_name] = value
 
     def push(self, command: Command, name: str) -> ParseContext:
         nested_context = ParseContext.from_command(command, parent_context=self)
@@ -639,10 +640,13 @@ def consume_arg(
 
     action_handler = determine_action_handler(arg.action)
 
+    # Propagated arguments need to supply the correct parent context to their action handler.
+    resolved_context = context.resolve_context(field_name, option)
+
     fulfilled_deps: dict = {
         Command: parse_state.current_command,
         Output: parse_state.output,
-        ParseContext: context,
+        ParseContext: resolved_context,
         ParseState: parse_state,
         Arg: arg,
         Value: Value(result),
@@ -654,7 +658,9 @@ def consume_arg(
     kwargs = fulfill_deps(action_handler, fulfilled_deps).kwargs
     result = action_handler(**kwargs)
 
-    context.set_result(field_name, result, option, assert_type(arg.has_value, bool))
+    resolved_context.set_result(
+        field_name, result, option, assert_type(arg.has_value, bool)
+    )
 
     check_deprecated(parse_state, arg, option)
 
