@@ -2,6 +2,9 @@
 
 ## 0.26
 
+### 0.26.5
+- fix: Coerce `Env(default=None)` to `Empty` to avoid interpreting the value as a string.
+
 ### 0.26.4
 - fix: Ensure `propagate=True` args supply the correct parent context to the arg's action handler.
 

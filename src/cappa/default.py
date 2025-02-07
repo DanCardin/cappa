@@ -112,6 +112,8 @@ class Env(DefaultType):
             if value is not None:
                 return value
 
+        if self.default is None:
+            return Empty
         return self.default
 
 

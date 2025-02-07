@@ -1,6 +1,6 @@
 [project]
 name = "cappa"
-version = "0.26.4"
+version = "0.26.5"
 description = "Declarative CLI argument parser."
 
 urls = { repository = "https://github.com/dancardin/cappa" }
@@ -19,16 +19,16 @@ docstring = ["docstring-parser >= 0.15"]
 
 [tool.uv]
 dev-dependencies = [
-  "pytest >=8.1.1,<9",
-  "coverage >= 7.3.0",
-  "mypy >= 1.0.0",
-  "ruff >= 0.6.2",
-  "docutils >= 0.20.0",
-  "types-docutils >= 0.20.0",
+    "pytest >=8.1.1,<9",
+    "coverage >= 7.3.0",
+    "mypy >= 1.0.0",
+    "ruff >= 0.6.2",
+    "docutils >= 0.20.0",
+    "types-docutils >= 0.20.0",
 
-  "attrs",
-  "pydantic",
-  "msgspec; python_version < '3.13'",
+    "attrs",
+    "pydantic",
+    "msgspec; python_version < '3.13'",
 ]
 
 [tool.ruff]
@@ -49,11 +49,11 @@ keep-runtime-typing = true
 show_missing = true
 skip_covered = true
 exclude_lines = [
-  "pragma: no cover",
-  "if TYPE_CHECKING:",
-  "if typing.TYPE_CHECKING:",
-  "if __name__ == .__main__.:",
-  "assert_never",
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "assert_never",
 ]
 
 [tool.coverage.run]
