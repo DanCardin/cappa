@@ -28,7 +28,7 @@ wheels = [
 
 [[package]]
 name = "cappa"
-version = "0.26.3"
+version = "0.26.5"
 source = { editable = "." }
 dependencies = [
     { name = "rich" },
