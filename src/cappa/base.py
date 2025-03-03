@@ -11,7 +11,7 @@ from cappa import argparse, parser
 from cappa.class_inspect import detect
 from cappa.command import Command
 from cappa.help import (
-    HelpFormatable,
+    HelpFormattable,
     HelpFormatter,
     create_completion_arg,
     create_help_arg,
@@ -39,7 +39,7 @@ def parse(
     completion: bool | Arg = True,
     theme: Theme | None = None,
     output: Output | None = None,
-    help_formatter: HelpFormatable | None = None,
+    help_formatter: HelpFormattable | None = None,
     state: State | None = None,
 ) -> T:
     """Parse the command, returning an instance of `obj`.
@@ -105,7 +105,7 @@ def invoke(
     completion: bool | Arg = True,
     theme: Theme | None = None,
     output: Output | None = None,
-    help_formatter: HelpFormatable | None = None,
+    help_formatter: HelpFormattable | None = None,
     state: State | None = None,
 ):
     """Parse the command, and invoke the selected async command or subcommand.
@@ -185,7 +185,7 @@ async def invoke_async(
     completion: bool | Arg = True,
     theme: Theme | None = None,
     output: Output | None = None,
-    help_formatter: HelpFormatable | None = None,
+    help_formatter: HelpFormattable | None = None,
     state: State | None = None,
 ):
     """Parse the command, and invoke the selected command or subcommand.
@@ -263,7 +263,7 @@ def parse_command(
     completion: bool | Arg = True,
     theme: Theme | None = None,
     output: Output | None = None,
-    help_formatter: HelpFormatable | None = None,
+    help_formatter: HelpFormattable | None = None,
     state: State | None = None,
 ) -> tuple[Command, Command[T], T, Output, State]:
     concrete_backend = _coalesce_backend(backend)
@@ -302,7 +302,7 @@ def command(
     default_short: bool = False,
     default_long: bool = False,
     deprecated: bool = False,
-    help_formatter: HelpFormatable = HelpFormatter.default,
+    help_formatter: HelpFormattable = HelpFormatter.default,
 ):
     """Register a cappa CLI command/subcomment.
 
@@ -370,7 +370,7 @@ def collect(
     version: str | Arg | None = None,
     help: bool | Arg = True,
     completion: bool | Arg = True,
-    help_formatter: HelpFormatable | None = None,
+    help_formatter: HelpFormattable | None = None,
     state: State | None = None,
 ) -> Command[T]:
     """Retrieve the `Command` object from a cappa-capable source class.

@@ -27,7 +27,7 @@ invoked for your command.
    itself. However being forced to define function at the same location as your
    CLI definition may or may not be a drawback at all, for your usecase.
 
-2. You can utilize the explcit `invoke=function` argument:
+2. You can utilize the expliicit `invoke=function` argument:
 
    ```python
    def function(example: Example):
@@ -136,7 +136,7 @@ which is mostly just a net reduction in boilerplate.
 `cappa.invoke` wouldn't be of much value if all it did was call argument-less
 functions without any context. Thus, there is a system of "dependencies" that
 cause arguments to your invoke functions to be supplied on demand, assuming the
-CLI invocation is capable of fullfilling the dependencies.
+CLI invocation is capable of fulfilling the dependencies.
 
 There are two kinds of invoke dependencies, implicit and explicit.
 
@@ -171,9 +171,9 @@ These objects include:
 ```{note}
 If there were another subcommand option, and the CLI invocation selected one or
 the other of the two subcommand options, only the selected subcommand would have
-been fullfilled.
+been fulfilled.
 
-It's therefore programmer error to describe an `invoke` function heirarchy which
+It's therefore programmer error to describe an `invoke` function hierarchy which
 depends on command options that would not have been constructed during parsing.
 ```
 
@@ -202,7 +202,7 @@ annotated with a `Dep` in order to be recognized as such.
 ```{note}
 A function describing an explicit dependency can, itself, depend on other
 explicit or implicit dependencies. This allows recursively building up a dependency
-heirarchy.
+hierarchy.
 ```
 
 ```python
@@ -328,7 +328,7 @@ def foo():
     ...
 
 # and here is a function which depends upon it.
-def invokable_function(foo: Annotated[int, Dep(foo)]):
+def invocable_function(foo: Annotated[int, Dep(foo)]):
     ...
 ```
 
@@ -352,7 +352,7 @@ cappa.invoke(Command, deps={foo: 4})
 ### Unfulfilled Dependencies
 
 Should an argument be neither an explicitly annotated `Dep`, nor typed as one of
-the available implicit dependencies in the heirarchy, then it's considered
+the available implicit dependencies in the hierarchy, then it's considered
 unfulfilled.
 
 If the argument to the callable has a default value, then the argument will

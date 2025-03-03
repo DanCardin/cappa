@@ -2,6 +2,9 @@
 
 ## 0.26
 
+### 0.26.6
+- fix: Typo in the exported member `HelpFormattable` 
+
 ### 0.26.5
 - fix: Coerce `Env(default=None)` to `Empty` to avoid interpreting the value as a string.
 

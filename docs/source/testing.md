@@ -10,7 +10,7 @@ However, Cappa comes with a built in
 [CommandRunner](cappa.testing.CommandRunner) which is meant to reduce the
 verbosity of testing CLI commands and in overriding upstream [Dep](cappa.Dep).
 With it, you can centralize any always-used options, such that only the options
-which vary from test to test are provied inside the test bodies..
+which vary from test to test are provided inside the test bodies..
 
 ```{eval-rst}
 .. autoapimodule:: cappa.testing

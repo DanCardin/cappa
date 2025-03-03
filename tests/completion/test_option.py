@@ -26,7 +26,7 @@ def test_long_option_name_with_help():
     assert result == "--default:Enables default"
 
 
-def test_mulitple_matches():
+def test_multiple_matches():
     @dataclass
     class Args:
         apple: Annotated[str, cappa.Arg(short=True, help="apple")]

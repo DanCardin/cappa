@@ -13,7 +13,7 @@ from cappa.class_inspect import fields as get_fields
 from cappa.class_inspect import get_command, get_command_capable_object
 from cappa.default import Default
 from cappa.docstring import ClassHelpText
-from cappa.help import HelpFormatable, HelpFormatter, format_short_help
+from cappa.help import HelpFormattable, HelpFormatter, format_short_help
 from cappa.output import Exit, Output
 from cappa.state import State
 from cappa.subcommand import Subcommand
@@ -81,13 +81,13 @@ class Command(typing.Generic[T]):
     default_long: bool = False
     deprecated: bool | str = False
 
-    help_formatter: HelpFormatable = HelpFormatter.default
+    help_formatter: HelpFormattable = HelpFormatter.default
 
     _collected: bool = False
 
     @classmethod
     def get(
-        cls, obj: type[T] | Command[T], help_formatter: HelpFormatable | None = None
+        cls, obj: type[T] | Command[T], help_formatter: HelpFormattable | None = None
     ) -> Command[T]:
         help_formatter = help_formatter or HelpFormatter.default
 

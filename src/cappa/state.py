@@ -23,8 +23,8 @@ class State(Generic[T]):
         >>> import cappa
 
         >>> def parse_arg(state: State):
-        ...     state.state['arg'] = state.state.get('arg', 0)
-        ...     return state.state['arg']
+        ...     state.state["arg"] = state.state.get("arg", 0)
+        ...     return state.state["arg"]
 
         >>> @dataclass
         ... class Command:

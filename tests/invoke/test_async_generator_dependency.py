@@ -60,10 +60,5 @@ def test_invoke_top_level_command(backend, capsys):
 
     out = capsys.readouterr().out
     assert out == (
-        "binary before\n"
-        "text before\n"
-        "csv before\n"
-        "csv after\n"
-        "text after\n"
-        "binary after\n"
+        "binary before\ntext before\ncsv before\ncsv after\ntext after\nbinary after\n"
     )

@@ -3,7 +3,7 @@ from cappa.command import Command
 from cappa.completion.types import Completion
 from cappa.default import Confirm, Default, Env, Prompt, ValueFrom
 from cappa.file_io import FileMode
-from cappa.help import HelpFormatable, HelpFormatter
+from cappa.help import HelpFormattable, HelpFormatter
 from cappa.invoke import Dep
 from cappa.output import Exit, HelpExit, Output
 from cappa.parse import unpack_arguments
@@ -33,7 +33,7 @@ __all__ = [
     "FileMode",
     "Group",
     "HelpExit",
-    "HelpFormatable",
+    "HelpFormattable",
     "HelpFormatter",
     "Output",
     "Prompt",
