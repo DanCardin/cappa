@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing_extensions import Unpack
 
 import cappa
-from cappa.help import HelpFormatable
+from cappa.help import HelpFormattable
 from cappa.state import State
 
 __all__ = [
@@ -30,7 +30,7 @@ class RunnerArgs(typing.TypedDict, total=False):
     version: str | cappa.Arg
     help: bool | cappa.Arg
     completion: bool | cappa.Arg
-    help_formatter: HelpFormatable
+    help_formatter: HelpFormattable
     input: typing.TextIO | None
     state: State | None
 
@@ -57,24 +57,24 @@ class CommandRunner:
         >>> @dataclass
         ... class Obj:
         ...     first: str
-        ...     second: str = '2'
+        ...     second: str = "2"
 
         Create an instance with no arguments means there is no default state
 
         >>> runner = CommandRunner()
-        >>> runner.parse('one', obj=Obj)
+        >>> runner.parse("one", obj=Obj)
         Obj(first='one', second='2')
 
         Or create a runner that always uses the same base CLI object, and default base command
 
-        >>> runner = CommandRunner(Obj, base_args=['first'])
+        >>> runner = CommandRunner(Obj, base_args=["first"])
 
         Now each test, can customize the behavior to suit the test in question.
 
         >>> runner.parse(color=False)
         Obj(first='first', second='2')
 
-        >>> runner.parse('two')
+        >>> runner.parse("two")
         Obj(first='first', second='two')
     """
 
@@ -90,7 +90,7 @@ class CommandRunner:
     version: str | cappa.Arg | None = None
     help: bool | cappa.Arg = True
     completion: bool | cappa.Arg = True
-    help_formatter: HelpFormatable | None = None
+    help_formatter: HelpFormattable | None = None
     input: typing.TextIO | None = None
     state: State | None = None
 

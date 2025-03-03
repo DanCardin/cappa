@@ -26,7 +26,7 @@ def test_single_option_value_equals(backend):
 
 
 @backends
-def test_mulitple_option_no_space(backend):
+def test_multiple_option_no_space(backend):
     args = parse(Args, "-fba0", backend=backend)
     assert args == Args(arg=0, foo=True, bar=True)
 

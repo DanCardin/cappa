@@ -55,7 +55,7 @@ a single entrypoint.
     determine the total set of arguments and subcommands relative to it.
 
 - Because click tightly couples the called function with click itself, a large
-  enough CLI will inevitably slow down starup because you're forced to
+  enough CLI will inevitably slow down CLI startup because you're forced to
   transitively import your whole codebase in order to describe the state of the
   CLI itself.
 

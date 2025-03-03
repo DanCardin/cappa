@@ -1,6 +1,6 @@
 [project]
 name = "cappa"
-version = "0.26.5"
+version = "0.26.6"
 description = "Declarative CLI argument parser."
 
 urls = { repository = "https://github.com/dancardin/cappa" }
@@ -22,7 +22,7 @@ dev-dependencies = [
     "pytest >=8.1.1,<9",
     "coverage >= 7.3.0",
     "mypy >= 1.0.0",
-    "ruff >= 0.6.2",
+    "ruff >= 0.9.0",
     "docutils >= 0.20.0",
     "types-docutils >= 0.20.0",
 
@@ -44,6 +44,9 @@ ignore = ["C901", "E501", "S101", "D1", "D203", "D213", "D406", "D407", "D408", 
 
 [tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true
+
+[tool.ruff.format]
+docstring-code-format = true
 
 [tool.coverage.report]
 show_missing = true
@@ -67,6 +70,12 @@ ignore_missing_imports = true
 warn_unused_ignores = true
 incremental = true
 check_untyped_defs = true
+
+[tool.typos.default]
+extend-ignore-re = [".*#.*typos: ignore[^\\n]*\\n"]
+
+[tool.typos.default.extend-identifiers]
+ typ = "typ"
 
 [tool.pytest.ini_options]
 doctest_optionflags = "NORMALIZE_WHITESPACE IGNORE_EXCEPTION_DETAIL ELLIPSIS"

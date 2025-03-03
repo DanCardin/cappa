@@ -1,4 +1,4 @@
-.PHONY: install test lint format
+.PHONY: install test lint lint-typos format
 
 install:
 	uv sync --all-extras
@@ -13,6 +13,9 @@ lint:
 	uv run --no-sync ruff check src tests examples || exit 1
 	uv run --no-sync --all-extras mypy src tests examples || exit 1
 	uv run --no-sync ruff format --check src tests examples || exit 1
+
+lint-typos:
+	typos
 
 format:
 	uv run --no-sync ruff check src tests examples --fix

@@ -34,4 +34,7 @@ def test_arg_description_renders_markdown(backend, capsys):
         )
 
     result = capsys.readouterr()
-    assert "\x1b[1;36;40mThis\x1b[0m \x1b[1mis\x1b[0m \x1b[3mneat!\x1b[0m" in result.out
+    assert (
+        "\x1b[1;36;40mThis\x1b[0m \x1b[1mis\x1b[0m \x1b[3mneat!\x1b[0m"  # typos: ignore
+        in result.out
+    )

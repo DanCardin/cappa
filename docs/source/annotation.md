@@ -178,7 +178,7 @@ each subcommand has a unambiguous name.
 
 Mapping inference is a sort of subset of `Arg`-settings inference, in that it
 effectively uses the annotated type to set `Arg(parse=...)` in a way that maps
-the raw values coming out of a sucessful CLI parse into the annotated types.
+the raw values coming out of a successful CLI parse into the annotated types.
 
 As such you can again, opt out of the "Mapping inference" entirely, by supplying
 your own `parse` function.
@@ -261,7 +261,7 @@ item in the sequence.
 [BinaryIO](typing.BinaryIO) and [TextIO](typing.TextIO) are used to produce an
 open file handle to the file path given by the CLI input for that argument.
 
-This can be thought of as equivlent to `open("foo.py")`, given some
+This can be thought of as equivalent to `open("foo.py")`, given some
 `cli --foo foo.py`, which is roughly equivalent to the
 [FileType](https://docs.python.org/3/library/argparse.html#argparse.FileType)
 feature from `argparse`.

@@ -44,7 +44,7 @@ class Command: ...
 
 @backends
 def test_invoke_top_level_command(caplog, backend):
-    """Assert multiple paths to explicit dependencies are still fullfilled.
+    """Assert multiple paths to explicit dependencies are still fulfilled.
 
     * Ensure they are only called once overall, regardless of the number of downstream dependents.
     """

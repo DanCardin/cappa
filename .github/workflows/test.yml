@@ -84,9 +84,19 @@ jobs:
           name: python=${{ matrix.python-version }}-pydantic=${{matrix.pydantic-version}}
           files: coverage.xml
 
+  typos:
+    name: Check for typos
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Actions Repository
+      uses: actions/checkout@v4
+    - name: Spell Check Repo
+      uses: crate-ci/typos@v1.30.0
+
   finish:
     needs:
       - test
+      - typos
     runs-on: ubuntu-latest
     steps:
       - name: Join

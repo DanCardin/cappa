@@ -16,7 +16,7 @@ from cappa.typing import T, assert_type, find_annotations
 if typing.TYPE_CHECKING:
     from cappa.arg import Arg
     from cappa.command import Command
-    from cappa.help import HelpFormatable
+    from cappa.help import HelpFormattable
 
 
 DEFAULT_SUBCOMMAND_GROUP = Group(3, "Subcommands", section=1)
@@ -68,7 +68,7 @@ class Subcommand:
         self,
         type_view: TypeView | None = None,
         field_name: str | None = None,
-        help_formatter: HelpFormatable | None = None,
+        help_formatter: HelpFormattable | None = None,
         propagated_arguments: list[Arg] | None = None,
         state: State | None = None,
     ) -> Self:
@@ -140,7 +140,7 @@ def infer_required(arg: Subcommand, annotation: TypeView) -> bool:
 def infer_options(
     arg: Subcommand,
     types: typing.Iterable[type],
-    help_formatter: HelpFormatable | None = None,
+    help_formatter: HelpFormattable | None = None,
     propagated_arguments: list[Arg] | None = None,
     state: State | None = None,
 ) -> dict[str, Command]:
