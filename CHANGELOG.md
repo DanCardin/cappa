@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.27
+
+### 0.27.0
+- feat: Add "Self" concept for invoke dependencies.
+
 ## 0.26
 
 ### 0.26.6

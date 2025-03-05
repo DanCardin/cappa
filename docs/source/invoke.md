@@ -151,13 +151,17 @@ These objects include:
   command/subcommand. For example:
 
   ```python
-  @dataclass
+  def foo(command: Example, subcmd: SubExample):
+      ...
+
+  @dataclass(invoke=foo)
   class SubExample:
       ...
 
   @dataclass
   class Example:
       subcommand: Annotated[SubExample, cappa.Subcommand]
+
   ```
 
   `Example` and `SubExample` will be available as implicit dependencies.
@@ -165,28 +169,34 @@ These objects include:
 - A [cappa.Command](cappa.Command), which provides the `Command` object
   corresponding to the command/subcommand that was parsed.
 
+- A [cappa.Self](cappa.Self), which can be used to produce the **current**
+  command/subcommand.
+
+  `Self` is primarily useful as a way to reuse generic invoke functions among
+  a number of separate subcommands. For example,
+
+  ```python
+  def invoke(self: Self):
+      print(self)
+
+  @command(invoke=invoke)
+  class Foo: ...
+
+  @command(invoke=invoke)
+  class Bar: ...
+  ```
+
 - A [cappa.Output](cappa.Output), which can be used to produce (themed)
   stdout/stderr output.
 
 ```{note}
-If there were another subcommand option, and the CLI invocation selected one or
-the other of the two subcommand options, only the selected subcommand would have
-been fulfilled.
+In CLIs with nested subcommand hierarchies, only the subcommand path to the
+user-selected subcommand will be materialized. That is to say, a subcommand
+which has not been selected will not be available as an invoke dependency.
 
-It's therefore programmer error to describe an `invoke` function hierarchy which
-depends on command options that would not have been constructed during parsing.
-```
-
-Given the implicit dependencies available to you, your `invoke` functions can
-accept an argument of that type, and it will be automatically provided to the
-function when invoked.
-
-```python
-def foo(command: Command, subcmd: Subcommand):
-    ...
-
-@cappa.command(invoke=foo)
-...
+It's therefore programmer error to describe an `invoke` function which
+depends on command options that would not have been constructed during parsing,
+based on where it is in the hierarchy.
 ```
 
 ### Explicit Dependencies

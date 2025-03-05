@@ -4,7 +4,7 @@ from cappa.completion.types import Completion
 from cappa.default import Confirm, Default, Env, Prompt, ValueFrom
 from cappa.file_io import FileMode
 from cappa.help import HelpFormattable, HelpFormatter
-from cappa.invoke import Dep
+from cappa.invoke import Dep, Self
 from cappa.output import Exit, HelpExit, Output
 from cappa.parse import unpack_arguments
 from cappa.state import State
@@ -37,6 +37,7 @@ __all__ = [
     "HelpFormatter",
     "Output",
     "Prompt",
+    "Self",
     "State",
     "Subcommand",
     "Subcommands",
