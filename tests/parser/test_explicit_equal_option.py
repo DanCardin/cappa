@@ -24,4 +24,4 @@ def test_value_contains_equal(backend):
         value: Annotated[str, cappa.Arg(long=True)]
 
     result = parse(Args, "--value='var == val'", backend=backend)
-    assert result == Args(value="val='var == val'")
+    assert result == Args(value="'var == val'")
