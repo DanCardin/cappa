@@ -334,7 +334,7 @@ class RawOption:
         name = arg
         value = None
         if is_explicit:
-            name, value = arg.split("=")
+            name, value = arg.split("=", 1)
         return cls(name=name, is_long=is_long, value=value)
 
 
