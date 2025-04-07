@@ -2,6 +2,9 @@
 
 ## 0.27
 
+### 0.27.1
+- fix: Handle multiple = in explicit arg.
+
 ### 0.27.0
 - feat: Add "Self" concept for invoke dependencies.
 

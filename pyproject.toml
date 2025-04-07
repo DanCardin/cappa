@@ -1,6 +1,6 @@
 [project]
 name = "cappa"
-version = "0.27.0"
+version = "0.27.1"
 description = "Declarative CLI argument parser."
 
 urls = { repository = "https://github.com/dancardin/cappa" }
@@ -75,7 +75,7 @@ check_untyped_defs = true
 extend-ignore-re = [".*#.*typos: ignore[^\\n]*\\n"]
 
 [tool.typos.default.extend-identifiers]
- typ = "typ"
+typ = "typ"
 
 [tool.pytest.ini_options]
 doctest_optionflags = "NORMALIZE_WHITESPACE IGNORE_EXCEPTION_DETAIL ELLIPSIS"
