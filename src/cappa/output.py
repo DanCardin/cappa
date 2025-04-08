@@ -4,11 +4,8 @@ import sys
 import typing
 from dataclasses import dataclass, field
 
-from rich.console import Console, NewLine
-from rich.markdown import Markdown
+from rich.console import Console, RenderableType
 from rich.markup import escape
-from rich.padding import Padding
-from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 from typing_extensions import TypeAlias
@@ -28,7 +25,7 @@ __all__ = [
 ]
 
 
-Displayable: TypeAlias = typing.Union[str, Text, Table, NewLine, Markdown, Padding]
+Displayable: TypeAlias = RenderableType
 
 
 theme: Theme = Theme(
