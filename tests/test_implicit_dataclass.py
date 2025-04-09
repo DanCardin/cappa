@@ -13,7 +13,7 @@ class Example:
 @backends
 def test_invoke_top_level_command(backend):
     result = parse(Example, "4", "foo", backend=backend)
-    assert result == Example(bar=4, name="foo")
+    assert result == Example(bar=4, name="foo")  # pyright: ignore
 
 
 @backends

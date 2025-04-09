@@ -330,11 +330,11 @@ def command(
         help_formatter: Override the default help formatter.
     """
 
-    def wrapper(_decorated_cls):
+    def wrapper(_decorated_cls: T) -> T:
         if inspect.isclass(_decorated_cls) and not detect(_decorated_cls):
-            _decorated_cls = dataclasses.dataclass(_decorated_cls)
+            _decorated_cls = dataclasses.dataclass(_decorated_cls)  # type: ignore
 
-        command: Command = Command.get(_decorated_cls)
+        command: Command = Command.get(_decorated_cls)  # type: ignore
         instance = dataclasses.replace(
             command,
             invoke=invoke,
@@ -347,16 +347,16 @@ def command(
             deprecated=deprecated,
             help_formatter=help_formatter,
         )
-        _decorated_cls.__cappa__ = instance
+        _decorated_cls.__cappa__ = instance  # type: ignore
 
         # Functions (and in particular class methods, must return a function object in order
         # to be attached as methods) cannot be nested, so we can just directly return it.
         if inspect.isfunction(_decorated_cls):
-            return _decorated_cls
+            return _decorated_cls  # type: ignore
 
         # Whereas classes will **generally** be the **exact** object as `_decorated_cls` was,
         # except in the case of dynamically generated subclasses used for detecting methods.
-        return instance.cmd_cls
+        return instance.cmd_cls  # type: ignore
 
     if _cls is not None:
         return wrapper(_cls)

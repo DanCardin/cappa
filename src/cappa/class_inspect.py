@@ -44,7 +44,7 @@ class DataclassField(Field):
                 continue
             field = cls(
                 name=f.name,
-                annotation=f.type,
+                annotation=f.type,  # pyright: ignore
                 default=f.default if f.default is not dataclasses.MISSING else Empty,
                 default_factory=f.default_factory
                 if f.default_factory is not dataclasses.MISSING
@@ -82,7 +82,7 @@ class AttrsField(Field):
 class MsgspecField(Field):
     @classmethod
     def collect(cls, typ: type) -> list[Self]:
-        import msgspec
+        import msgspec  # pyright: ignore
 
         fields = []
         for f in msgspec.structs.fields(typ):

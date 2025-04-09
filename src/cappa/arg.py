@@ -28,6 +28,7 @@ from cappa.state import State
 from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import (
     Doc,
+    DocType,
     T,
     detect_choices,
     find_annotations,
@@ -181,7 +182,7 @@ class Arg(typing.Generic[T]):
     short: bool | str | list[str] | None = False
     long: bool | str | list[str] | None = False
     count: bool = False
-    default: T | None | EmptyType = Empty
+    default: T | EmptyType | None = Empty
     help: str | None = None
     parse: Callable[..., T] | Sequence[Callable[..., T]] | None = None
 
@@ -217,7 +218,7 @@ class Arg(typing.Generic[T]):
 
         exclusive = len(args) > 1
 
-        docs = find_annotations(type_view, Doc)
+        docs: list[DocType] = find_annotations(type_view, Doc)
         fallback_help = docs[0].documentation if docs else fallback_help
 
         # Dataclass field metadata takes precedence if it exists.

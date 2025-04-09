@@ -256,7 +256,7 @@ def parse_file_io(typ: MaybeTypeView[T]) -> Parser[T]:
             if type_view.is_subclass_of(typing.BinaryIO):
                 file_mode.mode += "b"
 
-        return file_mode(value)
+        return file_mode(value)  # type: ignore
 
     return file_io_mapper
 

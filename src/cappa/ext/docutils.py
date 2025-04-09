@@ -4,7 +4,7 @@ import importlib
 import importlib.util
 import io
 import logging
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar, Sequence, cast
 
 from rich.console import Console
 
@@ -38,12 +38,12 @@ def setup(app) -> None:  # pragma: no cover
 class CappaDirective(Directive):
     has_content = False
     required_arguments = 1
-    option_spec: ClassVar[dict[str, Any]] = {
+    option_spec: ClassVar[dict[str, Any] | None] = {
         "style": directives.unchanged,
         "terminal-width": directives.unchanged,
     }
 
-    def run(self) -> list[nodes.Node]:
+    def run(self) -> Sequence[nodes.Node]:
         path = self.arguments[0]
         style = self.options.get("style", "terminal")
         terminal_width = int(self.options.get("terminal-width", "0"))
