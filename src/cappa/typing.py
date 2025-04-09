@@ -9,18 +9,26 @@ from typing_extensions import assert_never
 
 from cappa.type_view import TypeView
 
-try:
-    from typing_extensions import Doc
 
-    doc_type: type = Doc
+class DocType(typing.Protocol):
+    documentation: str
+
+
+try:
+    from typing_extensions import Doc as TypingExtensionsDoc
+
+    Doc: type[DocType] = TypingExtensionsDoc
 except ImportError:  # pragma: no cover
 
     @dataclass
-    class Doc:  # type: ignore
+    class InternalDoc:
         documentation: str
+
+    Doc = InternalDoc
 
 
 __all__ = [
+    "Doc",
     "T",
     "assert_never",
     "assert_type",

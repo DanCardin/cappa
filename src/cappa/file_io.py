@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
+from typing import IO, Any, BinaryIO, TextIO
 
 import cappa
 
@@ -31,7 +32,7 @@ class FileMode:
 
     error_code: int = 1
 
-    def __call__(self, filename: str):
+    def __call__(self, filename: str) -> IO[Any] | TextIO | BinaryIO:
         """Open the given `filename` and return the file handle.
 
         Supply "-" as the filename to read from stdin or write to stdout,

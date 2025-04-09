@@ -2,6 +2,9 @@
 
 ## 0.27
 
+### 0.27.2
+- fix: Ensure API doesnt yield pyright errors in user code.
+
 ### 0.27.1
 - fix: Handle multiple = in explicit arg.
 

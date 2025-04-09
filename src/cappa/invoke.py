@@ -87,7 +87,7 @@ class Resolved(typing.Generic[C]):
 
                 # And then enter before producing the result.
                 if requires_management or is_context_manager:
-                    result = stack.enter_context(result)
+                    result = stack.enter_context(result)  # pyright: ignore
 
             self.result = result
             self.is_resolved = True
@@ -127,7 +127,7 @@ class Resolved(typing.Generic[C]):
                 )
 
                 if requires_management or is_context_manager:
-                    result = await stack.enter_async_context(result)
+                    result = await stack.enter_async_context(result)  # pyright: ignore
                 elif isinstance(result, typing.Coroutine):
                     result = await result
 
@@ -221,7 +221,7 @@ def resolve_invoke_handler(
         command_type = command.cmd_cls
         instance = implicit_deps.get(command_type)
         if callable(instance):
-            return instance.__call__
+            return instance.__call__  # pyright: ignore
 
         raise InvokeResolutionError(
             f"Cannot call `invoke` for a command which does not have an invoke handler: {command.cmd_cls}."
@@ -254,7 +254,7 @@ def resolve_invoke_handler(
     if not callable(fn):
         raise InvokeResolutionError(f"`{fn}` does not reference a valid callable.")
 
-    return fn
+    return typing.cast(Callable, fn)
 
 
 def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:

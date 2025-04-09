@@ -1,4 +1,4 @@
-import pandas
+import pandas  # pyright: ignore
 
 from cappa.output import Output
 from defer_import.main import MeanCommand

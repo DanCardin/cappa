@@ -1,6 +1,6 @@
 [project]
 name = "cappa"
-version = "0.27.1"
+version = "0.27.2"
 description = "Declarative CLI argument parser."
 
 urls = { repository = "https://github.com/dancardin/cappa" }
@@ -22,13 +22,14 @@ dev-dependencies = [
     "pytest >=8.1.1,<9",
     "coverage >= 7.3.0",
     "mypy >= 1.0.0",
+    "pyright >= 1.1.398",
     "ruff >= 0.9.0",
     "docutils >= 0.20.0",
     "types-docutils >= 0.20.0",
 
     "attrs",
     "pydantic",
-    "msgspec; python_version < '3.13'",
+    "msgspec >= 0.19.0; python_version >= '3.9'",
 ]
 
 [tool.ruff]

@@ -103,7 +103,7 @@ class Command(typing.Generic[T]):
 
         assert not isinstance(obj, Command)
         return cls(
-            obj,
+            obj,  # pyright: ignore
             help_formatter=help_formatter,
         )
 

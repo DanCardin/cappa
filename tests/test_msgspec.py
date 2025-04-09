@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from typing import Optional
 
 from typing_extensions import Annotated
@@ -8,8 +7,11 @@ from typing_extensions import Annotated
 import cappa
 from tests.utils import backends, parse
 
-if sys.version_info < (3, 13):
-    import msgspec
+try:
+    import msgspec  # pyright: ignore
+except ImportError:  # pragma: no cover
+    pass
+else:
 
     class PydanticCommand(msgspec.Struct):
         name: str
