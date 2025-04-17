@@ -36,25 +36,60 @@ a given CLI):
   <summary><h2>Class Based, parse</h2></summary>
 
   ```python
+  from __future__ import annotations
   from dataclasses import dataclass, field
-  import cappa
   from typing import Literal
   from typing_extensions import Annotated
-
+  import cappa
+  
   @dataclass
   class Example:
-      positional_arg: str = "optional"
-      boolean_flag: bool = False
-      single_option: Annotated[int | None, cappa.Arg(short=True, help="A number")] = None
-      multiple_option: Annotated[tuple[Literal["one", "two", "three"]], cappa.Arg(long=True)] = ()
-
-  args: Example = cappa.parse(Example, backend=cappa.backend)
+      # Normal types are by default inferred as positional arguments
+      positional: str = "optional"
+  
+      # Except boolean types, which are inferred as flags
+      flag: bool = False
+  
+      # Option that only accepts the long name
+      option: Annotated[int | None, cappa.Arg(long=True, help="A number")] = None
+  
+      # Option accepted many times
+      many_options: Annotated[
+          list[Literal["one", "two", "three"]], cappa.Arg(short=True)
+      ] = field(default_factory=list)
+  
+      # Single option, accepting many values
+      three_values: Annotated[tuple[str, str, int] | None, cappa.Arg(long=True)] = None
+  
+  args = cappa.parse(Example, backend=cappa.backend)
   print(args)
   ```
 
   Produces the following CLI:
 
   ![help text](./docs/source/_static/example.svg)
+
+  With examples of its usage like:
+
+  ```bash
+  $ python example.py
+  Example(positional='optional', flag=False, option=None, many_options=[], three_values=None)
+  
+  $ python example.py foo
+  Example(positional='foo', flag=False, option=None, many_options=[], three_values=None)
+  
+  $ python example.py --flag
+  Example(positional='optional', flag=True, option=None, many_options=[], three_values=None)
+  
+  $ python example.py --option 4
+  Example(positional="optional", flag=False, option=4, many_options=[], three_values=None)
+  
+  $ python example.py -m one -m three
+  Example(positional='optional', flag=False, option=None, many_options=['one', 'three'], three_values=None)
+  
+  $ python example.py --three-values a b 4
+  Example(positional='optional', flag=False, option=None, many_options=[], three_values=('a', 'b', 4))
+  ```
 
   In this way, you can turn any dataclass-like object (with some additional
   annotations, depending on what you're looking for) into a CLI.
