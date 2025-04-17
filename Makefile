@@ -23,4 +23,4 @@ format:
 	uv run --no-sync ruff format src tests examples
 
 readme-image:
-	FORCE_COLOR=true uv run --no-sync python readme.py --help | ansitoimg --title '' docs/source/_static/example.svg
+	FORCE_COLOR=true uv run --no-sync python readme.py --help | ansitoimg --title '' --width 80 docs/source/_static/example.svg
