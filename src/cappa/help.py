@@ -17,12 +17,12 @@ from cappa.default import Default, DefaultFormatter
 from cappa.output import Displayable
 from cappa.subcommand import Subcommand
 from cappa.type_view import Empty
-from cappa.typing import assert_type
+from cappa.typing import T, assert_type
 
 if typing.TYPE_CHECKING:
     from cappa.command import Command
 
-HelpFormattable: TypeAlias = typing.Callable[["Command", str], typing.List[Displayable]]
+HelpFormattable: TypeAlias = typing.Callable[["Command[T]", str], typing.List[Displayable]]
 ArgGroup: TypeAlias = typing.Tuple[
     typing.Tuple[str, bool], typing.List[typing.Union[Arg, Subcommand]]
 ]

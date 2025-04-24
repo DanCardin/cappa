@@ -75,7 +75,7 @@ class BarkCommand: ...
 
 
 # invoke cli parsing
-def main(argv=None):
+def main(argv: list[str] | None = None):
     logging.basicConfig()
 
     args: Example = cappa.parse(Example, argv=argv, version="1.2.3")

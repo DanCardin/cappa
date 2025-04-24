@@ -20,7 +20,7 @@ class AddCommand:
     def __call__(self):
         path = Path("todo.json")
 
-        data = []
+        data: list[str] = []
         if path.exists():
             data = json.loads(path.read_text())
 
@@ -34,7 +34,7 @@ class ListCommand:
     def __call__(self, output: cappa.Output):
         path = Path("todo.json")
 
-        data = []
+        data: list[str] = []
         if path.exists():
             data = json.loads(path.read_text())
 

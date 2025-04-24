@@ -13,6 +13,7 @@ lint:
 	uv run --no-sync ruff check src tests examples || exit 1
 	uv run --no-sync --all-extras mypy src tests examples || exit 1
 	uv run --no-sync --all-extras pyright src tests examples || exit 1
+	uv run --no-sync --all-extras basedpyright examples -p examples/pyrightconfig.json || exit 1
 	uv run --no-sync ruff format --check src tests examples || exit 1
 
 lint-typos:
