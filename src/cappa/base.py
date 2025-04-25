@@ -291,6 +291,13 @@ def parse_command(
     return command, parsed_command, instance, concrete_output, state
 
 
+class FuncOrClassDecorator(typing.Protocol):
+    @typing.overload
+    def __call__(self, x: type[T], /) -> type[T]: ...
+    @typing.overload
+    def __call__(self, x: T, /) -> T: ...
+
+
 @typing.overload
 def command(
     _cls: type[T],
@@ -317,7 +324,7 @@ def command(
     default_long: bool = False,
     deprecated: bool = False,
     help_formatter: HelpFormattable = HelpFormatter.default,
-) -> typing.Callable[[type[T]], type[T]]: ...
+) -> FuncOrClassDecorator: ...
 @typing.overload
 def command(
     _cls: T,
@@ -336,7 +343,7 @@ def command(
 
 @dataclass_transform()
 def command(
-    _cls: T | type[T] | None = None,
+    _cls: type[T] | T | None = None,
     *,
     name: str | None = None,
     help: str | None = None,
@@ -347,7 +354,7 @@ def command(
     default_long: bool = False,
     deprecated: bool = False,
     help_formatter: HelpFormattable = HelpFormatter.default,
-) -> T | type[T] | typing.Callable[[type[T]], type[T]]:
+) -> type[T] | T | FuncOrClassDecorator:
     """Register a cappa CLI command/subcomment.
 
     Args:
