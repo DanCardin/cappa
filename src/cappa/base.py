@@ -303,7 +303,7 @@ def command(
     default_short: bool = False,
     default_long: bool = False,
     deprecated: bool = False,
-    help_formatter: HelpFormattable[T] = HelpFormatter.default,
+    help_formatter: HelpFormattable = HelpFormatter.default,
 ) -> type[T]: ...
 @typing.overload
 def command(
@@ -316,7 +316,7 @@ def command(
     default_short: bool = False,
     default_long: bool = False,
     deprecated: bool = False,
-    help_formatter: HelpFormattable[T] = HelpFormatter.default,
+    help_formatter: HelpFormattable = HelpFormatter.default,
 ) -> typing.Callable[[type[T]], type[T]]: ...
 @typing.overload
 def command(
@@ -330,7 +330,7 @@ def command(
     default_short: bool = False,
     default_long: bool = False,
     deprecated: bool = False,
-    help_formatter: HelpFormattable[T] = HelpFormatter.default,
+    help_formatter: HelpFormattable = HelpFormatter.default,
 ) -> T: ...
 
 
@@ -346,7 +346,7 @@ def command(
     default_short: bool = False,
     default_long: bool = False,
     deprecated: bool = False,
-    help_formatter: HelpFormattable[T] = HelpFormatter.default,
+    help_formatter: HelpFormattable = HelpFormatter.default,
 ) -> T | type[T] | typing.Callable[[type[T]], type[T]]:
     """Register a cappa CLI command/subcomment.
 

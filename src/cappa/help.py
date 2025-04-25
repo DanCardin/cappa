@@ -22,7 +22,7 @@ from cappa.typing import T, assert_type
 if typing.TYPE_CHECKING:
     from cappa.command import Command
 
-HelpFormattable: TypeAlias = typing.Callable[["Command[T]", str], typing.List[Displayable]]
+HelpFormattable: TypeAlias = typing.Callable[["Command[typing.Any]", str], typing.List[Displayable]]
 ArgGroup: TypeAlias = typing.Tuple[
     typing.Tuple[str, bool], typing.List[typing.Union[Arg, Subcommand]]
 ]
