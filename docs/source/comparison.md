@@ -3,12 +3,10 @@
 A fair question. The incumbents, with click/typer and argparse have been readily
 serving python for a long time, and will certainly continue to do so.
 
-Cappa is greatly inspired by the "derive API" from Rust's
-[Clap](https://docs.rs/clap/latest/clap/_derive/index.html) library, which is
-really really nice to use, because arriving at a specific API shape, and interacting
-with the result is so natural. It became obvious that
-python could obviously support a similar API and it was surprising that one
-didn't already exist.
+Having used the "derive API" from Rust's [Clap](https://docs.rs/clap/latest/clap/_derive/index.html)
+library, it's just really really nice to use, because the API is so natural. It
+became obvious that python could obviously support a similar API and it was
+surprising that one didn't already exist.
 
 Hopefully with `cappa`, you get the flexibility to utilize either the
 command-forward design given by `click`/`typer` or the manual handling given by

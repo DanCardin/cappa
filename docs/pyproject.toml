@@ -18,6 +18,7 @@ dependencies = [
     "sphinx-copybutton",
     "sphinx-pyproject >= 0.3.0",
     "sphinx-togglebutton >= 0.3.2",
+    "sphinx-toolbox (>=3.9.0,<4.0.0)",
 ]
 
 [tool.poetry.dev-dependencies]
