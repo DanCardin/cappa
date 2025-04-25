@@ -40,7 +40,7 @@ def parse(
     completion: bool | Arg[typing.Any] = True,
     theme: Theme | None = None,
     output: Output | None = None,
-    help_formatter: HelpFormattable[T] | None = None,
+    help_formatter: HelpFormattable | None = None,
     state: State[typing.Any] | None = None,
 ) -> T:
     """Parse the command, returning an instance of `obj`.
@@ -106,7 +106,7 @@ def invoke(
     completion: bool | Arg[typing.Any] = True,
     theme: Theme | None = None,
     output: Output | None = None,
-    help_formatter: HelpFormattable[typing.Any] | None = None,
+    help_formatter: HelpFormattable | None = None,
     state: State[typing.Any] | None = None,
 ):
     """Parse the command, and invoke the selected async command or subcommand.
