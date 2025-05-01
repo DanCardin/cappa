@@ -110,7 +110,9 @@ class Output:
             self.error(e, help=help, short_help=short_help)
 
     def output(
-        self, message: list[Displayable] | Displayable | Exit | str | None, **context: Displayable | list[Displayable] | None
+        self,
+        message: list[Displayable] | Displayable | Exit | str | None,
+        **context: Displayable | list[Displayable] | None,
     ):
         """Output a message to the `output_console`.
 
