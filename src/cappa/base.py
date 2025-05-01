@@ -341,7 +341,7 @@ def command(
 ) -> T: ...
 
 
-@dataclass_transform()
+@dataclass_transform()  # type: ignore[misc]
 def command(
     _cls: type[T] | T | None = None,
     *,

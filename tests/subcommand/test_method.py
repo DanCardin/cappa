@@ -23,13 +23,13 @@ class HasExecutableMethods:
     @cappa.command
     def add(self, some_dep: Annotated[int, cappa.Dep(some_dep)]) -> int:
         """Add two numbers."""
-        if self.add:
+        if self.add:  # type: ignore[truthy-function]
             return self.arg + some_dep
         return self.arg
 
     @cappa.command(help="Subtract two numbers")
     def subtract(self, other: int) -> int:
-        if self.add:
+        if self.add:  # type: ignore[truthy-function]
             return self.arg - other
         return self.arg
 
