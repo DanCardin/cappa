@@ -25,6 +25,7 @@ if typing.TYPE_CHECKING:
     from cappa.arg import Arg
 
 T = typing.TypeVar("T")
+U = typing.TypeVar("U")
 
 
 def parse(
@@ -32,15 +33,15 @@ def parse(
     *,
     argv: list[str] | None = None,
     input: typing.TextIO | None = None,
-    backend: typing.Callable | None = None,
+    backend: typing.Callable[..., typing.Any] | None = None,
     color: bool = True,
-    version: str | Arg | None = None,
-    help: bool | Arg = True,
-    completion: bool | Arg = True,
+    version: str | Arg[typing.Any] | None = None,
+    help: bool | Arg[typing.Any] = True,
+    completion: bool | Arg[typing.Any] = True,
     theme: Theme | None = None,
     output: Output | None = None,
     help_formatter: HelpFormattable | None = None,
-    state: State | None = None,
+    state: State[typing.Any] | None = None,
 ) -> T:
     """Parse the command, returning an instance of `obj`.
 
@@ -91,22 +92,22 @@ def parse(
 
 
 def invoke(
-    obj: type | Command,
+    obj: type | Command[typing.Any],
     *,
-    deps: typing.Sequence[typing.Callable]
-    | typing.Mapping[typing.Callable, Dep | typing.Any]
+    deps: typing.Sequence[typing.Callable[..., typing.Any]]
+    | typing.Mapping[typing.Callable[..., typing.Any], Dep[typing.Any] | typing.Any]
     | None = None,
     argv: list[str] | None = None,
     input: typing.TextIO | None = None,
-    backend: typing.Callable | None = None,
+    backend: typing.Callable[..., typing.Any] | None = None,
     color: bool = True,
-    version: str | Arg | None = None,
-    help: bool | Arg = True,
-    completion: bool | Arg = True,
+    version: str | Arg[typing.Any] | None = None,
+    help: bool | Arg[typing.Any] = True,
+    completion: bool | Arg[typing.Any] = True,
     theme: Theme | None = None,
     output: Output | None = None,
     help_formatter: HelpFormattable | None = None,
-    state: State | None = None,
+    state: State[typing.Any] | None = None,
 ):
     """Parse the command, and invoke the selected async command or subcommand.
 
@@ -290,20 +291,70 @@ def parse_command(
     return command, parsed_command, instance, concrete_output, state
 
 
-@dataclass_transform()
+class FuncOrClassDecorator(typing.Protocol):
+    @typing.overload
+    def __call__(self, x: type[T], /) -> type[T]: ...
+    @typing.overload
+    def __call__(self, x: T, /) -> T: ...
+
+
+@typing.overload
 def command(
-    _cls=None,
+    _cls: type[T],
     *,
     name: str | None = None,
     help: str | None = None,
     description: str | None = None,
-    invoke: typing.Callable | str | None = None,
+    invoke: typing.Callable[..., typing.Any] | str | None = None,
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
     deprecated: bool = False,
     help_formatter: HelpFormattable = HelpFormatter.default,
-):
+) -> type[T]: ...
+@typing.overload
+def command(
+    *,
+    name: str | None = None,
+    help: str | None = None,
+    description: str | None = None,
+    invoke: typing.Callable[..., typing.Any] | str | None = None,
+    hidden: bool = False,
+    default_short: bool = False,
+    default_long: bool = False,
+    deprecated: bool = False,
+    help_formatter: HelpFormattable = HelpFormatter.default,
+) -> FuncOrClassDecorator: ...
+@typing.overload
+def command(
+    _cls: T,
+    *,
+    name: str | None = None,
+    help: str | None = None,
+    description: str | None = None,
+    invoke: typing.Callable[..., typing.Any] | str | None = None,
+    hidden: bool = False,
+    default_short: bool = False,
+    default_long: bool = False,
+    deprecated: bool = False,
+    help_formatter: HelpFormattable = HelpFormatter.default,
+) -> T: ...
+
+
+@dataclass_transform()  # type: ignore[misc]
+def command(
+    _cls: type[T] | T | None = None,
+    *,
+    name: str | None = None,
+    help: str | None = None,
+    description: str | None = None,
+    invoke: typing.Callable[..., typing.Any] | str | None = None,
+    hidden: bool = False,
+    default_short: bool = False,
+    default_long: bool = False,
+    deprecated: bool = False,
+    help_formatter: HelpFormattable = HelpFormatter.default,
+) -> type[T] | T | FuncOrClassDecorator:
     """Register a cappa CLI command/subcomment.
 
     Args:
@@ -330,7 +381,7 @@ def command(
         help_formatter: Override the default help formatter.
     """
 
-    def wrapper(_decorated_cls: T) -> T:
+    def wrapper(_decorated_cls: U) -> U:
         if inspect.isclass(_decorated_cls) and not detect(_decorated_cls):
             _decorated_cls = dataclasses.dataclass(_decorated_cls)  # type: ignore
 
