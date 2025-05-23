@@ -2,6 +2,9 @@
 
 ## 0.27
 
+### 0.27.3
+- fix: Make rich/typing-extensions version requirements more precise.
+
 ### 0.27.2
 - fix: Ensure API doesnt yield pyright errors in user code.
 
