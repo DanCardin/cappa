@@ -23,7 +23,7 @@ commandline arguments and hand you an `Example` instance like so:
 
 ```python
 def main():
-    result: Example = cappa.parse(Example)
+    example: Example = cappa.parse(Example)
     # Do things with your Example instance...
     if example.flag:
         print(example.name)
@@ -49,7 +49,6 @@ class Example
 cappa.invoke(Example)
 ```
 
-Note, in a basic example like this, `invoke` has essentially no advantage at
-all. When used in a command with subcommands (with their own `invoke` options)
-it becomes more useful! When used with [Deps](./invoke.md#invoke-dependencies),
-it becomes more useful still.
+Note, in a basic example like this, [cappa.invoke](cappa.invoke) is not necessarily
+providing a lot of utility. It is primarily useful in CLIs with subcommands, where
+dispatching to disparate subcommand target functions can become boilerplate.

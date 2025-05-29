@@ -3,13 +3,14 @@
 A fair question. The incumbents, with click/typer and argparse have been readily
 serving python for a long time, and will certainly continue to do so.
 
-Having use the "derive API" from Rust's
-[Clap](https://docs.rs/clap/latest/clap/_derive/index.html) library, it's just
-really really nice to use, because the API is so natural. It became obvious that
+Cappa is greatly inspired by the "derive API" from Rust's
+[Clap](https://docs.rs/clap/latest/clap/_derive/index.html) library, which is
+really really nice to use, because arriving at a specific API shape, and interacting
+with the result is so natural. It became obvious that
 python could obviously support a similar API and it was surprising that one
 didn't already exist.
 
-Hopefully with `cappa`, you get the flexibility to utilized either the
+Hopefully with `cappa`, you get the flexibility to utilize either the
 command-forward design given by `click`/`typer` or the manual handling given by
 `argparse` (and even `clap`).
 
@@ -186,8 +187,8 @@ flattened list of options, that it's very focused on instantiating a pydantic mo
 from a given set of CLI arguments, rather than describing an arbitrarily shaped CLI.
 
 It does appear to support subcommands and positional arguments, but it's (imo) done
-sort of weirdly, which seems to be the result of bolting the CLI parsing onto pydantic rather
-than the other way around. 
+sort of weirdly; which seems to be the result of bolting the CLI parsing onto pydantic rather
+than the other way around.
 
 There appear to be a lot of maybe convenient automatic parsing features that translate
 arguments from various json or other input formats into the model fields. If you **dont**
