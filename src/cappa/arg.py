@@ -103,7 +103,7 @@ class Group:
             than ``order``, in order to facilitate meta-ordering amongst kinds of groups
             (such as "meta" arguments (``--help``, ``--version``, etc) and subcommands).
             The default ``section`` for any normal argument/``Group`` is 0, for
-            ``Subcommand``s it is 1, and for "meta" arguments it is 2.
+            ``Subcommand`` it is 1, and for "meta" arguments it is 2.
     """
 
     order: int = dataclasses.field(default=0, compare=False)

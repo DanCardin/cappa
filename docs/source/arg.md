@@ -283,7 +283,7 @@ CLI value.
 [cappa.ValueFrom](cappa.ValueFrom) is a means for calling an arbitrary function at mapping time,
 to allow for dynamic default values.
 
-```{info}
+```{note}
 A dataclass `field(default_factory=list)` is internally the same thing as `default=ValueFrom(list)`!
 ```
 
@@ -306,7 +306,7 @@ As noted above, a value produced by `ValueFrom` **does not** invoke the `Arg.par
 because the called function is programmer-supplied and can/should just return the correct end
 value.
 
-```{info}
+```{note}
 If there are scenarios where `ValueFrom` **should** fail to provide a value and fall back to the
 class-level, or `Default`-level default value, it should return `cappa.Empty` in order to indicate
 to cappa that it shouldn't accept the returned value as the **actual** value to used when constructing
@@ -329,7 +329,7 @@ Defaults to `True` (e.g. `DefaultFormatter(format='{default}', show=True)`). Thi
 `DefaultFormatter.show` enables/disables the display of the given `Arg.default`. While
 the literal default value is formatted through `DefaultFormatter.format`.
 
-```{info}
+```{note}
 The `str.format` context is provided as named `default` format arg. That is to say, the literal
 default value can be templated into the string through the named `{default}` syntax.
 
@@ -424,6 +424,7 @@ An explicit `group=` can still be used in concert with the above syntax to contr
 the `order` and name of the resultant group.
 ```
 
+(arg-parse)=
 ## `Arg.parse`
 
 `Arg.parse` can be used to provide **specific** instruction to cappa as to how to

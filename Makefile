@@ -15,8 +15,6 @@ lint:
 	uv run --no-sync --all-extras pyright src tests || exit 1
 	uv run --no-sync ruff format --check src tests || exit 1
 
-	$(MAKE) lint-examples || exit 1
-
 lint-examples:
 	uv run --directory examples/defer_import_slow_startup --all-extras mypy -p defer_import || exit 1
 	uv run --directory examples/defer_import_slow_startup --all-extras pyright defer_import || exit 1

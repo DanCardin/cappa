@@ -148,7 +148,11 @@ class Output:
         )
         self.write(self.output_console, message)
 
-    def error(self, message: Outputable, **context: Displayable | list[Displayable] | None,):
+    def error(
+        self,
+        message: Outputable,
+        **context: Displayable | list[Displayable] | None,
+    ):
         """Output a message to the `error_console`.
 
         Additional `**context` can be supplied into the `error_format` string template.

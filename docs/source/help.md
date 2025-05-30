@@ -161,13 +161,54 @@ parse(Command, help_formatter=HelpFormatter(default_format="(Default `{default}`
 
 ### Customizing help formatter "sources"
 
-The default `arg_format` is `("{help}", "{choices}", "{default}")`. That means, given
-some argument: `foo: Annotated[Literal["one", "two"], Arg(help="Foo.")] = "two"`, the
-help text will be rendered as `Foo. Valid options: one, two. (Default: two)`
+The default `arg_format` is:
 
-`arg_format` can be any of: A string, a callable, or a sequence of strings or callables.
-Sequences of values will be joined together with an empty space, and **empty strings or `None`
-will be ignored**.
+```python
+    arg_format: ArgFormat = (
+        Markdown("{help}"),
+        Markdown("{choices}"),
+        Markdown("{default}", style="dim italic"),
+    )
+```
+
+
+This means each individual argument's help text will be comprised of 3 `Markdown` interpreted
+sections concatenated together.
+
+Each section may be either `Text` or `Markdown` and accepts any styling customization
+allowed by that primitive.
+
+For example, some argument: `foo: Annotated[Literal["one", "two"], Arg(help="Foo.")] = "two"`.
+The rendered help text will be will (by default) look like: `Foo. Valid options: one, two. (Default: two)`
+
+`arg_format` may be any of:
+
+* A `Text`/`Markdown`
+* A string: This will be coerced to a rich `Text` of the provided string
+* A callable: Of shape `Callable[[Arg], str | None]` or stricter, returning the formatted help text
+
+  An example of this might look like:
+
+  ```python
+  from cappa import parse, HelpFormatter, Arg
+  
+  class Command:
+      foo: Annotated[str, Arg(help="Help text.", deprecated=True)] = "foo"
+  
+  def deprecated(arg: Arg) -> str | None:
+      if arg.deprecated:
+          return "Deprecrated"
+      return None
+  
+  parse(Command, help_formatter=HelpFormatter(arg_format=("{default}", "{help}", deprecated))
+  ```
+  
+  Resulting in something like `(Default: foo) Help text. Deprecrated`.
+
+* A sequence: Of any of the above. Sequences will be joined together with an empty
+  space.
+
+Any arg_format segment who's ultimate formatting results in an empty string or `None` will be omitted.
 
 The **purpose** of allowing sequences of individual segments is to ensure consistent
 formatting when individual format options are not used. For example `"{help} {default}"`
@@ -175,27 +216,10 @@ would otherwise yield `Foo. ` or ` (Default: foo)` (i.e. trailing or leading spa
 As such, where formatting may be variable (like with `default`), they should be split
 into different segments.
 
-Further, if simple format strings are not enough to ensure correct formatting, a segment
-can alternatively be a callable (`Callable[[Arg], str | None]` or stricter). Again, if that
-segment returns `None` or `""`, it will be omitted.
-
 The following format string identifiers are included in the format context for each
-segment: `help`, `default` (which in turn is rendered with `default_format`), `choices`, and `arg`.
+segment:
 
-An example of this might look like:
-
-```python
-from cappa import parse, HelpFormatter, Arg
-
-class Command:
-    foo: Annotated[str, Arg(help="Help text.", deprecated=True)] = "foo"
-
-def deprecated(arg: Arg) -> str | None:
-    if arg.deprecated:
-        return "Deprecrated"
-    return None
-
-parse(Command, help_formatter=HelpFormatter(arg_format=("{default}", "{help}", deprecated))
-```
-
-Resulting in something like `(Default: foo) Help text. Deprecrated`.
+* `{help}`: The `Arg.help` value
+* `{default}`: The `Arg.default` will first be rendered with `default_format`.
+* `{choices}`: `The `Arg.choices` value
+* `{arg}`: The `Arg` itself.

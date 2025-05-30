@@ -64,6 +64,7 @@ exclude_lines = [
     "if typing.TYPE_CHECKING:",
     "if __name__ == .__main__.:",
     "assert_never",
+    "@overload",
 ]
 
 [tool.coverage.run]

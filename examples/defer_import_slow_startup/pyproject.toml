@@ -1,7 +1,10 @@
 [project]
 name = "defer-import"
 version = "0.0.1"
-dependencies = ["pandas", "cappa"]
+dependencies = [
+    "pandas >= 2.2.3",
+    "cappa",
+]
 
 [project.scripts]
 defer-import = "defer_import.main:main"
