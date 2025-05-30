@@ -7,6 +7,7 @@ from typing_extensions import Unpack
 
 import cappa
 from cappa.help import HelpFormattable
+from cappa.invoke import DepTypes
 from cappa.state import State
 
 __all__ = [
@@ -19,11 +20,7 @@ class RunnerArgs(typing.TypedDict, total=False):
     """Available kwargs for `parse` and `invoke` function, to match `CommandRunner` fields."""
 
     obj: type
-    deps: (
-        typing.Sequence[typing.Callable]
-        | typing.Mapping[typing.Callable, cappa.Dep | typing.Any]
-        | None
-    )
+    deps: DepTypes
     backend: typing.Callable | None
     output: cappa.Output | None
     color: bool
@@ -79,11 +76,7 @@ class CommandRunner:
     """
 
     obj: type | None = None
-    deps: (
-        typing.Sequence[typing.Callable]
-        | typing.Mapping[typing.Callable, cappa.Dep | typing.Any]
-        | None
-    ) = None
+    deps: DepTypes = None
     backend: typing.Callable | None = None
     output: cappa.Output | None = None
     color: bool = True

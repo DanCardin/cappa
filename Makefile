@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-typos format
+.PHONY: install test lint lint-typos lint-examples format
 
 install:
 	uv sync --all-extras
@@ -11,10 +11,14 @@ test:
 
 lint:
 	uv run --no-sync ruff check src tests examples || exit 1
-	uv run --no-sync --all-extras mypy src tests examples || exit 1
-	uv run --no-sync --all-extras pyright src tests examples || exit 1
-	uv run --no-sync --all-extras basedpyright examples -p examples/pyrightconfig.json || exit 1
-	uv run --no-sync ruff format --check src tests examples || exit 1
+	uv run --no-sync --all-extras mypy src tests || exit 1
+	uv run --no-sync --all-extras pyright src tests || exit 1
+	uv run --no-sync ruff format --check src tests || exit 1
+
+lint-examples:
+	uv run --directory examples/defer_import_slow_startup --all-extras mypy -p defer_import || exit 1
+	uv run --directory examples/defer_import_slow_startup --all-extras pyright defer_import || exit 1
+	uv run --directory examples/defer_import_slow_startup --all-extras basedpyright defer_import || exit 1
 
 lint-typos:
 	typos

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.28
+
+### 0.28.0
+
+- feat: Allow `deps` to be indirect function reference strings.
+- feat: Allow styling of individual sections of argument help text.
+
 ## 0.27
 
 ### 0.27.3

@@ -314,9 +314,20 @@ def main():
     cappa.invoke(Command, deps=[dep])
 ```
 
-Note, given as a Sequence (i.e. list, tuple), you can just provide the source
+```{note}
+When given as a Sequence (i.e. list, tuple), you can just provide the source
 function which should act as a `Dep`, and it will be automatically coerced into
 a proper `Dep`.
+```
+
+```{note}
+Individual items (like the `dep` function above) can also be given as fully qualified
+string references to the dep, similar to how [invoke](./invoke.md) functions may
+be provided.
+
+This enables one to fully decouple of the runtime import paths required while
+defining the CLI from the code required to execute the CLI itself.
+```
 
 ### Overriding Dependencies
 
@@ -325,8 +336,8 @@ See [Testing](./testing.md) for additional details. This option is primarily
 motivated to aid stubbing dependencies for testing.
 ```
 
-An alternative to the above sequence input for `deps`, you can instead supply a
-Mapping, where the key is the "source" dependency function (i.e. the function a
+As an alternative to the above sequence input for `deps`, you can instead supply a
+`Mapping`, where the key is the "source" dependency function (i.e. the function a
 dependent invoke function would reference) and the value is the actual
 dependency which should be used in its place.
 
