@@ -4,8 +4,9 @@ import typing
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from itertools import groupby
+from typing import Sequence, cast
 
-from rich.console import NewLine
+from rich.console import Console, NewLine
 from rich.markdown import Markdown
 from rich.padding import Padding
 from rich.table import Table
@@ -29,10 +30,16 @@ ArgGroup: TypeAlias = typing.Tuple[
     typing.Tuple[str, bool], typing.List[typing.Union[Arg, Subcommand]]
 ]
 Dimension: TypeAlias = typing.Tuple[int, int, int, int]
+
+TextComponent = typing.Union[Text, Markdown, str]
 ArgFormat: TypeAlias = typing.Union[
-    str,
-    typing.Sequence[typing.Union[str, typing.Callable[[Arg], typing.Union[str, None]]]],
-    typing.Callable[[Arg], typing.Union[str, None]],
+    TextComponent,
+    typing.Sequence[
+        typing.Union[
+            TextComponent, typing.Callable[[Arg], typing.Union[TextComponent, None]]
+        ]
+    ],
+    typing.Callable[[Arg], typing.Union[TextComponent, None]],
 ]
 
 
@@ -102,7 +109,11 @@ def create_completion_arg(completion: bool | Arg = True) -> Arg | None:
 @dataclass(frozen=True)
 class HelpFormatter:
     left_padding: Dimension = (0, 0, 0, 2)
-    arg_format: ArgFormat = ("{help}", "{choices}", "{default}")
+    arg_format: ArgFormat = (
+        Markdown("{help}"),
+        Markdown("{choices}"),
+        Markdown("{default}", style="dim italic"),
+    )
     default_format: str = "(Default: {default})"
 
     default: typing.ClassVar[Self]
@@ -120,11 +131,14 @@ class HelpFormatter:
             lines.append(NewLine())
             lines.append(Padding(Markdown(command.description), self.left_padding))
 
-        lines.extend(add_long_args(self, arg_groups))
+        console = Console()
+        lines.extend(add_long_args(console, self, arg_groups))
         return lines
 
-    def with_arg_format(self, format: ArgFormat) -> Self:
-        return replace(self, arg_format=format)
+    def with_arg_format(self, _format: ArgFormat, *formats: ArgFormat) -> Self:
+        format = _format if isinstance(_format, tuple) else (_format,)
+        arg_format = (*format, *formats)
+        return replace(self, arg_format=arg_format)
 
     def with_default_format(self, format: str) -> Self:
         return replace(self, default_format=format)
@@ -133,7 +147,9 @@ class HelpFormatter:
 HelpFormatter.default = HelpFormatter()
 
 
-def add_long_args(help_formatter: HelpFormatter, arg_groups: list[ArgGroup]) -> list:
+def add_long_args(
+    console: Console, help_formatter: HelpFormatter, arg_groups: list[ArgGroup]
+) -> list:
     table = Table(box=None, expand=False, padding=help_formatter.left_padding)
     table.add_column(justify="left", ratio=1)
     table.add_column(style="cappa.help", ratio=2)
@@ -147,7 +163,7 @@ def add_long_args(help_formatter: HelpFormatter, arg_groups: list[ArgGroup]) -> 
             if isinstance(arg, Arg):
                 table.add_row(
                     Padding(format_arg_name(arg, ", "), help_formatter.left_padding),
-                    Markdown(format_arg(help_formatter, arg), style=""),
+                    format_arg(console, help_formatter, arg),
                 )
             else:
                 for option in arg.available_options():
@@ -158,12 +174,14 @@ def add_long_args(help_formatter: HelpFormatter, arg_groups: list[ArgGroup]) -> 
     return [table]
 
 
-def format_arg(help_formatter: HelpFormatter, arg: Arg) -> str:
+def format_arg(
+    console: Console, help_formatter: HelpFormatter, arg: Arg
+) -> Displayable:
     arg_format = help_formatter.arg_format
     if not isinstance(arg_format, Iterable) or isinstance(arg_format, str):
         arg_format = (arg_format,)
 
-    segments = []
+    segments: list[TextComponent] = []
     for format_segment in arg_format:
         assert isinstance(arg.default, Default)
         assert isinstance(arg.show_default, DefaultFormatter)
@@ -184,14 +202,80 @@ def format_arg(help_formatter: HelpFormatter, arg: Arg) -> str:
         }
 
         if callable(format_segment):
-            segment = format_segment(arg)
-        else:
-            segment = format_segment.format(**context)
+            format_segment = cast(TextComponent, format_segment(arg))
+
+        format_segment_text = _get_text_component_text(format_segment)
+        if not format_segment_text:
+            continue
+
+        formatted_text = format_segment_text.format(**context)
+        segment = _replace_rich_text_component(format_segment, formatted_text)
 
         if segment:
             segments.append(segment)
 
-    return " ".join(segments)
+    return _markdown_to_text(console, segments)
+
+
+def _markdown_to_text(console: Console, renderables: Sequence[TextComponent]) -> Text:
+    result = Text()
+    for renderable in renderables:
+        if isinstance(renderable, Markdown):
+            for segment in console.render(renderable):
+                text = segment.text.strip("\n")
+                if text.startswith(" "):  # dedup leading spaces
+                    text = " " + text.lstrip()
+                if text.endswith(" "):  # dedup trailing spaces
+                    text = text.rstrip() + " "
+                if text:
+                    result.append(Text(text, style=segment.style or "", end=""))
+        else:
+            if result:
+                result.append(" ")
+
+            if isinstance(renderable, str):
+                renderable = Text.from_markup(renderable)
+
+            result.append(renderable)
+
+    return result
+
+
+def _get_text_component_text(c: TextComponent) -> str:
+    if isinstance(c, Text):
+        return c.plain
+
+    if isinstance(c, Markdown):
+        return c.markup
+
+    return c
+
+
+def _replace_rich_text_component(c: TextComponent, text: str) -> TextComponent:
+    if isinstance(c, Text):
+        return Text.from_markup(
+            text,
+            style=c.style,
+            justify=c.justify,
+            overflow=c.overflow,
+            # no_wrap=c.no_wrap,
+            end=c.end,
+            # tab_size=c.tab_size,
+            # spans=c.spans,
+        )
+
+    if isinstance(c, Markdown):
+        return Markdown(
+            text,
+            code_theme=c.code_theme,
+            justify=c.justify,
+            style=c.style,
+            hyperlinks=c.hyperlinks,
+            inline_code_lexer=c.inline_code_lexer,
+            inline_code_theme=c.inline_code_theme,
+        )
+
+    return text
 
 
 def format_subcommand(help_formatter: HelpFormatter, command: Command):
@@ -247,7 +331,7 @@ def format_arg_name(arg: Arg | Subcommand, delimiter, *, n=0) -> str:
         text = f"[cappa.arg]{arg_names}[/cappa.arg]"
 
         if arg.is_option and has_value:
-            name = typing.cast(str, arg.value_name).upper()
+            name = cast(str, arg.value_name).upper()
             if arg.num_args == -1:
                 name = f"{name} ..."
 
