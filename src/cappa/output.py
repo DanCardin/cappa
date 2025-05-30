@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import sys
-import typing
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, List, Union
 
 from rich.console import Console, RenderableType
 from rich.markup import escape
@@ -10,7 +10,7 @@ from rich.text import Text
 from rich.theme import Theme
 from typing_extensions import TypeAlias
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from cappa.command import Command
 
 __all__ = [
@@ -26,6 +26,34 @@ __all__ = [
 
 
 Displayable: TypeAlias = RenderableType
+Outputable: TypeAlias = Union[List[Displayable], Displayable, "Exit", str, Any, None]
+
+
+class Exit(SystemExit):
+    def __init__(
+        self,
+        message: list[Displayable] | Displayable | None = None,
+        *,
+        command: Command | None = None,
+        code: str | int | None = 0,
+        prog: str | None = None,
+    ):
+        self.message = message
+        self.prog = prog
+        self.command = command
+        super().__init__(code)
+
+
+class HelpExit(Exit):
+    def __init__(
+        self,
+        message: list[Displayable] | Displayable,
+        *,
+        code: str | int | None = 0,
+        prog: str | None = None,
+    ):
+        super().__init__(code=code, prog=prog)
+        self.message = message
 
 
 theme: Theme = Theme(
@@ -108,7 +136,7 @@ class Output:
 
     def output(
         self,
-        message: list[Displayable] | Displayable | Exit | str | None,
+        message: Outputable,
         **context: Displayable | list[Displayable] | None,
     ):
         """Output a message to the `output_console`.
@@ -120,9 +148,7 @@ class Output:
         )
         self.write(self.output_console, message)
 
-    def error(
-        self, message: list[Displayable] | Displayable | Exit | str | None, **context
-    ):
+    def error(self, message: Outputable, **context: Displayable | list[Displayable] | None,):
         """Output a message to the `error_console`.
 
         Additional `**context` can be supplied into the `error_format` string template.
@@ -135,7 +161,7 @@ class Output:
     def _format_message(
         self,
         console: Console,
-        message: list[Displayable] | Displayable | Exit | str | None,
+        message: Outputable,
         format: str,
         **context: Displayable | list[Displayable] | None,
     ) -> Text | str | None:
@@ -172,36 +198,7 @@ class Output:
         console.print(message, overflow="ignore", crop=False)
 
 
-class Exit(SystemExit):
-    def __init__(
-        self,
-        message: list[Displayable] | Displayable | None = None,
-        *,
-        command: Command | None = None,
-        code: str | int | None = 0,
-        prog: str | None = None,
-    ):
-        self.message = message
-        self.prog = prog
-        self.command = command
-        super().__init__(code)
-
-
-class HelpExit(Exit):
-    def __init__(
-        self,
-        message: list[Displayable] | Displayable,
-        *,
-        code: str | int | None = 0,
-        prog: str | None = None,
-    ):
-        super().__init__(code=code, prog=prog)
-        self.message = message
-
-
-def rich_to_ansi(
-    console: Console, message: list[Displayable] | Displayable | str
-) -> str:
+def rich_to_ansi(console: Console, message: Outputable) -> str:
     with console.capture() as capture:
         if isinstance(message, list):
             for m in message:

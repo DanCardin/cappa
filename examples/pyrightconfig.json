@@ -1,4 +1,0 @@
-{
-    "typeCheckingMode": "strict",
-    "exclude": ["defer_import_slow_startup/defer_import/mean.py"],  // because of the pandas import
-}

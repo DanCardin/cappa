@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import inspect
-import typing
+from typing import TYPE_CHECKING, Any, Callable, Protocol, TextIO, TypeVar, overload
 
 from rich.theme import Theme
 from typing_extensions import dataclass_transform
@@ -17,31 +17,31 @@ from cappa.help import (
     create_help_arg,
     create_version_arg,
 )
-from cappa.invoke import Dep, resolve_callable
+from cappa.invoke import DepTypes, InvokeCallable, resolve_callable
 from cappa.output import Output
 from cappa.state import State
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from cappa.arg import Arg
 
-T = typing.TypeVar("T")
-U = typing.TypeVar("U")
+T = TypeVar("T")
+U = TypeVar("U")
 
 
 def parse(
     obj: type[T] | Command[T],
     *,
     argv: list[str] | None = None,
-    input: typing.TextIO | None = None,
-    backend: typing.Callable[..., typing.Any] | None = None,
+    input: TextIO | None = None,
+    backend: Callable[..., Any] | None = None,
     color: bool = True,
-    version: str | Arg[typing.Any] | None = None,
-    help: bool | Arg[typing.Any] = True,
-    completion: bool | Arg[typing.Any] = True,
+    version: str | Arg[Any] | None = None,
+    help: bool | Arg[Any] = True,
+    completion: bool | Arg[Any] = True,
     theme: Theme | None = None,
     output: Output | None = None,
     help_formatter: HelpFormattable | None = None,
-    state: State[typing.Any] | None = None,
+    state: State[Any] | None = None,
 ) -> T:
     """Parse the command, returning an instance of `obj`.
 
@@ -92,22 +92,20 @@ def parse(
 
 
 def invoke(
-    obj: type | Command[typing.Any],
+    obj: type | Command[Any],
     *,
-    deps: typing.Sequence[typing.Callable[..., typing.Any]]
-    | typing.Mapping[typing.Callable[..., typing.Any], Dep[typing.Any] | typing.Any]
-    | None = None,
+    deps: DepTypes = None,
     argv: list[str] | None = None,
-    input: typing.TextIO | None = None,
-    backend: typing.Callable[..., typing.Any] | None = None,
+    input: TextIO | None = None,
+    backend: Callable[..., Any] | None = None,
     color: bool = True,
-    version: str | Arg[typing.Any] | None = None,
-    help: bool | Arg[typing.Any] = True,
-    completion: bool | Arg[typing.Any] = True,
+    version: str | Arg[Any] | None = None,
+    help: bool | Arg[Any] = True,
+    completion: bool | Arg[Any] = True,
     theme: Theme | None = None,
     output: Output | None = None,
     help_formatter: HelpFormattable | None = None,
-    state: State[typing.Any] | None = None,
+    state: State[Any] | None = None,
 ):
     """Parse the command, and invoke the selected async command or subcommand.
 
@@ -174,12 +172,10 @@ def invoke(
 async def invoke_async(
     obj: type | Command,
     *,
-    deps: typing.Sequence[typing.Callable]
-    | typing.Mapping[typing.Callable, Dep | typing.Any]
-    | None = None,
+    deps: DepTypes = None,
     argv: list[str] | None = None,
-    input: typing.TextIO | None = None,
-    backend: typing.Callable | None = None,
+    input: TextIO | None = None,
+    backend: Callable | None = None,
     color: bool = True,
     version: str | Arg | None = None,
     help: bool | Arg = True,
@@ -256,8 +252,8 @@ def parse_command(
     obj: type | Command[T],
     *,
     argv: list[str] | None = None,
-    input: typing.TextIO | None = None,
-    backend: typing.Callable | None = None,
+    input: TextIO | None = None,
+    backend: Callable | None = None,
     color: bool = True,
     version: str | Arg | None = None,
     help: bool | Arg = True,
@@ -291,48 +287,48 @@ def parse_command(
     return command, parsed_command, instance, concrete_output, state
 
 
-class FuncOrClassDecorator(typing.Protocol):
-    @typing.overload
+class FuncOrClassDecorator(Protocol):
+    @overload
     def __call__(self, x: type[T], /) -> type[T]: ...
-    @typing.overload
+    @overload
     def __call__(self, x: T, /) -> T: ...
 
 
-@typing.overload
+@overload
 def command(
     _cls: type[T],
     *,
     name: str | None = None,
     help: str | None = None,
     description: str | None = None,
-    invoke: typing.Callable[..., typing.Any] | str | None = None,
+    invoke: InvokeCallable | None = None,
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
     deprecated: bool = False,
     help_formatter: HelpFormattable = HelpFormatter.default,
 ) -> type[T]: ...
-@typing.overload
+@overload
 def command(
     *,
     name: str | None = None,
     help: str | None = None,
     description: str | None = None,
-    invoke: typing.Callable[..., typing.Any] | str | None = None,
+    invoke: InvokeCallable | None = None,
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
     deprecated: bool = False,
     help_formatter: HelpFormattable = HelpFormatter.default,
 ) -> FuncOrClassDecorator: ...
-@typing.overload
+@overload
 def command(
     _cls: T,
     *,
     name: str | None = None,
     help: str | None = None,
     description: str | None = None,
-    invoke: typing.Callable[..., typing.Any] | str | None = None,
+    invoke: InvokeCallable | None = None,
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
@@ -348,7 +344,7 @@ def command(
     name: str | None = None,
     help: str | None = None,
     description: str | None = None,
-    invoke: typing.Callable[..., typing.Any] | str | None = None,
+    invoke: InvokeCallable | None = None,
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
@@ -417,7 +413,7 @@ def command(
 def collect(
     obj: type[T] | Command[T],
     *,
-    backend: typing.Callable | None = None,
+    backend: Callable | None = None,
     version: str | Arg | None = None,
     help: bool | Arg = True,
     completion: bool | Arg = True,
@@ -461,7 +457,7 @@ def collect(
     )
 
 
-def _coalesce_backend(backend: typing.Callable | None = None):
+def _coalesce_backend(backend: Callable | None = None):
     if backend is None:  # pragma: no cover
         return parser.backend
     return backend
