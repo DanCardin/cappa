@@ -24,10 +24,19 @@ class Command: ...
 
 
 @backends
-def test_invoke_top_level_command(capsys, backend):
+def test_invoke_global_dep(capsys, backend):
     result = invoke(Command, deps=[foo, bar], backend=backend)
     assert result == 1
 
     out = capsys.readouterr().out
     assert "called Command()" in out
     assert "two" in out
+
+
+@backends
+def test_invoke_global_dep_string_reference(capsys, backend):
+    result = invoke(Command, deps=["tests.invoke.test_global_dep.foo"], backend=backend)
+    assert result == 1
+
+    out = capsys.readouterr().out
+    assert "called Command()" in out

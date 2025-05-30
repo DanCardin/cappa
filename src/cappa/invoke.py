@@ -3,9 +3,20 @@ from __future__ import annotations
 import contextlib
 import importlib
 import inspect
-import typing
-from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import (
+    Any,
+    AsyncGenerator,
+    Callable,
+    Coroutine,
+    Generator,
+    Generic,
+    Mapping,
+    Sequence,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from typing_extensions import Annotated
 
@@ -15,34 +26,42 @@ from cappa.output import Exit, Output
 from cappa.state import State
 from cappa.subcommand import Subcommand
 from cappa.type_view import CallableView
-from cappa.typing import T, find_annotations, get_method_class
+from cappa.typing import find_annotations, get_method_class
 
 
 class SelfType: ...
 
 
-Self = Annotated[T, SelfType]
+C = TypeVar("C", bound=HasCommand)
+T = TypeVar("T")
+InvokeCallable = Union[Callable[..., T], str]
 
-C = typing.TypeVar("C", bound=HasCommand)
+
+@dataclass(frozen=True)
+class Dep(Generic[T]):
+    """Describes the callable required to fulfill a given dependency."""
+
+    callable: InvokeCallable[T]
+
+
+DepTypes = Union[
+    Sequence[InvokeCallable[Any]],
+    Mapping[InvokeCallable[Any], Union[Dep[Any], InvokeCallable[Any], Any]],
+    None,
+]
+Self = Annotated[T, SelfType]
 
 
 class InvokeResolutionError(RuntimeError):
     """Raised for errors encountered during evaluation of invoke dependencies."""
 
 
-@dataclass(frozen=True)
-class Dep(typing.Generic[C]):
-    """Describes the callable required to fulfill a given dependency."""
-
-    callable: Callable
-
-
 @dataclass
-class Resolved(typing.Generic[C]):
-    callable: Callable[..., C]
-    kwargs: dict[str, typing.Any | Resolved] = field(default_factory=dict)
-    args: tuple[typing.Any, ...] = field(default=())
-    result: typing.Any = ...
+class Resolved(Generic[C]):
+    callable: InvokeCallable[C]
+    kwargs: dict[str, Any | Resolved] = field(default_factory=dict)
+    args: tuple[Any, ...] = field(default=())
+    result: Any = ...
     is_resolved: bool = False
 
     def call(self, *args, output: Output | None = None):
@@ -50,9 +69,7 @@ class Resolved(typing.Generic[C]):
             return value
 
     @contextlib.contextmanager
-    def get(
-        self, *args, output: Output | None = None
-    ) -> typing.Generator[typing.Any, None, None]:
+    def get(self, *args, output: Output | None = None) -> Generator[Any, None, None]:
         """Get the resolved value.
 
         The value itself is cached in the event it's used as a dependency to more
@@ -73,7 +90,7 @@ class Resolved(typing.Generic[C]):
                 finalized_kwargs[k] = stack.enter_context(v.get(output=output))
 
             with self.handle_exit(output):
-                callable: Callable = self.callable
+                callable: Callable = cast(Callable, self.callable)
                 requires_management = inspect.isgeneratorfunction(callable)
                 if requires_management:
                     # Yield functions are assumed to be context-maneger style generators
@@ -96,7 +113,7 @@ class Resolved(typing.Generic[C]):
     @contextlib.asynccontextmanager
     async def get_async(
         self, output: Output | None = None
-    ) -> typing.AsyncGenerator[typing.Any, None]:
+    ) -> AsyncGenerator[Any, None]:
         """Get the resolved value, in an async context.
 
         Note, this is the exact same process as in `get`, except with `await`,
@@ -116,7 +133,7 @@ class Resolved(typing.Generic[C]):
                 )
 
             with self.handle_exit(output):
-                callable: Callable = self.callable
+                callable: Callable = cast(Callable, self.callable)
                 requires_management = inspect.isasyncgenfunction(callable)
                 if requires_management:
                     callable = contextlib.asynccontextmanager(callable)
@@ -128,7 +145,7 @@ class Resolved(typing.Generic[C]):
 
                 if requires_management or is_context_manager:
                     result = await stack.enter_async_context(result)  # pyright: ignore
-                elif isinstance(result, typing.Coroutine):
+                elif isinstance(result, Coroutine):
                     result = await result
 
             self.result = result
@@ -158,10 +175,8 @@ def resolve_callable(
     *,
     output: Output,
     state: State,
-    deps: typing.Sequence[Callable]
-    | typing.Mapping[Callable, Dep | typing.Any]
-    | None = None,
-) -> tuple[Resolved[C], typing.Sequence[Resolved]]:
+    deps: DepTypes = None,
+) -> tuple[Resolved[C], Sequence[Resolved]]:
     try:
         implicit_deps = resolve_implicit_deps(command, instance)
         fn: Callable = resolve_invoke_handler(parsed_command, implicit_deps)
@@ -183,23 +198,21 @@ def resolve_callable(
     return (resolved, tuple(global_deps.values()))
 
 
-def resolve_global_deps(
-    deps: typing.Sequence[Callable] | typing.Mapping[Callable, Dep | typing.Any] | None,
-    implicit_deps: dict,
-) -> dict:
-    result: dict[Dep, typing.Any] = {}
+def resolve_global_deps(deps: DepTypes, implicit_deps: dict) -> dict:
+    result: dict[Dep, Any] = {}
 
     if not deps:
         return result
 
     # Coerce the sequence variant of input into the mapping equivalent.
-    if isinstance(deps, typing.Sequence):
-        deps = typing.cast(typing.Mapping, {d: Dep(d) for d in deps})
+    if isinstance(deps, Sequence):
+        deps = cast(Mapping, {d: Dep(d) for d in deps})
 
     for source_function, dep in deps.items():
         # Deps need to be fulfilled, whereas raw values are taken directly.
         if isinstance(dep, Dep):
-            value = fulfill_deps(dep.callable, implicit_deps)
+            dep_callable = resolve_callable_reference(dep.callable)
+            value = fulfill_deps(dep_callable, implicit_deps)
         else:
             value = Resolved(source_function, result=dep, is_resolved=True)
 
@@ -227,6 +240,10 @@ def resolve_invoke_handler(
             f"Cannot call `invoke` for a command which does not have an invoke handler: {command.cmd_cls}."
         )
 
+    return resolve_callable_reference(fn)
+
+
+def resolve_callable_reference(fn: Callable[..., C] | str | None) -> Callable[..., C]:
     if isinstance(fn, str):
         try:
             module_name, fn_name = fn.rsplit(".", 1)
@@ -254,7 +271,7 @@ def resolve_invoke_handler(
     if not callable(fn):
         raise InvokeResolutionError(f"`{fn}` does not reference a valid callable.")
 
-    return typing.cast(Callable, fn)
+    return cast(Callable, fn)
 
 
 def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
@@ -265,7 +282,7 @@ def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
             # Args do not produce dependencies themselves.
             continue
 
-        option_instance = getattr(instance, typing.cast(str, arg.field_name))
+        option_instance = getattr(instance, cast(str, arg.field_name))
         if option_instance is None:
             # None is a valid subcommand instance value, but it won't exist as a dependency
             # where an actual command has been selected.
@@ -284,8 +301,8 @@ def resolve_implicit_deps(command: Command, instance: HasCommand) -> dict:
 def fulfill_deps(
     fn: Callable, fulfilled_deps: dict, allow_empty: bool = False
 ) -> Resolved:
-    args: list[typing.Any] = []
-    result: dict[str, typing.Any] = {}
+    args: list[Any] = []
+    result: dict[str, Any] = {}
 
     try:
         callable_view = CallableView.from_callable(fn, include_extras=True)
@@ -318,7 +335,9 @@ def fulfill_deps(
             # Whereas everything else should be a resolvable explicit Dep, which might have either
             # already been fullfullfilled, or yet need to be.
             if dep not in fulfilled_deps:
-                fulfilled_deps[dep] = fulfill_deps(dep.callable, fulfilled_deps)
+                fulfilled_deps[dep] = fulfill_deps(
+                    cast(Callable, dep.callable), fulfilled_deps
+                )
 
             result[param_view.name] = fulfilled_deps[dep]
 
