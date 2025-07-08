@@ -2,6 +2,10 @@
 
 ## 0.28
 
+### 0.28.1
+
+- fix: Sphinx warning in docutils extension with `--jobs`.
+
 ### 0.28.0
 
 - feat: Allow `deps` to be indirect function reference strings.

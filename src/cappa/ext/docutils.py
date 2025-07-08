@@ -31,8 +31,9 @@ FONT_FAMILY = (
 )
 
 
-def setup(app) -> None:  # pragma: no cover
+def setup(app) -> dict:  # pragma: no cover
     app.add_directive("cappa", CappaDirective)
+    return {"parallel_read_safe": True}
 
 
 class CappaDirective(Directive):
