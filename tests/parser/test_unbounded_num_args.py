@@ -7,11 +7,11 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_num_args_unbounded_length_num_args(backend):
+def test_num_args_unbounded_length_num_args(backend: Backend):
     @dataclass
     class Args:
         a: Annotated[list[str], cappa.Arg(short=True, num_args=-1)] = field(
@@ -38,7 +38,7 @@ def test_num_args_unbounded_length_num_args(backend):
 
 
 @backends
-def test_unbounded_positional_args(backend):
+def test_unbounded_positional_args(backend: Backend):
     @dataclass
     class Args:
         a: list[str]

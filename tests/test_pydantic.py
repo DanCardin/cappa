@@ -6,7 +6,7 @@ from pydantic import BaseModel, dataclasses
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 class PydanticCommand(BaseModel):
@@ -15,7 +15,7 @@ class PydanticCommand(BaseModel):
 
 
 @backends
-def test_base_model(backend):
+def test_base_model(backend: Backend):
     result = parse(PydanticCommand, "meow", "-f", "4", backend=backend)
     assert result == PydanticCommand(name="meow", foo=4)
 
@@ -27,7 +27,7 @@ class DataclassCommand:
 
 
 @backends
-def test_dataclass(backend):
+def test_dataclass(backend: Backend):
     result = parse(DataclassCommand, "meow", "-f", "4", backend=backend)
     assert result == DataclassCommand(name="meow", foo=4)
 
@@ -41,7 +41,7 @@ class OptionalSubcommand(BaseModel):
 
 
 @backends
-def test_optional_subcommand(backend):
+def test_optional_subcommand(backend: Backend):
     result = parse(OptionalSubcommand, backend=backend)
     assert result == OptionalSubcommand(sub=None)
 

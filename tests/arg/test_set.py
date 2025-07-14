@@ -5,11 +5,11 @@ from dataclasses import dataclass, field
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_list_option(backend):
+def test_list_option(backend: Backend):
     @dataclass
     class ArgTest:
         variable_number: Annotated[set[str], cappa.Arg(short=True, long=True)] = field(
@@ -32,7 +32,7 @@ def test_list_option(backend):
 
 
 @backends
-def test_list_positional(backend):
+def test_list_positional(backend: Backend):
     @dataclass
     class ArgTest:
         variable_number: set[int] = field(default_factory=set)

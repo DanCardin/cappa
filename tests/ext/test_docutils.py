@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from typing import Union
+from typing import Sequence, Union
 from unittest.mock import Mock
 
 import pytest
+from docutils import nodes
 from docutils.core import publish_from_doctree
 from docutils.parsers.rst.states import Body, RSTStateMachine
 from docutils.utils import new_document
@@ -29,7 +30,7 @@ class Subcommand:
     subcmd: cappa.Subcommands[Union[Bar, Foo]]
 
 
-def create_directive(*, style, cls_name="Foo", terminal_width=0):
+def create_directive(*, style: str, cls_name: str = "Foo", terminal_width: int = 0):
     state = Body(RSTStateMachine([], None))
     state.build_table = Mock()
     state.document = new_document("<rst-doc>", None)
@@ -46,7 +47,7 @@ def create_directive(*, style, cls_name="Foo", terminal_width=0):
     )
 
 
-def render(nodes):
+def render(nodes: Sequence[nodes.Node]) -> str:
     doc = new_document("<rst-doc>", None)
     doc += nodes
     return publish_from_doctree(doc, writer_name="html").decode()

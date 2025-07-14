@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -27,7 +28,7 @@ class Command:
 
 
 @backends
-def test_has_possible_values(capsys, backend):
+def test_has_possible_values(capsys: Any, backend: Backend):
     with pytest.raises(cappa.Exit):
         parse(Command, "--help", backend=backend)
 

@@ -4,10 +4,19 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-import typing
-from collections.abc import Callable
 from functools import cached_property
-from typing import Sequence, Union
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Iterable,
+    List,
+    Literal,
+    Sequence,
+    Set,
+    Union,
+    cast,
+)
 
 from typing_extensions import TypeAlias
 
@@ -63,15 +72,15 @@ class ArgAction(enum.Enum):
     completion = "completion"
 
     @classmethod
-    def meta_actions(cls) -> typing.Set[ArgAction]:
+    def meta_actions(cls) -> Set[ArgAction]:
         return {cls.help, cls.version, cls.completion}
 
     @classmethod
-    def is_custom(cls, action: ArgAction | Callable | None):
+    def is_custom(cls, action: ArgAction | Callable[..., Any] | None):
         return action is not None and not isinstance(action, ArgAction)
 
     @classmethod
-    def is_non_value_consuming(cls, action: ArgAction | Callable | None):
+    def is_non_value_consuming(cls, action: ArgAction | Callable[..., Any] | None):
         return action in {
             ArgAction.store_true,
             ArgAction.store_false,
@@ -85,7 +94,7 @@ class ArgAction(enum.Enum):
         return self in {self.store_true, self.store_false}
 
 
-ArgActionType: TypeAlias = Union[ArgAction, Callable]
+ArgActionType: TypeAlias = Union[ArgAction, Callable[..., Any]]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -117,7 +126,7 @@ class Group:
 
 
 @dataclasses.dataclass(frozen=True)
-class Arg(typing.Generic[T]):
+class Arg(Generic[T]):
     """Describe a CLI argument.
 
     Arguments:
@@ -140,9 +149,10 @@ class Arg(typing.Generic[T]):
         help: By default, the help text will be inferred from the containing class'
             arguments' section, if it exists. Alternatively, you can directly supply
             the help text here.
-        parse: An optional function which accepts the raw string argument as input and
-            returns a parsed value type's instance. This should only be required for
-            complex types that the type system's built-in parsing cannot handle.
+        parse: Optional function(s) which accepts the raw argument as input and
+            return the parsed value. This can be either a single function, or a sequence of functions.
+            If a sequence is provided, they will be called (in order) with their return value
+            chained into the next function in the sequence.
 
         group: Optional group names for the argument. This affects how they're displayed
             in the backend's help text. Note this can also be a `Group` instance in order
@@ -184,7 +194,7 @@ class Arg(typing.Generic[T]):
     count: bool = False
     default: T | EmptyType | None = Empty
     help: str | None = None
-    parse: Callable[..., T] | Sequence[Callable[..., T]] | None = None
+    parse: Callable[..., T] | Sequence[Callable[..., Any]] | None = None
 
     group: str | tuple[int, str] | Group | EmptyType = Empty
 
@@ -202,19 +212,19 @@ class Arg(typing.Generic[T]):
     destructured: Destructured | None = None
     has_value: bool | None = None
 
-    type_view: TypeView | None = None
+    type_view: TypeView[Any] | None = None
 
     @classmethod
     def collect(
         cls,
         field: Field,
-        type_view: TypeView,
+        type_view: TypeView[Any],
         fallback_help: str | None = None,
         default_short: bool = False,
         default_long: bool = False,
-        state: State | None = None,
-    ) -> list[Arg]:
-        args = find_annotations(type_view, cls) or [Arg()]
+        state: State[Any] | None = None,
+    ) -> list[Arg[Any]]:
+        args: list[Arg[Any]] = find_annotations(type_view, cls) or [Arg()]
 
         exclusive = len(args) > 1
 
@@ -222,11 +232,11 @@ class Arg(typing.Generic[T]):
         fallback_help = docs[0].documentation if docs else fallback_help
 
         # Dataclass field metadata takes precedence if it exists.
-        field_metadata = extract_dataclass_metadata(field, Arg)
+        field_metadata: list[Arg[Any]] = extract_dataclass_metadata(field, Arg)
         if field_metadata:
             args = field_metadata
 
-        result = []
+        result: list[Arg[Any]] = []
         for arg in args:
             field_name = infer_field_name(arg, field)
             default = infer_default(arg, type_view, field)
@@ -252,20 +262,20 @@ class Arg(typing.Generic[T]):
 
     def normalize(
         self,
-        type_view: TypeView | None = None,
+        type_view: TypeView[Any] | None = None,
         fallback_help: str | None = None,
         action: ArgActionType | None = None,
-        default: typing.Any = Empty,
+        default: Any = Empty,
         field_name: str | None = None,
         default_short: bool = False,
         default_long: bool = False,
         exclusive: bool = False,
-        state: State | None = None,
-    ) -> Arg:
+        state: State[Any] | None = None,
+    ) -> Arg[Any]:
         if type_view is None:
-            type_view = TypeView(typing.Any)
+            type_view = TypeView(Any)
 
-        field_name = typing.cast(str, field_name or self.field_name)
+        field_name = cast(str, field_name or self.field_name)
         default = Default.from_value(default if default is not Empty else self.default)
 
         verify_type_compatibility(self, field_name, type_view)
@@ -292,7 +302,9 @@ class Arg(typing.Generic[T]):
                 "`Arg.propagate` requires a non-positional named option (`short` or `long`)."
             )
 
-        show_default = DefaultFormatter.from_unknown(self.show_default)
+        show_default: DefaultFormatter = DefaultFormatter.from_unknown(
+            self.show_default
+        )  # pyright: ignore
         return dataclasses.replace(
             self,
             default=default,
@@ -317,26 +329,26 @@ class Arg(typing.Generic[T]):
     def destructure(cls, settings: Destructured | None = None):
         return cls(destructured=settings or Destructured())
 
-    def names(self, *, n=0) -> list[str]:
-        short_names = typing.cast(list, self.short or [])
-        long_names = typing.cast(list, self.long or [])
+    def names(self, *, n: int = 0) -> list[str]:
+        short_names = cast(List[str], self.short or [])
+        long_names = cast(List[str], self.long or [])
         result = short_names + long_names
         if n:
             return result[:n]
         return result
 
-    def names_str(self, delimiter: str = ", ", *, n=0) -> str:
+    def names_str(self, delimiter: str = ", ", *, n: int = 0) -> str:
         if self.long or self.short:
             return delimiter.join(self.names(n=n))
 
-        return typing.cast(str, self.value_name)
+        return cast(str, self.value_name)
 
     @cached_property
     def is_option(self) -> bool:
         return bool(self.short or self.long)
 
 
-def verify_type_compatibility(arg: Arg, field_name: str, type_view: TypeView):
+def verify_type_compatibility(arg: Arg[Any], field_name: str, type_view: TypeView[Any]):
     """Verify classes of annotations are compatible with one another.
 
     Thus far:
@@ -382,7 +394,7 @@ def verify_type_compatibility(arg: Arg, field_name: str, type_view: TypeView):
             )
 
 
-def infer_field_name(arg: Arg, field: Field) -> str:
+def infer_field_name(arg: Arg[Any], field: Field) -> str:
     if arg.field_name is not Empty:
         raise ValueError("Arg 'name' cannot be set when using automatic inference.")
 
@@ -390,8 +402,8 @@ def infer_field_name(arg: Arg, field: Field) -> str:
 
 
 def infer_default(
-    arg: Arg, type_view: TypeView, field: Field | None = None
-) -> typing.Any:
+    arg: Arg[Any], type_view: TypeView[Any], field: Field | None = None
+) -> Any:
     if field:
         arg_default = Default.from_value(infer_default(arg, type_view))
         if field.default is not Empty:
@@ -421,7 +433,7 @@ def infer_default(
     return Empty
 
 
-def infer_required(arg: Arg, default: Default):
+def infer_required(arg: Arg[Any], default: Default):
     required = arg.required
     if required is True:
         return True
@@ -439,8 +451,8 @@ def infer_required(arg: Arg, default: Default):
 
 
 def infer_short(
-    arg: Arg, name: str, default: bool = False
-) -> list[str] | typing.Literal[False]:
+    arg: Arg[Any], name: str, default: bool = False
+) -> list[str] | Literal[False]:
     short = arg.short or default
     if not short:
         return False
@@ -458,8 +470,8 @@ def infer_short(
 
 
 def infer_long(
-    arg: Arg, type_view: TypeView, name: str, default: bool
-) -> list[str] | typing.Literal[False]:
+    arg: Arg[Any], type_view: TypeView[Any], name: str, default: bool
+) -> list[str] | Literal[False]:
     long = arg.long or default
 
     if not long:
@@ -479,7 +491,7 @@ def infer_long(
     return [item if item.startswith("--") else f"--{item}" for item in long]
 
 
-def infer_choices(arg: Arg, type_view: TypeView) -> list[str] | None:
+def infer_choices(arg: Arg[Any], type_view: TypeView[Any]) -> list[str] | None:
     if arg.choices is None:
         choices = detect_choices(type_view)
     else:
@@ -492,7 +504,10 @@ def infer_choices(arg: Arg, type_view: TypeView) -> list[str] | None:
 
 
 def infer_action(
-    arg: Arg, type_view: TypeView, long, default: Default
+    arg: Arg[Any],
+    type_view: TypeView[Any],
+    long: list[str] | Literal[False],
+    default: Default,
 ) -> ArgActionType:
     if arg.count:
         return ArgAction.count
@@ -531,11 +546,11 @@ def infer_action(
 
 
 def infer_num_args(
-    type_view: TypeView,
+    type_view: TypeView[Any],
     field_name: str,
-    arg: Arg | None = None,
+    arg: Arg[Any] | None = None,
     action: ArgActionType | None = None,
-    long=None,
+    long: list[str] | Literal[False] = False,
 ) -> int:
     if arg:
         if arg.num_args is not None:
@@ -550,8 +565,8 @@ def infer_num_args(
     if type_view.is_union:
         # Recursively determine the `num_args` value of each variant. Use the value
         # only if they all result in the same value.
-        distinct_num_args = set()
-        num_args_variants = []
+        distinct_num_args: set[int] = set()
+        num_args_variants: list[tuple[Arg[Any], int]] = []
         for type_arg in type_view.inner_types:
             if type_arg.is_none_type:
                 continue
@@ -591,9 +606,11 @@ def infer_num_args(
     return 1
 
 
-def infer_parse(arg: Arg, type_view: TypeView, state: State | None = None) -> Callable:
+def infer_parse(
+    arg: Arg[Any], type_view: TypeView[Any], state: State[Any] | None = None
+) -> Callable[..., Any]:
     if arg.parse:
-        parse = arg.parse
+        parse: Parser[Any] | Sequence[Parser[Any]] = arg.parse
     else:
         parse = parse_value(type_view)
 
@@ -603,15 +620,14 @@ def infer_parse(arg: Arg, type_view: TypeView, state: State | None = None) -> Ca
         if not isinstance(parse, Sequence):
             parse = [parse]
 
-        literal_type = typing.Literal[tuple(arg.choices)]  # type: ignore
-        parse = [*parse, parse_literal(literal_type)]  # type: ignore
+        literal_type = Literal[tuple(arg.choices)]  # type: ignore
+        literal_parse: Parser[Any] = parse_literal(literal_type)  # type: ignore
+        parse = [*parse, literal_parse]
 
-    return evaluate_parse(
-        typing.cast(Union[Sequence[Parser], Parser], parse), type_view, state=state
-    )
+    return evaluate_parse(parse, type_view, state=state)
 
 
-def infer_help(arg: Arg, fallback_help: str | None) -> str | None:
+def infer_help(arg: Arg[Any], fallback_help: str | None) -> str | None:
     help = arg.help
     if help is None:
         help = fallback_help
@@ -620,7 +636,7 @@ def infer_help(arg: Arg, fallback_help: str | None) -> str | None:
 
 
 def infer_completion(
-    arg: Arg, choices: list[str] | None
+    arg: Arg[Any], choices: list[str] | None
 ) -> Callable[[str], list[Completion]] | None:
     if arg.completion:
         return arg.completion
@@ -632,7 +648,10 @@ def infer_completion(
 
 
 def infer_group(
-    arg: Arg, short: list[str] | bool, long: list[str] | bool, exclusive: bool = False
+    arg: Arg[Any],
+    short: list[str] | bool,
+    long: list[str] | bool,
+    exclusive: bool = False,
 ) -> Group:
     order = 0
     name = None
@@ -660,7 +679,7 @@ def infer_group(
     return Group(name=name, order=order, exclusive=exclusive, section=section)
 
 
-def infer_value_name(arg: Arg, field_name: str, num_args: int | None) -> str:
+def infer_value_name(arg: Arg[Any], field_name: str, num_args: int | None) -> str:
     if arg.value_name is not Empty:
         return arg.value_name
 
@@ -670,7 +689,7 @@ def infer_value_name(arg: Arg, field_name: str, num_args: int | None) -> str:
     return field_name
 
 
-def explode_negated_bool_args(args: typing.Sequence[Arg]) -> typing.Iterable[Arg]:
+def explode_negated_bool_args(args: Sequence[Arg[Any]]) -> Iterable[Arg[Any]]:
     """Expand `--foo/--no-foo` solo arguments into dual-arguments.
 
     Acts as a transform from `Arg(long='--foo/--no-foo')` to
@@ -679,7 +698,7 @@ def explode_negated_bool_args(args: typing.Sequence[Arg]) -> typing.Iterable[Arg
     for arg in args:
         yielded = False
         if isinstance(arg.action, ArgAction) and arg.action.is_bool_action and arg.long:
-            long = typing.cast(typing.List[str], arg.long)
+            long = cast(List[str], arg.long)
 
             negatives = [item for item in long if "--no-" in item]
             positives = [item for item in long if "--no-" not in item]
@@ -690,7 +709,7 @@ def explode_negated_bool_args(args: typing.Sequence[Arg]) -> typing.Iterable[Arg
                 show_default = arg.show_default
                 default_is_true = arg.default.default is True and not_required
                 default_is_false = arg.default.default is False and not_required
-                disabled = DefaultFormatter.disabled()
+                disabled: DefaultFormatter = DefaultFormatter.disabled()
 
                 positive_arg = dataclasses.replace(
                     arg,
@@ -713,7 +732,7 @@ def explode_negated_bool_args(args: typing.Sequence[Arg]) -> typing.Iterable[Arg
             yield arg
 
 
-def infer_has_value(arg: Arg, action: ArgActionType):
+def infer_has_value(arg: Arg[Any], action: ArgActionType):
     if arg.has_value is not None:
         return arg.has_value
 

@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_count_action(backend):
+def test_count_action(backend: Backend):
     @dataclass
     class ArgTest:
         arg: Annotated[int, cappa.Arg(short=True, action=cappa.ArgAction.count)]
@@ -22,7 +22,7 @@ def test_count_action(backend):
 
 
 @backends
-def test_count_option(backend):
+def test_count_option(backend: Backend):
     @dataclass
     class ArgTest:
         arg: Annotated[int, cappa.Arg(short=True, count=True)]

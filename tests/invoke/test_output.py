@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from typing import Any
 
 import cappa
-from tests.utils import CapsysOutput, backends, invoke
+from tests.utils import Backend, CapsysOutput, backends, invoke
 
 
 @backends
-def test_outputs_output(backend, capsys):
+def test_outputs_output(backend: Backend, capsys: Any):
     @dataclass
     class TopLevelCommand:
         def __call__(self, out: cappa.Output):
@@ -23,7 +23,7 @@ def test_outputs_output(backend, capsys):
 
 
 @backends
-def test_output_callable(backend, capsys: Any):
+def test_output_callable(backend: Backend, capsys: Any):
     @dataclass
     class TopLevelCommand:
         def __call__(self, out: cappa.Output):

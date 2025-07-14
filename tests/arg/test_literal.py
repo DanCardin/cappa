@@ -8,11 +8,11 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_valid(backend):
+def test_valid(backend: Backend):
     @dataclass
     class ArgTest:
         name: Literal["one", "two"]
@@ -22,7 +22,7 @@ def test_valid(backend):
 
 
 @backends
-def test_valid_int(backend):
+def test_valid_int(backend: Backend):
     @dataclass
     class ArgTest:
         name: Literal["one", 4]
@@ -32,7 +32,7 @@ def test_valid_int(backend):
 
 
 @backends
-def test_invalid(backend):
+def test_invalid(backend: Backend):
     @dataclass
     class ArgTest:
         name: Literal["one", "two", "three", 4]
@@ -45,7 +45,7 @@ def test_invalid(backend):
 
 
 @backends
-def test_unioned_literals(backend):
+def test_unioned_literals(backend: Backend):
     @dataclass
     class ArgTest:
         name: Union[Literal["one"], Literal["two"], Literal["three"], Literal[4]]
@@ -61,7 +61,7 @@ def test_unioned_literals(backend):
 
 
 @backends
-def test_invalid_collection_of_literals(backend):
+def test_invalid_collection_of_literals(backend: Backend):
     @dataclass
     class Args:
         foo: Annotated[
@@ -84,7 +84,7 @@ def test_invalid_collection_of_literals(backend):
 
 
 @backends
-def test_literal_parse(backend):
+def test_literal_parse(backend: Backend):
     @dataclass
     class LiteralParse:
         log_level: Annotated[

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-import typing
-from typing import TextIO
+from typing import TYPE_CHECKING, Any, Iterable, TextIO
 
 from typing_extensions import Annotated, Self, TypeAlias
 
@@ -13,7 +12,7 @@ from cappa.state import State
 from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import T, assert_type, find_annotations
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from cappa.arg import Arg
     from cappa.command import Command
     from cappa.help import HelpFormattable
@@ -47,11 +46,11 @@ class Subcommand:
     group: str | tuple[int, str] | Group = DEFAULT_SUBCOMMAND_GROUP
     hidden: bool = False
 
-    options: dict[str, Command] = dataclasses.field(default_factory=dict)
-    types: typing.Iterable[type] | EmptyType = Empty
+    options: dict[str, Command[Any]] = dataclasses.field(default_factory=dict)
+    types: Iterable[type] | EmptyType = Empty
 
     @classmethod
-    def detect(cls, field: Field, type_view: TypeView) -> Subcommand | None:
+    def detect(cls, field: Field, type_view: TypeView[Any]) -> Subcommand | None:
         subcommands = find_annotations(type_view, Subcommand) or None
 
         field_metadata = extract_dataclass_metadata(field, Subcommand)
@@ -66,14 +65,14 @@ class Subcommand:
 
     def normalize(
         self,
-        type_view: TypeView | None = None,
+        type_view: TypeView[Any] | None = None,
         field_name: str | None = None,
         help_formatter: HelpFormattable | None = None,
-        propagated_arguments: list[Arg] | None = None,
-        state: State | None = None,
+        propagated_arguments: list[Arg[Any]] | None = None,
+        state: State[Any] | None = None,
     ) -> Self:
         if type_view is None:
-            type_view = TypeView(...)
+            type_view = TypeView(Any)
 
         field_name = field_name or assert_type(self.field_name, str)
         types = infer_types(self, type_view)
@@ -99,15 +98,15 @@ class Subcommand:
     def map_result(
         self,
         prog: str,
-        parsed_args,
-        state: State | None = None,
+        parsed_args: dict[str, Any],
+        state: State[Any] | None = None,
         input: TextIO | None = None,
     ):
         option_name = parsed_args.pop("__name__")
         option = self.options[option_name]
         return option.map_result(option, prog, parsed_args, state=state, input=input)
 
-    def available_options(self) -> list[Command]:
+    def available_options(self) -> list[Command[Any]]:
         return [o for o in self.options.values() if not o.hidden]
 
     def names(self) -> list[str]:
@@ -120,9 +119,9 @@ class Subcommand:
         return [Completion(o) for o in self.options if partial in o]
 
 
-def infer_types(arg: Subcommand, type_view: TypeView) -> typing.Iterable[type]:
+def infer_types(arg: Subcommand, type_view: TypeView[Any]) -> Iterable[type]:
     if arg.types is not Empty:
-        return typing.cast(typing.Iterable[type], arg.types)
+        return arg.types
 
     if type_view.is_union:
         return tuple(t.annotation for t in type_view.inner_types if not t.is_none_type)
@@ -130,7 +129,7 @@ def infer_types(arg: Subcommand, type_view: TypeView) -> typing.Iterable[type]:
     return (type_view.annotation,)
 
 
-def infer_required(arg: Subcommand, annotation: TypeView) -> bool:
+def infer_required(arg: Subcommand, annotation: TypeView[Any]) -> bool:
     if arg.required is not None:
         return arg.required
 
@@ -139,16 +138,16 @@ def infer_required(arg: Subcommand, annotation: TypeView) -> bool:
 
 def infer_options(
     arg: Subcommand,
-    types: typing.Iterable[type],
+    types: Iterable[type],
     help_formatter: HelpFormattable | None = None,
-    propagated_arguments: list[Arg] | None = None,
-    state: State | None = None,
-) -> dict[str, Command]:
+    propagated_arguments: list[Arg[Any]] | None = None,
+    state: State[Any] | None = None,
+) -> dict[str, Command[Any]]:
     from cappa.command import Command
 
     if arg.options:
         return {
-            name: Command.collect(
+            name: Command.collect(  # pyright: ignore
                 type_command,
                 propagated_arguments=propagated_arguments,
                 state=state,
@@ -156,11 +155,11 @@ def infer_options(
             for name, type_command in arg.options.items()
         }
 
-    options = {}
+    options: dict[str, Command[Any]] = {}
     for type_ in types:
-        type_command: Command = Command.get(type_, help_formatter=help_formatter)
+        type_command: Command[Any] = Command.get(type_, help_formatter=help_formatter)  # pyright: ignore
         type_name = type_command.real_name()
-        options[type_name] = Command.collect(
+        options[type_name] = Command.collect(  # pyright: ignore
             type_command, propagated_arguments=propagated_arguments
         )
 

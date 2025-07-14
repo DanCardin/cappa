@@ -457,6 +457,10 @@ Note cappa itself contains a number of component `parse_*` functions inside the 
 module, which can be used in combination with your own custom `parse` functions.
 ```
 
+### `default_parse`
+
+A function [cappa.default_parse](cappa.default_parse) is exposed
+
 (parsing-json)=
 ### Parsing JSON
 

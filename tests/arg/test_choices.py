@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_manually_specified_choices(backend):
+def test_manually_specified_choices(backend: Backend):
     @dataclass
     class ArgTest:
         choice: Annotated[str, cappa.Arg(choices=["a", "1"])]
@@ -30,7 +30,7 @@ def test_manually_specified_choices(backend):
 
 
 @backends
-def test_optional_set_of_choices(backend, capsys):
+def test_optional_set_of_choices(backend: Backend, capsys: Any):
     @dataclass
     class ArgTest:
         choice: Annotated[set[Literal["one", "two"]] | None, cappa.Arg(short=True)] = (
@@ -45,7 +45,7 @@ def test_optional_set_of_choices(backend, capsys):
 
 
 @backends
-def test_variadic_tuple_choices(backend, capsys):
+def test_variadic_tuple_choices(backend: Backend, capsys: Any):
     @dataclass
     class ArgTest:
         choice: Annotated[
@@ -60,7 +60,7 @@ def test_variadic_tuple_choices(backend, capsys):
 
 
 @backends
-def test_tuple_choices(backend, capsys):
+def test_tuple_choices(backend: Backend, capsys: Any):
     @dataclass
     class ArgTest:
         choice: Annotated[
@@ -75,7 +75,7 @@ def test_tuple_choices(backend, capsys):
 
 
 @backends
-def test_literal_parse_sequence(backend):
+def test_literal_parse_sequence(backend: Backend):
     @dataclass
     class LiteralParse:
         log_level: Annotated[

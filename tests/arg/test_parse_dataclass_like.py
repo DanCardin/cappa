@@ -8,7 +8,7 @@ from typing_extensions import Annotated
 
 import cappa
 from cappa.parse import unpack_arguments
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -44,7 +44,7 @@ class Args:
 
 
 @backends
-def test_dataclass_annotation(backend):
+def test_dataclass_annotation(backend: Backend):
     """Dataclass annotation will supply or splat arguments, depending on input shape."""
     result = parse(Args, backend=backend)
     assert result == Args()

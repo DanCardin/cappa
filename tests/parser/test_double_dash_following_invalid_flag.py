@@ -7,11 +7,11 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_(backend):
+def test_(backend: Backend):
     @dataclass
     class Args:
         foo: Annotated[str, cappa.Arg(long=True)]

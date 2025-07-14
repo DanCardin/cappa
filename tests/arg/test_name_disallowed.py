@@ -6,11 +6,11 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_arg_name_disallowed(backend):
+def test_arg_name_disallowed(backend: Backend):
     @dataclass
     class ArgTest:
         bad: Annotated[bool, cappa.Arg(field_name="oops")] = False

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import inspect
-from typing import TYPE_CHECKING, Any, Callable, Protocol, TextIO, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Protocol, TextIO, Type, TypeVar, Union, overload
 
 from rich.theme import Theme
 from typing_extensions import dataclass_transform
@@ -17,9 +17,9 @@ from cappa.help import (
     create_help_arg,
     create_version_arg,
 )
-from cappa.invoke import DepTypes, InvokeCallable, resolve_callable
+from cappa.invoke import DepTypes, InvokeCallable, InvokeCallableSpec, resolve_callable
 from cappa.output import Output
-from cappa.state import State
+from cappa.state import S, State
 
 if TYPE_CHECKING:
     from cappa.arg import Arg
@@ -27,13 +27,26 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 U = TypeVar("U")
 
+CappaCapable = Union[InvokeCallable[T], Type[T], Command[T]]
+
+
+class Backend(Protocol):
+    def __call__(
+        self,
+        command: Command[T],
+        argv: list[str],
+        output: Output,
+        prog: str,
+        provide_completions: bool = False,
+    ) -> tuple[Any, Command[T], dict[str, Any]]: ...  # pragma: no cover
+
 
 def parse(
-    obj: type[T] | Command[T],
+    obj: CappaCapable[T],
     *,
     argv: list[str] | None = None,
     input: TextIO | None = None,
-    backend: Callable[..., Any] | None = None,
+    backend: Backend | None = None,
     color: bool = True,
     version: str | Arg[Any] | None = None,
     help: bool | Arg[Any] = True,
@@ -92,12 +105,12 @@ def parse(
 
 
 def invoke(
-    obj: type | Command[Any],
+    obj: CappaCapable[T],
     *,
     deps: DepTypes = None,
     argv: list[str] | None = None,
     input: TextIO | None = None,
-    backend: Callable[..., Any] | None = None,
+    backend: Backend | None = None,
     color: bool = True,
     version: str | Arg[Any] | None = None,
     help: bool | Arg[Any] = True,
@@ -170,21 +183,21 @@ def invoke(
 
 
 async def invoke_async(
-    obj: type | Command,
+    obj: CappaCapable[T],
     *,
     deps: DepTypes = None,
     argv: list[str] | None = None,
     input: TextIO | None = None,
-    backend: Callable | None = None,
+    backend: Backend | None = None,
     color: bool = True,
-    version: str | Arg | None = None,
-    help: bool | Arg = True,
-    completion: bool | Arg = True,
+    version: str | Arg[str] | None = None,
+    help: bool | Arg[bool] = True,
+    completion: bool | Arg[bool] = True,
     theme: Theme | None = None,
     output: Output | None = None,
     help_formatter: HelpFormattable | None = None,
-    state: State | None = None,
-):
+    state: State[Any] | None = None,
+) -> Any:
     """Parse the command, and invoke the selected command or subcommand.
 
     In the event that a subcommand is selected, only the selected subcommand
@@ -249,42 +262,42 @@ async def invoke_async(
 
 
 def parse_command(
-    obj: type | Command[T],
+    obj: CappaCapable[T],
     *,
     argv: list[str] | None = None,
     input: TextIO | None = None,
-    backend: Callable | None = None,
+    backend: Backend | None = None,
     color: bool = True,
-    version: str | Arg | None = None,
-    help: bool | Arg = True,
-    completion: bool | Arg = True,
+    version: str | Arg[str] | None = None,
+    help: bool | Arg[bool] = True,
+    completion: bool | Arg[bool] = True,
     theme: Theme | None = None,
     output: Output | None = None,
     help_formatter: HelpFormattable | None = None,
-    state: State | None = None,
-) -> tuple[Command, Command[T], T, Output, State]:
+    state: State[S] | None = None,
+) -> tuple[Command[T], Command[T], T, Output, State[Any]]:
     concrete_backend = _coalesce_backend(backend)
     concrete_output = _coalesce_output(output, theme, color)
-    state = State.ensure(state)
+    concrete_state: State[S] = State.ensure(state)  # type: ignore
 
-    command: Command = collect(
+    command: Command[T] = collect(
         obj,
         help=help,
         version=version,
         completion=completion,
         backend=concrete_backend,
         help_formatter=help_formatter,
-        state=state,
+        state=concrete_state,
     )
-    command, parsed_command, instance, state = Command.parse_command(
+    command, parsed_command, instance, state = Command.parse_command(  # pyright: ignore
         command,
         argv=argv,
         input=input,
         backend=concrete_backend,
         output=concrete_output,
-        state=state,
+        state=concrete_state,
     )
-    return command, parsed_command, instance, concrete_output, state
+    return command, parsed_command, instance, concrete_output, concrete_state  # pyright: ignore
 
 
 class FuncOrClassDecorator(Protocol):
@@ -301,7 +314,7 @@ def command(
     name: str | None = None,
     help: str | None = None,
     description: str | None = None,
-    invoke: InvokeCallable | None = None,
+    invoke: InvokeCallableSpec[Any] | None = None,
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
@@ -314,7 +327,7 @@ def command(
     name: str | None = None,
     help: str | None = None,
     description: str | None = None,
-    invoke: InvokeCallable | None = None,
+    invoke: InvokeCallableSpec[Any] | None = None,
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
@@ -328,7 +341,7 @@ def command(
     name: str | None = None,
     help: str | None = None,
     description: str | None = None,
-    invoke: InvokeCallable | None = None,
+    invoke: InvokeCallableSpec[Any] | None = None,
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
@@ -344,7 +357,7 @@ def command(
     name: str | None = None,
     help: str | None = None,
     description: str | None = None,
-    invoke: InvokeCallable | None = None,
+    invoke: InvokeCallableSpec[Any] | None = None,
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
@@ -381,7 +394,7 @@ def command(
         if inspect.isclass(_decorated_cls) and not detect(_decorated_cls):
             _decorated_cls = dataclasses.dataclass(_decorated_cls)  # type: ignore
 
-        command: Command = Command.get(_decorated_cls)  # type: ignore
+        command: Command[T] = Command.get(_decorated_cls)  # type: ignore
         instance = dataclasses.replace(
             command,
             invoke=invoke,
@@ -411,14 +424,14 @@ def command(
 
 
 def collect(
-    obj: type[T] | Command[T],
+    obj: CappaCapable[T],
     *,
-    backend: Callable | None = None,
-    version: str | Arg | None = None,
-    help: bool | Arg = True,
-    completion: bool | Arg = True,
+    backend: Backend | None = None,
+    version: str | Arg[str] | None = None,
+    help: bool | Arg[bool] = True,
+    completion: bool | Arg[bool] = True,
     help_formatter: HelpFormattable | None = None,
-    state: State | None = None,
+    state: State[Any] | None = None,
 ) -> Command[T]:
     """Retrieve the `Command` object from a cappa-capable source class.
 
@@ -439,13 +452,13 @@ def collect(
         help_formatter: Override the default help formatter.
         state: Optional initial State object.
     """
-    state = State.ensure(state)
+    state = State.ensure(state)  # pyright: ignore
 
-    command: Command[T] = Command.get(obj, help_formatter=help_formatter)
-    command = Command.collect(command, state=state)
+    command: Command[T] = Command.get(obj, help_formatter=help_formatter)  # pyright: ignore
+    command = Command.collect(command, state=state)  # pyright: ignore
 
     concrete_backend = _coalesce_backend(backend)
-    if concrete_backend is argparse.backend:
+    if concrete_backend is argparse.backend:  # pyright: ignore
         completion = False
 
     help_arg = create_help_arg(help)
@@ -457,7 +470,7 @@ def collect(
     )
 
 
-def _coalesce_backend(backend: Callable | None = None):
+def _coalesce_backend(backend: Backend | None = None) -> Backend:
     if backend is None:  # pragma: no cover
         return parser.backend
     return backend

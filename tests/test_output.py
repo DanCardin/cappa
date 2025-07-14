@@ -1,5 +1,6 @@
 import textwrap
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from rich.table import Table
@@ -7,11 +8,11 @@ from rich.text import Text
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_invoke_exit_success_with_message(capsys, backend):
+def test_invoke_exit_success_with_message(capsys: Any, backend: Backend):
     def fn():
         raise cappa.Exit("With message")
 
@@ -27,7 +28,7 @@ def test_invoke_exit_success_with_message(capsys, backend):
 
 
 @backends
-def test_invoke_exit_success_without_message(capsys, backend):
+def test_invoke_exit_success_without_message(capsys: Any, backend: Backend):
     def fn():
         raise cappa.Exit()
 
@@ -43,7 +44,7 @@ def test_invoke_exit_success_without_message(capsys, backend):
 
 
 @backends
-def test_invoke_exit_error(capsys, backend):
+def test_invoke_exit_error(capsys: Any, backend: Backend):
     def fn():
         raise cappa.Exit("With message", code=1)
 
@@ -60,7 +61,7 @@ def test_invoke_exit_error(capsys, backend):
 
 
 @backends
-def test_error_output_rich_text(capsys, backend):
+def test_error_output_rich_text(capsys: Any, backend: Backend):
     def fn():
         raise cappa.Exit(Text("With message"), code=1)
 
@@ -77,7 +78,7 @@ def test_error_output_rich_text(capsys, backend):
 
 
 @backends
-def test_explicit_output_prefix(capsys, backend):
+def test_explicit_output_prefix(capsys: Any, backend: Backend):
     @cappa.command(name="asdf")
     @dataclass
     class Example: ...
@@ -99,7 +100,7 @@ def _debug(output: cappa.Output):
 
 
 @backends
-def test_output_formatting_complex_rich_object(capsys, backend):
+def test_output_formatting_complex_rich_object(capsys: Any, backend: Backend):
     @dataclass
     class Example:
         debug_info: Annotated[

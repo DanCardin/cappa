@@ -6,12 +6,12 @@ from typing import Literal
 
 import pytest
 
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires 3.10")
 @backends
-def test_valid(backend):
+def test_valid(backend: Backend):
     @dataclass
     class ArgTest:
         name: Literal["one"] | Literal["two"] | Literal["three"] | Literal[4]

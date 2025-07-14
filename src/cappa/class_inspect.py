@@ -6,6 +6,7 @@ import inspect
 import sys
 import typing
 from enum import Enum
+from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Annotated, Self
 
@@ -33,15 +34,15 @@ class Field:
     annotation: type
     default: typing.Any | EmptyType = Empty
     default_factory: typing.Any | EmptyType = Empty
-    metadata: dict = dataclasses.field(default_factory=dict)
+    metadata: dict[str, Any] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass
 class DataclassField(Field):
     @classmethod
     def collect(cls, typ: type) -> list[Self]:
-        fields = []
-        for f in dataclasses.fields(typ):
+        fields: list[Self] = []
+        for f in dataclasses.fields(typ):  # pyright: ignore
             if not f.init:
                 continue
             field = cls(
@@ -61,67 +62,77 @@ class DataclassField(Field):
 class AttrsField(Field):
     @classmethod
     def collect(cls, typ: type) -> list[Self]:
-        fields = []
+        fields: list[Self] = []
         for f in typ.__attrs_attrs__:  # type: ignore
-            if hasattr(f.default, "factory"):
+            if hasattr(f.default, "factory"):  # pyright: ignore
                 default = None
-                default_factory = f.default.factory
+                default_factory: Any = f.default.factory  # pyright: ignore
             else:
-                default = f.default
+                default = f.default  # pyright: ignore
                 default_factory = None
             field = cls(
-                name=f.name,
-                annotation=f.type,
-                default=default or Empty,
-                default_factory=default_factory or Empty,
-                metadata=f.metadata,
+                name=f.name,  # pyright: ignore
+                annotation=f.type,  # pyright: ignore
+                default=default or Empty,  # pyright: ignore
+                default_factory=default_factory or Empty,  # pyright: ignore
+                metadata=f.metadata,  # pyright: ignore
             )
             fields.append(field)
         return fields
 
 
-@dataclasses.dataclass
-class MsgspecField(Field):
-    @classmethod
-    def collect(cls, typ: type) -> list[Self]:
-        import msgspec  # pyright: ignore
+if TYPE_CHECKING:
 
-        fields = []
-        for f in msgspec.structs.fields(typ):
-            default = f.default if f.default is not msgspec.NODEFAULT else Empty
-            default_factory = (
-                f.default_factory
-                if f.default_factory is not msgspec.NODEFAULT
-                else Empty
-            )
-            field = cls(
-                name=f.name,
-                annotation=f.type,
-                default=default,
-                default_factory=default_factory,
-            )
-            fields.append(field)
-        return fields
+    @dataclasses.dataclass
+    class MsgspecField(Field):
+        @classmethod
+        def collect(cls, typ: type) -> list[Self]:
+            return []
+
+else:
+
+    @dataclasses.dataclass
+    class MsgspecField(Field):
+        @classmethod
+        def collect(cls, typ: type) -> list[Self]:
+            import msgspec  # pyright: ignore
+
+            fields: list[Self] = []
+            for f in msgspec.structs.fields(typ):
+                default = f.default if f.default is not msgspec.NODEFAULT else Empty
+                default_factory = (
+                    f.default_factory
+                    if f.default_factory is not msgspec.NODEFAULT
+                    else Empty
+                )
+                field = cls(
+                    name=f.name,
+                    annotation=f.type,
+                    default=default,
+                    default_factory=default_factory,
+                )
+                fields.append(field)
+            return fields
 
 
 @dataclasses.dataclass
 class PydanticV1Field(Field):
     @classmethod
-    def collect(cls, typ) -> list[Self]:
-        fields = []
+    def collect(cls, typ: type) -> list[Self]:
+        fields: list[Self] = []
         callable_view = CallableView.from_callable(typ, include_extras=True)
         for param in callable_view.parameters:
             name = param.name
-            f = typ.__fields__[name]
+            f = typ.__fields__[name]  # type: ignore
             annotation = param.type_view.strip_optional().annotation
 
             field = cls(
                 name=name,
                 annotation=annotation,
-                default=f.default
-                if f.default.__repr__() != "PydanticUndefined"
+                default=f.default  # pyright: ignore
+                if f.default.__repr__() != "PydanticUndefined"  # pyright: ignore
                 else Empty,
-                default_factory=f.default_factory or Empty,
+                default_factory=f.default_factory or Empty,  # pyright: ignore
             )
             fields.append(field)
         return fields
@@ -131,15 +142,15 @@ class PydanticV1Field(Field):
 class PydanticV2Field(Field):
     @classmethod
     def collect(cls, typ: type) -> list[Self]:
-        fields = []
+        fields: list[Self] = []
         for name, f in typ.model_fields.items():  # type: ignore
             field = cls(
-                name=name,
-                annotation=f.annotation,
-                default=f.default
-                if f.default.__repr__() != "PydanticUndefined"
+                name=name,  # pyright: ignore
+                annotation=f.annotation,  # pyright: ignore
+                default=f.default  # pyright: ignore
+                if f.default.__repr__() != "PydanticUndefined"  # pyright: ignore
                 else Empty,
-                default_factory=f.default_factory or Empty,
+                default_factory=f.default_factory or Empty,  # pyright: ignore
             )
             fields.append(field)
         return fields
@@ -149,13 +160,13 @@ class PydanticV2Field(Field):
 class PydanticV2DataclassField(Field):
     @classmethod
     def collect(cls, typ: type) -> list[Self]:
-        fields = []
+        fields: list[Self] = []
         for name, f in typ.__pydantic_fields__.items():  # type: ignore
             field = cls(
-                name=name,
-                annotation=f.annotation,
-                default=f.default or Empty,
-                default_factory=f.default_factory or Empty,
+                name=name,  # pyright: ignore
+                annotation=f.annotation,  # pyright: ignore
+                default=f.default or Empty,  # pyright: ignore
+                default_factory=f.default_factory or Empty,  # pyright: ignore
             )
             fields.append(field)
         return fields
@@ -169,7 +180,7 @@ def fields(cls: type):
             "Must be one of: dataclass, pydantic, or attrs class."
         )
 
-    return class_type.value.collect(cls)
+    return class_type.value.collect(cls)  # pyright: ignore
 
 
 class ClassTypes(Enum):
@@ -188,8 +199,8 @@ class ClassTypes(Enum):
         if dataclasses.is_dataclass(obj):
             return cls.dataclass
 
-        if hasattr(obj, "__struct_config__"):
-            assert obj.__struct_config__.__class__.__module__.startswith("msgspec")
+        if hasattr(obj, "__struct_config__"):  # pyright: ignore
+            assert obj.__struct_config__.__class__.__module__.startswith("msgspec")  # pyright: ignore
             return cls.msgspec
 
         try:
@@ -208,7 +219,7 @@ class ClassTypes(Enum):
                     return cls.pydantic_v1
                 return cls.pydantic_v2
 
-        if hasattr(obj, "__attrs_attrs__"):
+        if hasattr(obj, "__attrs_attrs__"):  # pyright: ignore
             return cls.attrs
 
         return None
@@ -225,7 +236,7 @@ def extract_dataclass_metadata(field: Field, cls: type[T]) -> list[T]:
     return [field_metadata]
 
 
-def get_command_capable_object(obj):
+def get_command_capable_object(obj: Any) -> type:
     """Convert raw functions into a stub class.
 
     Internally, a dataclass is constructed with a `__call__` method which **splats
@@ -235,11 +246,11 @@ def get_command_capable_object(obj):
         from cappa import Dep
         from cappa.command import Command
 
-        function_args = []
+        function_args: list[Any] = []
 
         @functools.wraps(obj)
-        def call(self, *args, **deps):
-            kwargs = dataclasses.asdict(self)
+        def call(self: Any, *args: Any, **deps: Any):
+            kwargs: dict[str, Any] = dataclasses.asdict(self)
             return obj(*args, **kwargs, **deps)
 
         callable_view = CallableView.from_callable(obj, include_extras=True)
@@ -247,7 +258,7 @@ def get_command_capable_object(obj):
         # We need to create a fake signature for the above callable, which does
         # not retain the `Arg` annotations
         signature = callable_view.signature
-        sig_params: dict = dict(signature.parameters)
+        sig_params: dict[str, inspect.Parameter] = dict(signature.parameters)
         signature._parameters = sig_params  # type: ignore
         call.__signature__ = signature  # type: ignore
 
@@ -310,7 +321,7 @@ def get_command_capable_object(obj):
     return obj
 
 
-def collect_method_subcommands(cls: type) -> tuple[typing.Callable, ...]:
+def collect_method_subcommands(cls: type) -> tuple[typing.Callable[..., Any], ...]:
     return tuple(
         method
         for _, method in inspect.getmembers(cls, callable)
@@ -318,9 +329,9 @@ def collect_method_subcommands(cls: type) -> tuple[typing.Callable, ...]:
     )
 
 
-def has_command(obj) -> bool:
+def has_command(obj: object) -> bool:
     return hasattr(obj, "__cappa__")
 
 
-def get_command(obj) -> Command | None:
+def get_command(obj: type) -> Command[Any] | None:
     return getattr(obj, "__cappa__", None)

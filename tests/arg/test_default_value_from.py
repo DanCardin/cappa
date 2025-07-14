@@ -8,10 +8,10 @@ from typing_extensions import Annotated
 
 import cappa
 from cappa.default import ValueFrom
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
-def woah(value):
+def woah(value: int) -> int:
     return 1 + value
 
 
@@ -24,7 +24,7 @@ class Command:
 
 
 @backends
-def test_valid(backend):
+def test_valid(backend: Backend):
     result = parse(Command, "6", "7", backend=backend)
     assert result == Command(6, 7)
 
@@ -41,7 +41,7 @@ def raises():
 
 
 @backends
-def test_not_parsed(backend):
+def test_not_parsed(backend: Backend):
     @dataclass
     class Command:
         foo: Annotated[int, cappa.Arg(parse=raises, default=ValueFrom(int))]
@@ -58,7 +58,7 @@ def called():
 
 
 @backends
-def test_positional_unbound_num_args(backend):
+def test_positional_unbound_num_args(backend: Backend):
     @dataclass
     class Command:
         positional: Annotated[

@@ -7,7 +7,7 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -21,7 +21,7 @@ class RequiredMissing:
 
 
 @backends
-def test_required_missing(backend):
+def test_required_missing(backend: Backend):
     with pytest.raises(cappa.Exit) as e:
         parse(RequiredMissing, backend=backend)
     assert isinstance(e.value.message, str)
@@ -54,7 +54,7 @@ class RequiredProvided:
 
 
 @backends
-def test_required_provided(backend):
+def test_required_provided(backend: Backend):
     test = parse(
         RequiredProvided, "required-provided-one", "--foo", "foo", backend=backend
     )
@@ -84,6 +84,6 @@ class NamedSubcommand:
 
 
 @backends
-def test_named_subcommand(backend):
+def test_named_subcommand(backend: Backend):
     test = parse(NamedSubcommand, "one", backend=backend)
     assert isinstance(test.subcommand, NamedSubcommandOne)

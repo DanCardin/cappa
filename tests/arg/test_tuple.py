@@ -6,7 +6,7 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -15,13 +15,13 @@ class ArgTest:
 
 
 @backends
-def test_valid(backend):
+def test_valid(backend: Backend):
     test = parse(ArgTest, "1", "2", "3.4", backend=backend)
     assert test.numbers == (1, "2", 3.4)
 
 
 @backends
-def test_tuple_option(backend):
+def test_tuple_option(backend: Backend):
     @dataclass
     class Example:
         start_project: Annotated[
@@ -56,7 +56,7 @@ def test_tuple_option(backend):
 
 
 @backends
-def test_optional_tuple_option(backend):
+def test_optional_tuple_option(backend: Backend):
     @dataclass
     class Example:
         start_project: Annotated[

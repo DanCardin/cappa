@@ -5,11 +5,12 @@ import csv
 import io
 import logging
 from dataclasses import dataclass
+from typing import Any
 
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, invoke_async
+from tests.utils import Backend, backends, invoke_async
 
 log = logging.getLogger("test")
 
@@ -39,7 +40,7 @@ async def csv_file(text_io: Annotated[io.TextIOWrapper, cappa.Dep(text_io)]):
 
 
 def command(
-    _: Annotated[dict, cappa.Dep(csv_file)],
+    _: Annotated[dict[Any, Any], cappa.Dep(csv_file)],
     binary_io: Annotated[io.BytesIO, cappa.Dep(binary_io)],
 ):
     assert not binary_io.closed
@@ -52,7 +53,7 @@ class Command: ...
 
 
 @backends
-def test_invoke_top_level_command(backend, capsys):
+def test_invoke_top_level_command(backend: Backend, capsys: Any):
     buffer, result = asyncio.run(invoke_async(Command, backend=backend))
 
     assert buffer.closed is True

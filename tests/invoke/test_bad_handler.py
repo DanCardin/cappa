@@ -5,11 +5,11 @@ from dataclasses import dataclass
 import pytest
 
 import cappa
-from tests.utils import backends, invoke
+from tests.utils import Backend, backends, invoke
 
 
 @backends
-def test_missing_invoke(backend):
+def test_missing_invoke(backend: Backend):
     @cappa.command()
     @dataclass
     class Command: ...
@@ -27,7 +27,7 @@ def test_missing_invoke(backend):
 
 
 @backends
-def test_string_missing_function(backend):
+def test_string_missing_function(backend: Backend):
     @cappa.command(invoke="sys")
     @dataclass
     class Command: ...
@@ -45,7 +45,7 @@ def test_string_missing_function(backend):
 
 
 @backends
-def test_string_references_invalid_module(backend):
+def test_string_references_invalid_module(backend: Backend):
     @cappa.command(invoke="completely.wrong")
     @dataclass
     class Command: ...
@@ -62,7 +62,7 @@ def test_string_references_invalid_module(backend):
 
 
 @backends
-def test_string_references_invalid_function(backend):
+def test_string_references_invalid_function(backend: Backend):
     @cappa.command(invoke="builtins.meow")
     @dataclass
     class Command: ...
@@ -80,7 +80,7 @@ def test_string_references_invalid_function(backend):
 
 
 @backends
-def test_string_reference_not_callable(backend):
+def test_string_reference_not_callable(backend: Backend):
     @cappa.command(invoke="builtins.__name__")
     @dataclass
     class Command: ...

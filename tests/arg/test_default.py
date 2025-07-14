@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -15,13 +15,13 @@ class Command:
 
 
 @backends
-def test_valid(backend):
+def test_valid(backend: Backend):
     test = parse(Command, "1", "2", backend=backend)
     assert test == Command(1, 2)
 
 
 @backends
-def test_default_is_not_mapped(backend):
+def test_default_is_not_mapped(backend: Backend):
     @dataclass
     class Command:
         foo: int = "4"  # type: ignore

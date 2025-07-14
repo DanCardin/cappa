@@ -2,9 +2,19 @@ from __future__ import annotations
 
 import dataclasses
 import sys
-import typing
 from collections.abc import Callable
-from typing import TextIO
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Generic,
+    Iterable,
+    Protocol,
+    TextIO,
+    TypedDict,
+    TypeVar,
+    cast,
+)
 
 from type_lens.type_view import TypeView
 
@@ -15,21 +25,24 @@ from cappa.default import Default
 from cappa.docstring import ClassHelpText
 from cappa.help import HelpFormattable, HelpFormatter, format_short_help
 from cappa.output import Exit, Output
-from cappa.state import State
+from cappa.state import S, State
 from cappa.subcommand import Subcommand
 from cappa.type_view import CallableView
 from cappa.typing import assert_type
 
-T = typing.TypeVar("T")
+if TYPE_CHECKING:
+    from cappa.base import Backend, CappaCapable
+
+T = TypeVar("T")
 
 
-class CommandArgs(typing.TypedDict, total=False):
+class CommandArgs(TypedDict, total=False):
     cmd_cls: type
-    arguments: list[Arg | Subcommand]
+    arguments: list[Arg[Any] | Subcommand]
     name: str | None
     help: str | None
     description: str | None
-    invoke: Callable | str | None
+    invoke: Callable[..., Any] | str | None
 
     hidden: bool
     default_short: bool
@@ -37,7 +50,7 @@ class CommandArgs(typing.TypedDict, total=False):
 
 
 @dataclasses.dataclass
-class Command(typing.Generic[T]):
+class Command(Generic[T]):
     """Register a cappa CLI command/subcomment.
 
     Args:
@@ -68,13 +81,13 @@ class Command(typing.Generic[T]):
     """
 
     cmd_cls: type[T]
-    arguments: list[Arg | Subcommand] = dataclasses.field(default_factory=list)
-    propagated_arguments: list[Arg] = dataclasses.field(default_factory=list)
+    arguments: list[Arg[Any] | Subcommand] = dataclasses.field(default_factory=list)
+    propagated_arguments: list[Arg[Any]] = dataclasses.field(default_factory=list)
 
     name: str | None = None
     help: str | None = None
     description: str | None = None
-    invoke: Callable | str | None = None
+    invoke: Callable[..., Any] | str | None = None
 
     hidden: bool = False
     default_short: bool = False
@@ -87,7 +100,7 @@ class Command(typing.Generic[T]):
 
     @classmethod
     def get(
-        cls, obj: type[T] | Command[T], help_formatter: HelpFormattable | None = None
+        cls, obj: CappaCapable[T], help_formatter: HelpFormattable | None = None
     ) -> Command[T]:
         help_formatter = help_formatter or HelpFormatter.default
 
@@ -120,10 +133,10 @@ class Command(typing.Generic[T]):
     def collect(
         cls,
         command: Command[T],
-        propagated_arguments: list[Arg] | None = None,
-        state: State | None = None,
+        propagated_arguments: list[Arg[Any]] | None = None,
+        state: State[Any] | None = None,
     ) -> Command[T]:
-        kwargs: CommandArgs = {}
+        kwargs: CommandArgs = CommandArgs()
 
         help_text = ClassHelpText.collect(command.cmd_cls)
 
@@ -138,15 +151,15 @@ class Command(typing.Generic[T]):
 
         propagated_arguments = propagated_arguments or []
 
-        arguments = []
-        raw_subcommands: list[tuple[Subcommand, TypeView | None, str | None]] = []
+        arguments: list[Arg[Any]] = []
+        raw_subcommands: list[tuple[Subcommand, TypeView[Any] | None, str | None]] = []
         if command.arguments:
             param_by_name = {p.name: p for p in function_view.parameters}
             for arg in command.arguments:
                 arg_help = help_text.args.get(assert_type(arg.field_name, str))
                 if isinstance(arg, Arg):
                     type_view = (
-                        param_by_name[typing.cast(str, arg.field_name)].type_view
+                        param_by_name[cast(str, arg.field_name)].type_view
                         if arg.field_name in param_by_name
                         else None
                     )
@@ -179,7 +192,7 @@ class Command(typing.Generic[T]):
                         )
                     )
                 else:
-                    arg_defs: list[Arg] = Arg.collect(
+                    arg_defs: list[Arg[Any]] = Arg.collect(
                         field,
                         param_view.type_view,
                         fallback_help=arg_help,
@@ -219,16 +232,16 @@ class Command(typing.Generic[T]):
         command: Command[T],
         *,
         output: Output,
-        backend: typing.Callable,
+        backend: Backend,
         argv: list[str] | None = None,
         input: TextIO | None = None,
-        state: State | None = None,
-    ) -> tuple[Command, Command[T], T, State]:
+        state: State[S] | None = None,
+    ) -> tuple[Command[T], Command[T], T, State[S]]:
         if argv is None:  # pragma: no cover
             argv = sys.argv[1:]
 
         prog = command.real_name()
-        state = State.ensure(state)
+        result_state = State.ensure(state)  # pyright: ignore
 
         try:
             parser, parsed_command, parsed_args = backend(
@@ -238,33 +251,44 @@ class Command(typing.Generic[T]):
             result = command.map_result(
                 command, prog, parsed_args, state=state, input=input
             )
-        except Exit as e:
-            command = e.command or command
-            prog = e.prog or prog
-            output.exit(
-                e,
-                help=command.help_formatter(command, prog),
-                short_help=format_short_help(command, prog),
-            )
+        except BaseException as e:
+            if isinstance(e, Exit):
+                command = e.command or command
+                prog = e.prog or prog
+
+            help = command.help_formatter(command, prog)
+            short_help = format_short_help(command, prog)
+
+            if isinstance(e, ValueError):
+                exc = Exit(str(e), code=2, prog=prog, command=command)
+                output.exit(exc, help=help, short_help=short_help)
+                raise exc
+
+            if isinstance(e, Exit):
+                output.exit(e, help=help, short_help=short_help)
+                raise
+
             raise
 
-        return command, parsed_command, result, state
+        return command, parsed_command, result, result_state  # type: ignore
 
     def map_result(
         self,
         command: Command[T],
         prog: str,
-        parsed_args,
-        state: State | None = None,
+        parsed_args: dict[str, Any],
+        state: State[Any] | None = None,
         input: TextIO | None = None,
     ) -> T:
-        state = State.ensure(state)
+        state = State.ensure(state)  # pyright: ignore
 
-        kwargs = {}
+        kwargs: dict[str, Any] = {}
         for arg in self.value_arguments:
+            field_name = cast(str, arg.field_name)
+
             is_parsed = False
             if arg.field_name in parsed_args:
-                value = parsed_args[arg.field_name]
+                value = parsed_args[field_name]
             else:
                 assert isinstance(arg.default, Default), arg
                 is_parsed, value = arg.default(state=state, input=input)
@@ -283,11 +307,11 @@ class Command(typing.Generic[T]):
                         prog=prog,
                     )
 
-            kwargs[arg.field_name] = value
+            kwargs[field_name] = value
 
         subcommand = self.subcommand
         if subcommand:
-            field_name = subcommand.field_name
+            field_name = cast(str, subcommand.field_name)
             if field_name in parsed_args:
                 value = parsed_args[field_name]
                 value = subcommand.map_result(prog, value, state=state)
@@ -302,13 +326,13 @@ class Command(typing.Generic[T]):
         )
 
     @property
-    def value_arguments(self) -> typing.Iterable[Arg]:
+    def value_arguments(self) -> Iterable[Arg[Any]]:
         for arg in self.arguments:
             if isinstance(arg, Arg) and arg.has_value:
                 yield arg
 
     @property
-    def all_arguments(self) -> typing.Iterable[Arg | Subcommand]:
+    def all_arguments(self) -> Iterable[Arg[Any] | Subcommand]:
         for arg in self.arguments:
             yield arg
 
@@ -316,13 +340,13 @@ class Command(typing.Generic[T]):
             yield arg
 
     @property
-    def options(self) -> typing.Iterable[Arg]:
+    def options(self) -> Iterable[Arg[Any]]:
         for arg in self.arguments:
             if isinstance(arg, Arg) and arg.is_option:
                 yield arg
 
     @property
-    def positional_arguments(self) -> typing.Iterable[Arg | Subcommand]:
+    def positional_arguments(self) -> Iterable[Arg[Any] | Subcommand]:
         for arg in self.arguments:
             if (
                 isinstance(arg, Arg)
@@ -334,9 +358,9 @@ class Command(typing.Generic[T]):
 
     def add_meta_actions(
         self,
-        help: Arg | None = None,
-        version: Arg | None = None,
-        completion: Arg | None = None,
+        help: Arg[bool] | None = None,
+        version: Arg[str] | None = None,
+        completion: Arg[bool] | None = None,
     ):
         if self._collected:
             return self
@@ -363,20 +387,20 @@ class Command(typing.Generic[T]):
         return dataclasses.replace(self, arguments=arguments, _collected=True)
 
 
-H = typing.TypeVar("H", covariant=True)
+H = TypeVar("H", covariant=True)
 
 
-class HasCommand(typing.Generic[H], typing.Protocol):
-    __cappa__: typing.ClassVar[Command]
+class HasCommand(Generic[H], Protocol):
+    __cappa__: ClassVar[Command[Any]]
 
 
-def check_group_identity(args: list[Arg]):
+def check_group_identity(args: list[Arg[Any]]):
     group_identity: dict[str, Group] = {}
 
     for arg in args:
         assert isinstance(arg.group, Group)
 
-        name = typing.cast(str, arg.group.name)
+        name = arg.group.name
         identity = group_identity.get(name)
         if identity and identity != arg.group:
             raise ValueError(

@@ -8,11 +8,11 @@ from typing_extensions import Annotated
 import cappa
 from cappa.output import Output
 from cappa.state import State
-from tests.utils import CapsysOutput, backends, invoke, parse
+from tests.utils import Backend, CapsysOutput, backends, invoke, parse
 
 
 @backends
-def test_no_op(backend):
+def test_no_op(backend: Backend):
     """Base case, this doesnt really serve any purpose."""
 
     def function():
@@ -22,7 +22,7 @@ def test_no_op(backend):
 
 
 @backends
-def test_parse_one_arg(backend):
+def test_parse_one_arg(backend: Backend):
     """Parse with arguments.
 
     Again, not really a logical usecase for `parse`, but technically it ought to work.
@@ -32,11 +32,11 @@ def test_parse_one_arg(backend):
         return foo
 
     result = parse(function, "meow", backend=backend)
-    assert result.foo == "meow"
+    assert result.foo == "meow"  # pyright: ignore
 
 
 @backends
-def test_invoke_base_case(backend):
+def test_invoke_base_case(backend: Backend):
     def function(foo: str):
         return foo
 
@@ -45,7 +45,7 @@ def test_invoke_base_case(backend):
 
 
 @backends
-def test_invoke_optional_args(backend):
+def test_invoke_optional_args(backend: Backend):
     def function(foo: Annotated[int, cappa.Arg(long=True)] = 15):
         return foo
 
@@ -65,7 +65,7 @@ class Sub:
 
 
 @backends
-def test_subcommand(backend):
+def test_subcommand(backend: Backend):
     def function(sub: cappa.Subcommands[Union[Sub, None]] = None):
         assert sub is None
         return 6
@@ -82,7 +82,7 @@ def foo():
 
 
 @backends
-def test_invoke_partial_arg_partial_dep(backend):
+def test_invoke_partial_arg_partial_dep(backend: Backend):
     def function(
         dep: Annotated[int, cappa.Dep(foo)],
         foo: Annotated[int, cappa.Arg(long=True)] = 15,
@@ -97,7 +97,7 @@ def test_invoke_partial_arg_partial_dep(backend):
 
 
 @backends
-def test_output(backend, capsys):
+def test_output(backend: Backend, capsys: Any):
     """Depends on Output DI."""
 
     def function(foo: str, output: Output):
@@ -116,7 +116,7 @@ class StateFoo(TypedDict):
 
 
 @backends
-def test_state(backend, capsys: Any):
+def test_state(backend: Backend, capsys: Any):
     """Depends on Output DI."""
 
     def function(foo: int, state: State[StateFoo]):

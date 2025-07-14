@@ -6,7 +6,7 @@ from cappa.file_io import FileMode
 from cappa.help import HelpFormattable, HelpFormatter
 from cappa.invoke import Dep, Self
 from cappa.output import Exit, HelpExit, Output
-from cappa.parse import unpack_arguments
+from cappa.parse import default_parse, unpack_arguments
 from cappa.state import State
 from cappa.subcommand import Subcommand, Subcommands
 from cappa.type_view import Empty, EmptyType
@@ -46,6 +46,7 @@ __all__ = [
     "backend",
     "collect",
     "command",
+    "default_parse",
     "invoke",
     "invoke_async",
     "parse",

@@ -6,11 +6,12 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from cappa.output import Exit
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_valid(backend):
+def test_valid(backend: Backend):
     @cappa.command(default_short=True)
     @dataclass
     class Command:
@@ -25,7 +26,7 @@ def test_valid(backend):
 
 
 @backends
-def test_override(backend):
+def test_override(backend: Backend):
     @cappa.command(default_short=True)
     @dataclass
     class Command:
@@ -37,13 +38,13 @@ def test_override(backend):
 
 
 @backends
-def test_invalid(backend):
+def test_invalid(backend: Backend):
     @cappa.command(default_short=True)
     @dataclass
     class Command:
         foo: int
         far: int
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(Exit) as e:
         parse(Command, backend=backend)
-    assert "conflicting option string: -f" in str(e.value).lower()
+    assert "conflicting option string: -f" in str(e.value.message).lower()

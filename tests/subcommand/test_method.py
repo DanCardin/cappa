@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from typing_extensions import Annotated
 
 import cappa
 from cappa.output import Exit
-from tests.utils import backends, invoke, parse, strip_trailing_whitespace
+from tests.utils import Backend, backends, invoke, parse, strip_trailing_whitespace
 
 
 def some_dep():
@@ -35,7 +36,7 @@ class HasExecutableMethods:
 
 
 @backends
-def test_parse(backend):
+def test_parse(backend: Backend):
     result = parse(HasExecutableMethods, "10", "add", backend=backend)
     assert result == HasExecutableMethods(10, False)
 
@@ -59,7 +60,7 @@ def test_parse(backend):
 
 
 @backends
-def test_invoke_add(backend):
+def test_invoke_add(backend: Backend):
     result = invoke(HasExecutableMethods, "10", "add", backend=backend)
     assert result == 15
 
@@ -72,7 +73,7 @@ def test_invoke_add(backend):
 
 
 @backends
-def test_invoke_subtract(backend):
+def test_invoke_subtract(backend: Backend):
     result = invoke(HasExecutableMethods, "10", "subtract", "7", backend=backend)
     assert result == 3
 
@@ -85,7 +86,7 @@ def test_invoke_subtract(backend):
 
 
 @backends
-def test_help(backend, capsys):
+def test_help(backend: Backend, capsys: Any):
     with pytest.raises(Exit):
         invoke(HasExecutableMethods, "--help", backend=backend)
 
@@ -95,7 +96,7 @@ def test_help(backend, capsys):
 
 
 @backends
-def test_nested_method_invalid_ast_source(backend, capsys):
+def test_nested_method_invalid_ast_source(backend: Backend, capsys: Any):
     @cappa.command
     @dataclass
     class Example:

@@ -6,11 +6,11 @@ from datetime import date, datetime, time
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_datetime(backend):
+def test_datetime(backend: Backend):
     @dataclass
     class ArgTest:
         datetime_arg: datetime
@@ -27,7 +27,7 @@ def test_datetime(backend):
 
 
 @backends
-def test_date(backend):
+def test_date(backend: Backend):
     @dataclass
     class ArgTest:
         date_arg: date
@@ -39,7 +39,7 @@ def test_date(backend):
 
 
 @backends
-def test_time(backend):
+def test_time(backend: Backend):
     @dataclass
     class ArgTest:
         date_arg: time

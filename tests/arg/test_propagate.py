@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from typing_extensions import Annotated
@@ -39,7 +40,7 @@ def test_propagated_arg():
 
 
 def test_propagate_incompatible_with_argparse():
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         parse(Command, backend=cappa.argparse.backend)
 
 
@@ -107,7 +108,7 @@ def test_propagate_requires_option():
     )
 
 
-def test_help_contains_propagated_arg(capsys):
+def test_help_contains_propagated_arg(capsys: Any):
     @dataclass
     class Command:
         foo: Annotated[int, cappa.Arg(long=True, propagate=True, help="Everywhere")] = 1

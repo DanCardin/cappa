@@ -6,11 +6,11 @@ from unittest.mock import patch
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_missing_fallback(backend):
+def test_missing_fallback(backend: Backend):
     @dataclass
     class ArgTest:
         default: Annotated[str, cappa.Arg(default=cappa.Env("ASDF", default="wat"))]
@@ -20,7 +20,7 @@ def test_missing_fallback(backend):
 
 
 @backends
-def test_has_env_var(backend):
+def test_has_env_var(backend: Backend):
     @dataclass
     class ArgTest:
         default: Annotated[str, cappa.Arg(default=cappa.Env("ASDF", default="wat"))]
@@ -31,7 +31,7 @@ def test_has_env_var(backend):
 
 
 @backends
-def test_env_defers_to_real_value(backend):
+def test_env_defers_to_real_value(backend: Backend):
     @dataclass
     class ArgTest:
         default: Annotated[str, cappa.Arg(default=cappa.Env("ASDF", default="wat"))]
@@ -41,7 +41,7 @@ def test_env_defers_to_real_value(backend):
 
 
 @backends
-def test_mapping_is_applied(backend):
+def test_mapping_is_applied(backend: Backend):
     @dataclass
     class ArgTest:
         default: Annotated[bool, cappa.Arg(default=cappa.Env("ASDF", default="wat"))]
@@ -51,7 +51,7 @@ def test_mapping_is_applied(backend):
 
 
 @backends
-def test_class_default_gets_applied_to_env_default(backend):
+def test_class_default_gets_applied_to_env_default(backend: Backend):
     @dataclass
     class ArgTest:
         default: Annotated[str, cappa.Arg(default=cappa.Env("ASDF"))] = "wat"
@@ -61,7 +61,7 @@ def test_class_default_gets_applied_to_env_default(backend):
 
 
 @backends
-def test_class_default_still_abides_env_var(backend):
+def test_class_default_still_abides_env_var(backend: Backend):
     @dataclass
     class ArgTest:
         default: Annotated[str, cappa.Arg(default=cappa.Env("ASDF"))] = "wat"

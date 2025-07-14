@@ -7,11 +7,11 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_missing_default(backend):
+def test_missing_default(backend: Backend):
     @dataclass
     class ArgTest:
         default: bool
@@ -24,7 +24,7 @@ def test_missing_default(backend):
 
 
 @backends
-def test_default(backend):
+def test_default(backend: Backend):
     @dataclass
     class ArgTest:
         default: bool = False
@@ -37,7 +37,7 @@ def test_default(backend):
 
 
 @backends
-def test_explicit_short(backend):
+def test_explicit_short(backend: Backend):
     @dataclass
     class ArgTest:
         explicit_short: Annotated[bool, cappa.Arg(short="-e")] = False
@@ -50,7 +50,7 @@ def test_explicit_short(backend):
 
 
 @backends
-def test_explicit_long(backend):
+def test_explicit_long(backend: Backend):
     @dataclass
     class ArgTest:
         explicit_long: Annotated[bool, cappa.Arg(long="--meow")] = False
@@ -63,7 +63,7 @@ def test_explicit_long(backend):
 
 
 @backends
-def test_store_false(backend):
+def test_store_false(backend: Backend):
     @dataclass
     class ArgTest:
         default_true: Annotated[bool, cappa.Arg(long="--false")] = True
@@ -76,7 +76,7 @@ def test_store_false(backend):
 
 
 @backends
-def test_true_false_option(backend):
+def test_true_false_option(backend: Backend):
     @dataclass
     class ArgTest:
         true_false: Annotated[bool, cappa.Arg(long="--true/--no-true")] = True
@@ -98,7 +98,7 @@ def test_true_false_option(backend):
 
 
 @backends
-def test_optional_bool(backend):
+def test_optional_bool(backend: Backend):
     """Optional bool with default should still infer store_true/false action."""
 
     @dataclass
@@ -116,7 +116,7 @@ def test_optional_bool(backend):
 
 
 @backends
-def test_optional_bool_no_default(backend):
+def test_optional_bool_no_default(backend: Backend):
     """Optional bool should default to None rather than bool."""
 
     @dataclass
@@ -128,7 +128,7 @@ def test_optional_bool_no_default(backend):
 
 
 @backends
-def test_optional_bool_and_int(backend):
+def test_optional_bool_and_int(backend: Backend):
     """Union of multiple types, including bool does not infer bool action."""
 
     @dataclass
@@ -146,7 +146,7 @@ def test_optional_bool_and_int(backend):
 
 
 @backends
-def test_env_default_value_precedence(backend):
+def test_env_default_value_precedence(backend: Backend):
     """Assert a bool flag yields correct value given an env default."""
 
     @dataclass
@@ -171,7 +171,7 @@ def test_env_default_value_precedence(backend):
 
 
 @backends
-def test_sole_no_arg(backend):
+def test_sole_no_arg(backend: Backend):
     @dataclass
     class ArgTest:
         no_dry_run: bool = False
@@ -184,7 +184,7 @@ def test_sole_no_arg(backend):
 
 
 @backends
-def test_sole_no_arg_inverted(backend):
+def test_sole_no_arg_inverted(backend: Backend):
     @dataclass
     class ArgTest:
         no_dry_run: bool = True

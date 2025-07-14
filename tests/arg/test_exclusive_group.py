@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import textwrap
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from typing_extensions import Annotated
 
 import cappa
 from cappa.arg import Group
-from tests.utils import backends, parse, strip_trailing_whitespace
+from tests.utils import Backend, backends, parse, strip_trailing_whitespace
 
 
 @backends
-def test_implicit_syntax(backend):
+def test_implicit_syntax(backend: Backend | None):
     @dataclass
     class ArgTest:
         verbose: Annotated[
@@ -41,7 +42,7 @@ def test_implicit_syntax(backend):
 
 
 @backends
-def test_implicit_syntax_explicit_name(backend, capsys):
+def test_implicit_syntax_explicit_name(backend: Backend, capsys: Any):
     @dataclass
     class ArgTest:
         verbose: Annotated[
@@ -69,7 +70,7 @@ def test_implicit_syntax_explicit_name(backend, capsys):
 
 
 @backends
-def test_explicit_groups(backend):
+def test_explicit_groups(backend: Backend | None):
     @dataclass
     class ArgTest:
         verbose: Annotated[
@@ -109,7 +110,7 @@ def test_explicit_groups(backend):
 
 
 @backends
-def test_differing_group_identity(backend):
+def test_differing_group_identity(backend: Backend):
     @dataclass
     class ArgTest:
         one: Annotated[int, cappa.Arg(group=Group(name="Verbose", exclusive=False))] = 0

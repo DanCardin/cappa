@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
 import cappa
 from cappa.output import Exit
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @pytest.mark.help
 @backends
-def test_default_help(backend, capsys):
+def test_default_help(backend: Backend, capsys: Any):
     @dataclass
     class Command:
         """Some help.
@@ -31,7 +32,7 @@ def test_default_help(backend, capsys):
 
 @pytest.mark.help
 @backends
-def test_default_help_no_long_description(backend, capsys):
+def test_default_help_no_long_description(backend: Backend, capsys: Any):
     @dataclass
     class Command:
         """Some help."""
@@ -47,7 +48,7 @@ def test_default_help_no_long_description(backend, capsys):
 
 @pytest.mark.help
 @backends
-def test_unannotated_argument(backend, capsys):
+def test_unannotated_argument(backend: Backend, capsys: Any):
     @cappa.command(help="All the help.")
     @dataclass
     class Command: ...
@@ -61,7 +62,7 @@ def test_unannotated_argument(backend, capsys):
 
 @pytest.mark.help
 @backends
-def test_description_without_help(backend, capsys):
+def test_description_without_help(backend: Backend, capsys: Any):
     @cappa.command(description="All the help.")
     @dataclass
     class Command:

@@ -1,24 +1,22 @@
 from __future__ import annotations
 
+import sys
 from typing import Optional
 
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
-try:
-    import msgspec  # pyright: ignore
-except ImportError:  # pragma: no cover
-    pass
-else:
+if sys.version_info >= (3, 9):
+    import msgspec
 
     class PydanticCommand(msgspec.Struct):
         name: str
         foo: Annotated[int, cappa.Arg(short=True)]
 
     @backends
-    def test_base_model(backend):
+    def test_base_model(backend: Backend):
         result = parse(PydanticCommand, "meow", "-f", "4", backend=backend)
         assert result == PydanticCommand(name="meow", foo=4)
 
@@ -29,7 +27,7 @@ else:
         sub: cappa.Subcommands[Optional[OptSub]] = None
 
     @backends
-    def test_optional_subcommand(backend):
+    def test_optional_subcommand(backend: Backend):
         result = parse(OptionalSubcommand, backend=backend)
         assert result == OptionalSubcommand(sub=None)
 

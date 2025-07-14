@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
-import typing
 from pathlib import Path
+from typing import Any, Iterable, cast
 
 from cappa.arg import Arg
 from cappa.command import Command
@@ -11,7 +11,9 @@ from cappa.output import Exit, Output
 from cappa.parser import Completion, FileCompletion, backend
 
 
-def execute(command: Command, prog: str, action: str, arg: Arg, output: Output):
+def execute(
+    command: Command[Any], prog: str, action: str, arg: Arg[Any], output: Output
+):
     shell_name = Path(os.environ.get("SHELL", "bash")).name
     shell = available_shells.get(shell_name)
 
@@ -35,7 +37,7 @@ def execute(command: Command, prog: str, action: str, arg: Arg, output: Output):
 def parse_incomplete_command() -> list[str]:
     raw_completion_line = os.environ.get("COMPLETION_LINE", "").replace("\n", " ")
     raw_completion_location = os.environ.get("COMPLETION_LOCATION")
-    if raw_completion_line is None or raw_completion_location is None:
+    if not raw_completion_line or raw_completion_location is None:
         raise Exit(code=0)
 
     completion_line = list(split_incomplete_command(raw_completion_line))
@@ -44,7 +46,7 @@ def parse_incomplete_command() -> list[str]:
     return completion_line[1:completion_index]
 
 
-def split_incomplete_command(string: str) -> typing.Iterable[str]:
+def split_incomplete_command(string: str) -> Iterable[str]:
     import shlex
 
     lex = shlex.shlex(string, posix=True)
@@ -64,8 +66,8 @@ def format_completions(*completions: Completion | FileCompletion) -> str | None:
     if isinstance(completions[0], FileCompletion):
         return "file"
 
-    result = []
+    result: list[str] = []
     for item in completions:
-        item = typing.cast(Completion, item)
+        item = cast(Completion, item)
         result.append(f"{item.value}:{item.help if item.help else ''}")
     return "\n".join(result)

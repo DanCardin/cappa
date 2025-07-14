@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
@@ -22,8 +23,8 @@ class Args:
     sub_one: cappa.Subcommands[SubOne]
 
 
-def test_all_help_options_share_defined_help_argument(capsys):
-    help: cappa.Arg = cappa.Arg(help="this is custom text", long=True)
+def test_all_help_options_share_defined_help_argument(capsys: Any):
+    help: cappa.Arg[Any] = cappa.Arg(help="this is custom text", long=True)
 
     with pytest.raises(cappa.HelpExit):
         parse(Args, "--help", help=help)

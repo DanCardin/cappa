@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -24,7 +24,7 @@ config = Config("foo")
 
 
 @backends
-def test_from_classmethod(backend):
+def test_from_classmethod(backend: Backend):
     @cappa.command(name="command")
     @dataclass
     class Command:
@@ -35,7 +35,7 @@ def test_from_classmethod(backend):
 
 
 @backends
-def test_method(backend):
+def test_method(backend: Backend):
     @cappa.command(name="command")
     @dataclass
     class Command:

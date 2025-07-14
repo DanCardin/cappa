@@ -7,7 +7,7 @@ from typing import Literal, Union
 import pytest
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -16,19 +16,19 @@ class ArgTest:
 
 
 @backends
-def test_valid_int(backend):
+def test_valid_int(backend: Backend):
     test = parse(ArgTest, "5", backend=backend)
     assert test.name == 5
 
 
 @backends
-def test_valid_literal(backend):
+def test_valid_literal(backend: Backend):
     test = parse(ArgTest, "one", backend=backend)
     assert test.name == "one"
 
 
 @backends
-def test_invalid_string(backend):
+def test_invalid_string(backend: Backend):
     with pytest.raises(cappa.Exit) as e:
         parse(ArgTest, "thename", backend=backend)
 

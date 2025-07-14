@@ -7,7 +7,7 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -20,7 +20,7 @@ class A: ...
 
 
 @backends
-def test_required_implicit(backend):
+def test_required_implicit(backend: Backend):
     with pytest.raises(cappa.Exit) as e:
         parse(Command)
     assert e.value.code == 2

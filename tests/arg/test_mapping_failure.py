@@ -8,11 +8,11 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_default(backend):
+def test_default(backend: Backend):
     @dataclass
     class ArgTest:
         default: int
@@ -28,7 +28,7 @@ def test_default(backend):
 
 
 @backends
-def test_other_exception_types(backend):
+def test_other_exception_types(backend: Backend):
     @dataclass
     class ArgTest:
         path: Annotated[Union[Path, None], cappa.Arg(long=True)] = None

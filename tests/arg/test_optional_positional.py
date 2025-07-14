@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_positional_with_default_is_optional(backend):
+def test_positional_with_default_is_optional(backend: Backend):
     @dataclass
     class ArgTest:
         arg: int = 0
@@ -16,7 +16,7 @@ def test_positional_with_default_is_optional(backend):
 
 
 @backends
-def test_multiple_positionals_fill_in_order(backend):
+def test_multiple_positionals_fill_in_order(backend: Backend):
     @dataclass
     class ArgTest:
         arg: int = 0

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @cappa.command(name="sub")
@@ -11,13 +11,13 @@ class Example:
 
 
 @backends
-def test_invoke_top_level_command(backend):
+def test_invoke_top_level_command(backend: Backend):
     result = parse(Example, "4", "foo", backend=backend)
     assert result == Example(bar=4, name="foo")  # pyright: ignore
 
 
 @backends
-def test_no_args_command(backend):
+def test_no_args_command(backend: Backend):
     @cappa.command
     class Example:
         bar: int

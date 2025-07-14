@@ -6,7 +6,7 @@ from unittest.mock import patch
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -21,13 +21,13 @@ class Command:
 
 
 @backends
-def test_env_missing(backend):
+def test_env_missing(backend: Backend):
     test = parse(Command, backend=backend)
     assert test == Command(None, None, None)
 
 
 @backends
-def test_default_is_not_mapped(backend):
+def test_default_is_not_mapped(backend: Backend):
     with patch("os.environ", new={"DOESNT_EXIST": "asdf"}):
         test = parse(Command, backend=backend)
 

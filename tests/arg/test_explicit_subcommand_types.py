@@ -6,7 +6,7 @@ from typing import Union
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -23,6 +23,6 @@ class Command:
 
 
 @backends
-def test_required_missing(backend):
+def test_required_missing(backend: Backend):
     parse(Command, "sc1", backend=backend)
     parse(Command, "sc2", backend=backend)

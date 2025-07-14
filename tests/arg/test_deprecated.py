@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import textwrap
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from typing_extensions import Annotated
@@ -11,7 +12,7 @@ import cappa
 from tests.utils import parse
 
 
-def test_native_backend(capsys):
+def test_native_backend(capsys: Any):
     @dataclass
     class ArgTest:
         arg1: Annotated[str, cappa.Arg(deprecated=True)] = "default"
@@ -46,7 +47,7 @@ def test_native_backend(capsys):
 
 
 @pytest.mark.skipif(sys.version_info >= (3, 13), reason="requires python3.13 or higher")
-def test_argparse_le_313(capsys):
+def test_argparse_le_313(capsys: Any):
     """Below 3.13, this option has no effect."""
 
     @dataclass
@@ -77,7 +78,7 @@ def test_argparse_le_313(capsys):
 @pytest.mark.skipif(
     sys.version_info < (3, 13), reason="Below 3.13, the behavior is different"
 )
-def test_argparse_ge_313(capsys):
+def test_argparse_ge_313(capsys: Any):
     @dataclass
     class ArgTest:
         arg1: Annotated[str, cappa.Arg(deprecated=True)] = "default"

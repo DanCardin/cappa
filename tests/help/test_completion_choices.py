@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
@@ -9,7 +10,7 @@ import cappa
 from tests.utils import parse
 
 
-def test_string_group(capsys):
+def test_string_group(capsys: Any):
     @dataclass
     class Args: ...
 

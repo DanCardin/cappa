@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import textwrap
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
@@ -19,7 +20,7 @@ class Args:
     command: cappa.Subcommands[Sub]
 
 
-def test_required_arg_subcommand_help(capsys):
+def test_required_arg_subcommand_help(capsys: Any):
     """Assert short help is emitted for the subcommand (on bad input) rather than the root help."""
     with pytest.raises(cappa.Exit) as e:
         parse(Args, "sub")

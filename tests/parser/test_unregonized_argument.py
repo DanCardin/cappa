@@ -6,11 +6,11 @@ from typing import Union
 import pytest
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_unrecognized_post_dash_arg(backend):
+def test_unrecognized_post_dash_arg(backend: Backend):
     @dataclass
     class Args:
         foo: str

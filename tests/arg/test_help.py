@@ -2,19 +2,19 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Literal, Union
+from typing import Any, Literal, Union
 
 import pytest
 from typing_extensions import Annotated, Doc
 
 import cappa
 from cappa.output import Exit
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @pytest.mark.help
 @backends
-def test_explicit_parse_function(backend, capsys):
+def test_explicit_parse_function(backend: Backend, capsys: Any):
     @dataclass
     class ArgTest:
         numbers: Annotated[int, cappa.Arg(parse=int, help="example")]
@@ -28,7 +28,7 @@ def test_explicit_parse_function(backend, capsys):
 
 @pytest.mark.help
 @backends
-def test_choices_in_help(backend, capsys):
+def test_choices_in_help(backend: Backend, capsys: Any):
     @dataclass
     class ArgTest:
         numbers: Annotated[
@@ -47,7 +47,7 @@ def test_choices_in_help(backend, capsys):
 
 @pytest.mark.help
 @backends
-def test_pep_727_doc_annotated(backend, capsys):
+def test_pep_727_doc_annotated(backend: Backend, capsys: Any):
     @dataclass
     class ArgTest:
         """Test.

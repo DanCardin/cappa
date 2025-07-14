@@ -4,7 +4,7 @@ import typing
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from itertools import groupby
-from typing import Sequence, cast
+from typing import Any, Sequence, cast
 
 from rich.console import Console, NewLine
 from rich.markdown import Markdown
@@ -27,7 +27,7 @@ HelpFormattable: TypeAlias = typing.Callable[
     ["Command[typing.Any]", str], typing.List[Displayable]
 ]
 ArgGroup: TypeAlias = typing.Tuple[
-    typing.Tuple[str, bool], typing.List[typing.Union[Arg, Subcommand]]
+    typing.Tuple[str, bool], typing.List[typing.Union[Arg[Any], Subcommand]]
 ]
 Dimension: TypeAlias = typing.Tuple[int, int, int, int]
 
@@ -36,14 +36,15 @@ ArgFormat: TypeAlias = typing.Union[
     TextComponent,
     typing.Sequence[
         typing.Union[
-            TextComponent, typing.Callable[[Arg], typing.Union[TextComponent, None]]
+            TextComponent,
+            typing.Callable[[Arg[Any]], typing.Union[TextComponent, None]],
         ]
     ],
-    typing.Callable[[Arg], typing.Union[TextComponent, None]],
+    typing.Callable[[Arg[Any]], typing.Union[TextComponent, None]],
 ]
 
 
-def create_version_arg(version: str | Arg | None = None) -> Arg | None:
+def create_version_arg(version: str | Arg[Any] | None = None) -> Arg[Any] | None:
     if not version:
         return None
 
@@ -70,7 +71,7 @@ def create_version_arg(version: str | Arg | None = None) -> Arg | None:
     )
 
 
-def create_help_arg(help: bool | Arg | None = True) -> Arg | None:
+def create_help_arg(help: bool | Arg[bool] | None = True) -> Arg[bool] | None:
     if not help:
         return None
 
@@ -86,7 +87,7 @@ def create_help_arg(help: bool | Arg | None = True) -> Arg | None:
     return help.normalize(action=ArgAction.help, field_name="help", default=None)
 
 
-def create_completion_arg(completion: bool | Arg = True) -> Arg | None:
+def create_completion_arg(completion: bool | Arg[bool] = True) -> Arg[bool] | None:
     if not completion:
         return None
 
@@ -118,7 +119,7 @@ class HelpFormatter:
 
     default: typing.ClassVar[Self]
 
-    def __call__(self, command: Command, prog: str) -> list[Displayable]:
+    def __call__(self, command: Command[Any], prog: str) -> list[Displayable]:
         arg_groups = generate_arg_groups(command)
 
         lines: list[Displayable] = []
@@ -149,7 +150,7 @@ HelpFormatter.default = HelpFormatter()
 
 def add_long_args(
     console: Console, help_formatter: HelpFormatter, arg_groups: list[ArgGroup]
-) -> list:
+) -> list[Table]:
     table = Table(box=None, expand=False, padding=help_formatter.left_padding)
     table.add_column(justify="left", ratio=1)
     table.add_column(style="cappa.help", ratio=2)
@@ -175,7 +176,7 @@ def add_long_args(
 
 
 def format_arg(
-    console: Console, help_formatter: HelpFormatter, arg: Arg
+    console: Console, help_formatter: HelpFormatter, arg: Arg[Any]
 ) -> Displayable:
     arg_format = help_formatter.arg_format
     if not isinstance(arg_format, Iterable) or isinstance(arg_format, str):
@@ -194,7 +195,7 @@ def format_arg(
         if arg.choices:
             choices = "Valid options: " + ", ".join(arg.choices) + "."
 
-        context = {
+        context: dict[str, Any] = {
             "help": arg.help or "",
             "default": default,
             "choices": choices,
@@ -278,7 +279,7 @@ def _replace_rich_text_component(c: TextComponent, text: str) -> TextComponent:
     return text
 
 
-def format_subcommand(help_formatter: HelpFormatter, command: Command):
+def format_subcommand(help_formatter: HelpFormatter, command: Command[Any]):
     return (
         Padding(
             f"[cappa.subcommand]{command.real_name()}[/cappa.subcommand]",
@@ -288,16 +289,18 @@ def format_subcommand(help_formatter: HelpFormatter, command: Command):
     )
 
 
-def format_short_help(command: Command, prog: str) -> Displayable:
+def format_short_help(command: Command[Any], prog: str) -> Displayable:
     arg_groups = generate_arg_groups(command)
     return add_short_args(prog, arg_groups)
 
 
-def generate_arg_groups(command: Command, include_hidden=False) -> list[ArgGroup]:
-    def by_group_key(arg: Arg | Subcommand):
+def generate_arg_groups(
+    command: Command[Any], include_hidden: bool = False
+) -> list[ArgGroup]:
+    def by_group_key(arg: Arg[Any] | Subcommand):
         return assert_type(arg.group, Group).key
 
-    def by_group(arg: Arg | Subcommand):
+    def by_group(arg: Arg[Any] | Subcommand):
         group = assert_type(arg.group, Group)
         return (group.name, group.exclusive)
 
@@ -317,7 +320,7 @@ def add_short_args(prog: str, arg_groups: list[ArgGroup]) -> str:
     return " ".join(segments)
 
 
-def format_arg_name(arg: Arg | Subcommand, delimiter, *, n=0) -> str:
+def format_arg_name(arg: Arg[Any] | Subcommand, delimiter: str, *, n: int = 0) -> str:
     if isinstance(arg, Arg):
         has_value = not ArgAction.is_non_value_consuming(arg.action)
 

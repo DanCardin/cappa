@@ -36,7 +36,7 @@ def test_value_from():
     default = ValueFrom(fn)
     assert default() == 5
 
-    def fn2(value):
+    def fn2(value: int):
         return value + 5
 
     default = ValueFrom(fn2, value=4)

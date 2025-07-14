@@ -19,7 +19,7 @@ wheels = [
 
 [[package]]
 name = "cappa"
-version = "0.28.0"
+version = "0.29.0"
 source = { directory = "../../" }
 dependencies = [
     { name = "rich" },
@@ -31,7 +31,7 @@ dependencies = [
 requires-dist = [
     { name = "docstring-parser", marker = "extra == 'docstring'", specifier = ">=0.15" },
     { name = "rich", specifier = ">=10.2.0" },
-    { name = "type-lens", specifier = ">=0.2.3" },
+    { name = "type-lens", specifier = ">=0.2.4" },
     { name = "typing-extensions", specifier = ">=4.8.0" },
     { name = "typing-extensions", marker = "python_full_version >= '3.13'", specifier = ">=4.12.0" },
 ]
@@ -48,6 +48,7 @@ dev = [
     { name = "pyright", specifier = ">=1.1.398" },
     { name = "pytest", specifier = ">=8.1.1,<9" },
     { name = "ruff", specifier = ">=0.9.0" },
+    { name = "sphinx", specifier = ">=7.1.0" },
     { name = "types-docutils", specifier = ">=0.20.0" },
 ]
 
@@ -304,14 +305,14 @@ wheels = [
 
 [[package]]
 name = "type-lens"
-version = "0.2.3"
+version = "0.2.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cd/02/6be806c6481c1c2645018172f84b2ccafdfa8a29327fb6537662d8fc2b4d/type_lens-0.2.3.tar.gz", hash = "sha256:8720176565c8129bf196fdbdb8c15fdabe150d779bbed101e6b2f418c54ed9bc", size = 361705 }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/4b/6bfbb9038dfa98c71f921fc4ea20367bed74172649222b645f057b990f42/type_lens-0.2.4.tar.gz", hash = "sha256:1301f1c97c6cdb71b5465287375e78f66f6e1116c0d9d31bac50bf61cea7dfd6", size = 361792 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/56/56/2d2a9139ec6c470836fc2b8c0a5c3c781d50b22c90c47c3f578902080a83/type_lens-0.2.3-py3-none-any.whl", hash = "sha256:3c1850545de595a5d5df4e24f8ea8c0f6d9aff42317ca9941d5069b9ad5c1e2e", size = 14288 },
+    { url = "https://files.pythonhosted.org/packages/0b/02/920992a89e947a3709fa96ad3264e5ada7c528cea297ac2ac61dba88fc82/type_lens-0.2.4-py3-none-any.whl", hash = "sha256:e43b9892f7f4c634932f8d8004da6b3213c065f9c71215e7cc41c1211a24d059", size = 14129 },
 ]
 
 [[package]]
