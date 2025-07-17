@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Union
+from typing import Any, TypedDict, Union
 
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, invoke, parse
+from cappa.output import Output
+from cappa.state import State
+from tests.utils import CapsysOutput, backends, invoke, parse
 
 
 @backends
@@ -92,3 +94,34 @@ def test_invoke_partial_arg_partial_dep(backend):
 
     result = invoke(function, "--foo", "53", backend=backend)
     assert result == 58
+
+
+@backends
+def test_output(backend, capsys):
+    """Depends on Output DI."""
+
+    def function(foo: str, output: Output):
+        output("hey")
+        return foo
+
+    result = invoke(function, "meow", backend=backend)
+    assert result == "meow"
+
+    out = CapsysOutput.from_capsys(capsys)
+    assert out.stdout == "hey\n"
+
+
+class StateFoo(TypedDict):
+    foo: int
+
+
+@backends
+def test_state(backend, capsys: Any):
+    """Depends on Output DI."""
+
+    def function(foo: int, state: State[StateFoo]):
+        return foo + state.state["foo"]
+
+    state = State(StateFoo(foo=45))
+    result = invoke(function, "3", backend=backend, state=state)
+    assert result == 48

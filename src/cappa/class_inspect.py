@@ -9,6 +9,8 @@ from enum import Enum
 
 from typing_extensions import Annotated, Self
 
+from cappa.output import Output
+from cappa.state import State
 from cappa.type_view import CallableView, Empty, EmptyType
 from cappa.typing import T, find_annotations
 
@@ -231,6 +233,7 @@ def get_command_capable_object(obj):
     """
     if inspect.isfunction(obj):
         from cappa import Dep
+        from cappa.command import Command
 
         function_args = []
 
@@ -252,7 +255,9 @@ def get_command_capable_object(obj):
             if not param_view.has_annotation:
                 continue
 
-            if find_annotations(param_view.type_view, Dep):
+            if find_annotations(
+                param_view.type_view, Dep
+            ) or param_view.type_view.is_subclass_of((Output, State, Command)):
                 continue
 
             sig_params.pop(param_view.name, None)

@@ -134,6 +134,14 @@ class Output:
         else:
             self.error(e, help=help, short_help=short_help)
 
+    def __call__(
+        self,
+        message: Outputable,
+        **context: Displayable | list[Displayable] | None,
+    ):
+        """Output a message to the `output_console`, exactly equivalent to `Output.output`."""
+        self.output(message, **context)
+
     def output(
         self,
         message: Outputable,
