@@ -35,7 +35,7 @@ dev-dependencies = [
     "types-docutils >= 0.20.0",
 
     "attrs",
-    "pydantic",
+    "pydantic; python_version < '3.14'",
     "msgspec >= 0.19.0; python_version >= '3.9'",
 ]
 
