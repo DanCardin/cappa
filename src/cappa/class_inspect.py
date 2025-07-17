@@ -204,8 +204,8 @@ class ClassTypes(Enum):
             return cls.msgspec
 
         try:
-            import pydantic
-            from pydantic import BaseModel
+            import pydantic  # pyright: ignore
+            from pydantic import BaseModel  # pyright: ignore
         except ImportError:  # pragma: no cover
             pass
         else:
@@ -215,7 +215,7 @@ class ClassTypes(Enum):
                 is_base_model = False
 
             if is_base_model:
-                if pydantic.__version__.startswith("1."):
+                if pydantic.__version__.startswith("1."):  # pyright: ignore
                     return cls.pydantic_v1
                 return cls.pydantic_v2
 
