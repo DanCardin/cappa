@@ -29,7 +29,7 @@ vs Click / Typer / Argparse <comparison>
 Dataclasses/Pydantic/Attrs <class_compatibility>
 Rich Integration <rich>
 Completions <completion>
-Output, Exiting, and Exit Codes <exiting>
+Console Output and Exiting <output>
 Parser Backends (Cappa/Argparse) <backends>
 Testing <testing>
 Function/Method Based Commands <functions_and_methods>

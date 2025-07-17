@@ -331,3 +331,91 @@ Typer is certainly the shortest in this example, and has the least repetition.
 This is probably Typer's clearest case. It very simply and directly solves
 the repetition/mapping problem of click.
 ````
+
+## Console Output
+
+```
+$ prog World
+Hello World
+```
+
+````{admonition} Cappa
+:class: dropdown
+
+```python
+from __future__ import annotations
+from dataclasses import dataclass
+import cappa
+
+
+@dataclass
+class Args:
+    text: str
+
+    def __call__(self, output: cappa.Output):
+        output(f"Hello {self.text}")
+
+
+cappa.invoke(Args)
+```
+
+In order to manually output text, depend on an `Output` instance to be provided a
+preconfigured output-able console object.
+
+Importantly, this will natively route output through rich, which gains easy styling.
+````
+
+````{admonition} Argparse
+:class: dropdown
+
+```python
+import argparse
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("text")
+args = parser.parse_args()
+
+print(f"Hello {args.text}")
+```
+
+Argparse just parses the arguments, so all choices of how to write output is left
+to the programmer. (Note, you can do this with cappa also, by using the `parse` interface)
+````
+
+````{admonition} Click
+:class: dropdown
+
+```python
+import click
+
+
+@main.command()
+@click.argument("text")
+def main(text: str):
+    click.echo(f"Hello {text})
+
+
+main()
+```
+````
+
+````{admonition} Typer
+:class: dropdown
+
+```python
+import typer
+
+def main(text: str):
+    typer.echo(f"hello {text}")
+
+
+typer.run(app)
+```
+
+Typer is almost identical to click, because Typer is built on click.
+
+Typer also integrates well with rich, although it seems to encourage direct use
+of the rich Console-less API, which may(?) centralized control of styling within
+a CLI more challenging.
+````
