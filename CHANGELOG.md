@@ -1,5 +1,11 @@
 # Changelog
 
+### 0.29.0
+
+## Unreleased: 0.29.0
+
+- fix: Function callables ability to depend on implicit Deps.
+- docs: Improve docs relating to `Output`.
 ## 0.28
 
 ### 0.28.1
