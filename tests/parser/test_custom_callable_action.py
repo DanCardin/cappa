@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Union
+from typing import Any, Union
 
 import pytest
 from typing_extensions import Annotated
 
 import cappa
 from cappa.parser import Value
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 ################################
@@ -17,7 +17,7 @@ def exit():
 
 
 @backends
-def test_callable_action_fast_exits(backend):
+def test_callable_action_fast_exits(backend: Backend):
     @dataclass
     class Args:
         value: Annotated[str, cappa.Arg(action=exit, short=True)]
@@ -33,7 +33,7 @@ def truncate(value: Value[str]):
 
 
 @backends
-def test_uses_return_value(backend):
+def test_uses_return_value(backend: Backend):
     @dataclass
     class Args:
         value: Annotated[str, cappa.Arg(action=truncate, short=True)]
@@ -43,7 +43,7 @@ def test_uses_return_value(backend):
 
 
 @backends
-def test_custom_arg(backend):
+def test_custom_arg(backend: Backend):
     @dataclass
     class Args:
         value: Annotated[str, cappa.Arg(action=truncate)]
@@ -53,7 +53,7 @@ def test_custom_arg(backend):
 
 
 ################################
-def command_name(command: cappa.Command):
+def command_name(command: cappa.Command[Any]):
     return command.real_name()
 
 
@@ -73,15 +73,17 @@ class SubB:
 
 
 @backends
-def test_subcommand_name(backend):
+def test_subcommand_name(backend: Backend):
     @dataclass
     class Args:
         cmd: cappa.Subcommands[Union[SubA, SubB]]
 
     args = parse(Args, "sub-a", "-v", "one", backend=backend)
+    assert isinstance(args.cmd, SubA)
     assert args.cmd.value == "sub-a"
 
     args = parse(Args, "sub-b", "sub-b-sub", "-v", "one", backend=backend)
+    assert isinstance(args.cmd, SubB)
     assert args.cmd.cmd.value == "sub-b-sub"
 
 
@@ -92,7 +94,7 @@ def custom_out(out: cappa.Output):
 
 
 @backends
-def test_custom_action_output_dep(backend, capsys):
+def test_custom_action_output_dep(backend: Backend, capsys: Any):
     @dataclass
     class Args:
         value: Annotated[int, cappa.Arg(action=custom_out, short=True)]

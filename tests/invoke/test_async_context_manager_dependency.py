@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, invoke_async
+from tests.utils import Backend, backends, invoke_async
 
 log = logging.getLogger("test")
 
@@ -34,7 +34,7 @@ class Command: ...
 
 
 @backends
-def test_invoke_top_level_command(backend):
+def test_invoke_top_level_command(backend: Backend):
     buffer, result = asyncio.run(invoke_async(Command, backend=backend))
 
     assert buffer.closed is True

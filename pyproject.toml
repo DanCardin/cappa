@@ -16,7 +16,7 @@ dependencies = [
     "rich >= 10.2.0",
     "typing-extensions >= 4.8.0",
     "typing-extensions >= 4.12.0; python_version >= '3.13'",
-    "type-lens >= 0.2.3",
+    "type-lens >= 0.2.4",
 ]
 
 [project.optional-dependencies]
@@ -79,6 +79,11 @@ ignore_missing_imports = true
 warn_unused_ignores = true
 incremental = true
 check_untyped_defs = true
+
+[tool.pyright]
+typeCheckingMode = "strict"
+typeCheckingModeOverrides = { "type_lens/**" = "basic" }
+
 
 [tool.typos.default]
 extend-ignore-re = [".*#.*typos: ignore[^\\n]*\\n"]

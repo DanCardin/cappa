@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import pytest
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -20,7 +20,7 @@ class Invalid:
 
 
 @backends
-def test_valid(backend):
+def test_valid(backend: Backend):
     with pytest.raises(cappa.Exit) as e:
         parse(Command, "-n", "foo", "subcommand", "4", backend=backend)
 

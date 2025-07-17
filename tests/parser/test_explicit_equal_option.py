@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_unrecognized_post_dash_arg(backend):
+def test_unrecognized_post_dash_arg(backend: Backend):
     @dataclass
     class Args:
         value: Annotated[str, cappa.Arg(long=True)]
@@ -19,7 +19,7 @@ def test_unrecognized_post_dash_arg(backend):
 
 
 @backends
-def test_value_contains_equal(backend):
+def test_value_contains_equal(backend: Backend):
     @dataclass
     class Args:
         value: Annotated[str, cappa.Arg(long=True)]

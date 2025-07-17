@@ -5,11 +5,11 @@ from dataclasses import dataclass
 import pytest
 
 import cappa
-from tests.utils import backends, invoke
+from tests.utils import Backend, backends, invoke
 
 
 @backends
-def test_invalid_dependency(backend):
+def test_invalid_dependency(backend: Backend):
     def command(levels: int):
         return levels
 
@@ -27,11 +27,11 @@ def test_invalid_dependency(backend):
 
 
 @backends
-def test_unannotated_argument(backend):
-    def command(levels):
-        return levels
+def test_unannotated_argument(backend: Backend):
+    def command(levels):  # pyright: ignore
+        return levels  # pyright: ignore
 
-    @cappa.command(invoke=command)
+    @cappa.command(invoke=command)  # pyright: ignore
     @dataclass
     class Command: ...
 

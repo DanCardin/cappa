@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import dataclasses
 import re
-import typing
+from typing import TYPE_CHECKING, Any
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from cappa.arg import Arg
 
 
@@ -13,7 +13,7 @@ class ShellHandler:
     name: str
     template: str
 
-    def backend_template(self, prog: str, arg: Arg) -> str:
+    def backend_template(self, prog: str, arg: Arg[Any]) -> str:
         safe_name = re.sub(r"\W*", "", prog.replace("-", "_"), flags=re.ASCII)
 
         assert isinstance(arg.long, list)

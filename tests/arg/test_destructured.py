@@ -21,8 +21,8 @@ class Attributes:
     color: Annotated[str, cappa.Arg(long="attribute.color")]
     flavors: Annotated[list[Flavor], cappa.Arg(value_name="attribute.flavor")]
     something: Annotated[int, cappa.Arg(short="-p")]
-    custom_parse: Annotated[str, cappa.Arg(long="foo", parse=lambda _: "always this")]
-    custom_action: Annotated[int, cappa.Arg(long="bar", action=lambda: 42)]
+    custom_parse: Annotated[str, cappa.Arg(long="foo", parse=lambda _: "always this")]  # pyright: ignore
+    custom_action: Annotated[int, cappa.Arg(long="bar", action=lambda: 42)]  # pyright: ignore
     optional: Annotated[int, cappa.Arg(long="baz")] = 4
 
 

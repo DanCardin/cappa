@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_short_missing_dash(backend):
+def test_short_missing_dash(backend: Backend):
     @dataclass
     class ArgTest:
         number: Annotated[int, cappa.Arg(short="n")]
@@ -19,7 +19,7 @@ def test_short_missing_dash(backend):
 
 
 @backends
-def test_multiple_shorts(backend):
+def test_multiple_shorts(backend: Backend):
     @dataclass
     class ArgTest:
         number: Annotated[int, cappa.Arg(short=["n", "o"])]
@@ -32,7 +32,7 @@ def test_multiple_shorts(backend):
 
 
 @backends
-def test_long_missing_dash(backend):
+def test_long_missing_dash(backend: Backend):
     @dataclass
     class ArgTest:
         number: Annotated[int, cappa.Arg(long="nu")]
@@ -42,7 +42,7 @@ def test_long_missing_dash(backend):
 
 
 @backends
-def test_multiple_longs(backend):
+def test_multiple_longs(backend: Backend):
     @dataclass
     class ArgTest:
         number: Annotated[int, cappa.Arg(long=["so", "long"])]

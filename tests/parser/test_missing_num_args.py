@@ -7,11 +7,11 @@ from typing_extensions import Annotated
 
 import cappa
 from cappa import argparse
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_invalid_choice_help(backend):
+def test_invalid_choice_help(backend: Backend):
     @dataclass
     class Args:
         arg: tuple[str, str]
@@ -22,7 +22,7 @@ def test_invalid_choice_help(backend):
     assert e.value.code == 2
 
     message = str(e.value.message)
-    if backend == argparse.backend:
+    if backend is argparse.backend:  # pyright: ignore
         assert "the following arguments are required: arg" in message.lower()
     else:
         assert message == "Argument 'arg arg' requires 2 values, found 1 ('arg' so far)"

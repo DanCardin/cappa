@@ -1,11 +1,13 @@
 import re
 from dataclasses import dataclass
 from textwrap import dedent
+from typing import Any
 
 import pytest
 
 import cappa
 from tests.utils import (
+    Backend,
     backends,
     ignore_docstring_parser,
     parse,
@@ -30,7 +32,7 @@ class IncludesDocstring:
 
 @pytest.mark.help
 @backends
-def test_required_provided(backend, capsys):
+def test_required_provided(backend: Backend, capsys: Any):
     with pytest.raises(cappa.Exit):
         parse(IncludesDocstring, "--help", backend=backend)
 
@@ -44,7 +46,7 @@ def test_required_provided(backend, capsys):
 
 @pytest.mark.help
 @backends
-def test_just_a_title(backend, capsys):
+def test_just_a_title(backend: Backend, capsys: Any):
     @dataclass
     class IncludesDocstring:
         """Just a title."""
@@ -59,7 +61,7 @@ def test_just_a_title(backend, capsys):
 
 @pytest.mark.help
 @backends
-def test_docstring_with_explicit_help(backend, capsys):
+def test_docstring_with_explicit_help(backend: Backend, capsys: Any):
     @cappa.command(help="help text")
     @dataclass
     class IncludesDocstring:
@@ -76,7 +78,7 @@ def test_docstring_with_explicit_help(backend, capsys):
 
 @pytest.mark.help
 @backends
-def test_docstring_with_explicit_description(backend, capsys):
+def test_docstring_with_explicit_description(backend: Backend, capsys: Any):
     @cappa.command(description="description")
     @dataclass
     class IncludesDocstring:
@@ -93,7 +95,9 @@ def test_docstring_with_explicit_description(backend, capsys):
 
 @pytest.mark.help
 @backends
-def test_docstring_being_used_but_not_parsed(backend, capsys, monkeypatch):
+def test_docstring_being_used_but_not_parsed(
+    backend: Backend, capsys: Any, monkeypatch: Any
+):
     @dataclass
     class UnparsedDocstring:
         """Summary.
@@ -125,7 +129,9 @@ def test_docstring_being_used_but_not_parsed(backend, capsys, monkeypatch):
 
 @pytest.mark.help
 @backends
-def test_docstring_being_used_but_not_parsed_one_line(backend, capsys, monkeypatch):
+def test_docstring_being_used_but_not_parsed_one_line(
+    backend: Backend, capsys: Any, monkeypatch: Any
+):
     @dataclass
     class UnparsedDocstring:
         """Summary."""
@@ -148,7 +154,7 @@ def test_docstring_being_used_but_not_parsed_one_line(backend, capsys, monkeypat
 
 @pytest.mark.help
 @backends
-def test_escaped_markdown(backend, capsys, monkeypatch):
+def test_escaped_markdown(backend: Backend, capsys: Any, monkeypatch: Any):
     @dataclass
     class Escaped:
         """Blabla.
@@ -188,7 +194,7 @@ def test_escaped_markdown(backend, capsys, monkeypatch):
 
 @pytest.mark.help
 @backends
-def test_attribute_docstring(backend, capsys):
+def test_attribute_docstring(backend: Backend, capsys: Any):
     @dataclass
     class Args:
         """Bah.
@@ -229,7 +235,7 @@ def test_attribute_docstring(backend, capsys):
 
 @pytest.mark.help
 @backends
-def test_explicit_help_description_manual_args(backend, capsys):
+def test_explicit_help_description_manual_args(backend: Backend, capsys: Any):
     @cappa.command(help="Title", description="longer description")
     @dataclass
     class Args2:

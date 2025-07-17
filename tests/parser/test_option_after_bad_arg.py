@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
@@ -13,7 +14,7 @@ class Args:
     arg: str
 
 
-def test_option_after_bad_arg(capsys):
+def test_option_after_bad_arg(capsys: Any):
     with pytest.raises(cappa.Exit):
         parse(Args, "arg1", "arg2", "--help")
     err = capsys.readouterr().err

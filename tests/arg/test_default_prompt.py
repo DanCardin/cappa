@@ -9,6 +9,7 @@ from typing_extensions import Annotated
 
 import cappa
 from cappa import Confirm, Prompt
+from cappa.base import Backend
 from tests.utils import backends, parse
 
 prompt_types = pytest.mark.parametrize("prompt_type", (Prompt, RichPrompt))
@@ -18,7 +19,7 @@ confirm_types = pytest.mark.parametrize("confirm_type", (Confirm, RichConfirm))
 @backends
 class TestPrompt:
     @prompt_types
-    def test_value(self, backend, prompt_type: Type[Prompt]):
+    def test_value(self, backend: Backend, prompt_type: Type[Prompt]):
         @dataclass
         class Test:
             name: Annotated[str, cappa.Arg(default=prompt_type("gimme text number"))]
@@ -28,7 +29,7 @@ class TestPrompt:
         assert result.name == "two"
 
     @prompt_types
-    def test_default(self, backend, prompt_type: Type[Prompt]):
+    def test_default(self, backend: Backend, prompt_type: Type[Prompt]):
         @dataclass
         class Test:
             name: Annotated[
@@ -40,7 +41,7 @@ class TestPrompt:
         assert result.name == "one"
 
     @prompt_types
-    def test_mapped(self, backend, prompt_type: Type[Prompt]):
+    def test_mapped(self, backend: Backend, prompt_type: Type[Prompt]):
         @dataclass
         class Test:
             num: Annotated[int, cappa.Arg(default=prompt_type("gimme text number"))]
@@ -53,7 +54,7 @@ class TestPrompt:
 @backends
 class TestConfirm:
     @confirm_types
-    def test_value(self, backend, confirm_type: Type[Confirm]):
+    def test_value(self, backend: Backend, confirm_type: Type[Confirm]):
         @dataclass
         class Test:
             ok: Annotated[bool, cappa.Arg(default=confirm_type("gimme text number"))]
@@ -63,7 +64,7 @@ class TestConfirm:
         assert result.ok is True
 
     @confirm_types
-    def test_default(self, backend, confirm_type: Type[Confirm]):
+    def test_default(self, backend: Backend, confirm_type: Type[Confirm]):
         @dataclass
         class Test:
             ok: Annotated[

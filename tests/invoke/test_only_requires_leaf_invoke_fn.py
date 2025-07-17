@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 import cappa
-from tests.utils import backends, invoke
+from tests.utils import Backend, backends, invoke
 
 
 @dataclass
@@ -23,6 +23,6 @@ class MainCommand:
 
 
 @backends
-def test_parent_commands_dont_require_invoke_fn(backend):
+def test_parent_commands_dont_require_invoke_fn(backend: Backend):
     result = invoke(MainCommand, "sub-command", "sub-sub-command", backend=backend)
     assert result == 4

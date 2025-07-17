@@ -17,4 +17,4 @@ class MeanCommand:
 
 
 def main():
-    cappa.invoke(DeferImport)
+    return cappa.invoke(DeferImport)

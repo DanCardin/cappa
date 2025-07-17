@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from typing import Any
 
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, invoke_async
+from tests.utils import Backend, backends, invoke_async
 
 
 def bar():
@@ -31,7 +32,7 @@ def idk():
 
 
 @backends
-def test_async_fn(backend, capsys):
+def test_async_fn(backend: Backend, capsys: Any):
     result = asyncio.run(invoke_async(Command, backend=backend, deps=[idk]))
     assert result == 7 + 9 + 1
 

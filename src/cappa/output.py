@@ -34,7 +34,7 @@ class Exit(SystemExit):
         self,
         message: list[Displayable] | Displayable | None = None,
         *,
-        command: Command | None = None,
+        command: Command[Any] | None = None,
         code: str | int | None = 0,
         prog: str | None = None,
     ):
@@ -213,7 +213,7 @@ class Output:
 def rich_to_ansi(console: Console, message: Outputable) -> str:
     with console.capture() as capture:
         if isinstance(message, list):
-            for m in message:
+            for m in message:  # pyright: ignore
                 console.print(m)
         else:
             console.print(message)

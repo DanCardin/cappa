@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import cappa
-from tests.utils import backends, invoke
+from tests.utils import Backend, backends, invoke
 
 
 def foo(command: Command):
@@ -24,7 +25,7 @@ class Command: ...
 
 
 @backends
-def test_invoke_global_dep(capsys, backend):
+def test_invoke_global_dep(capsys: Any, backend: Backend):
     result = invoke(Command, deps=[foo, bar], backend=backend)
     assert result == 1
 
@@ -34,7 +35,7 @@ def test_invoke_global_dep(capsys, backend):
 
 
 @backends
-def test_invoke_global_dep_string_reference(capsys, backend):
+def test_invoke_global_dep_string_reference(capsys: Any, backend: Backend):
     result = invoke(Command, deps=["tests.invoke.test_global_dep.foo"], backend=backend)
     assert result == 1
 

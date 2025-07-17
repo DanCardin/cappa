@@ -5,11 +5,11 @@ from typing import Literal, Union
 
 import pytest
 
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_valid_tagged_unions(backend):
+def test_valid_tagged_unions(backend: Backend):
     @dataclass
     class ArgTest:
         name: Union[
@@ -32,7 +32,7 @@ def test_valid_tagged_unions(backend):
 
 
 @backends
-def test_disallowed_different_arity_variants(backend):
+def test_disallowed_different_arity_variants(backend: Backend):
     @dataclass
     class ArgTest:
         name: Union[tuple[str, str], tuple[str, str, str]]

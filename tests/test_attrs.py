@@ -5,7 +5,7 @@ import attr
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 factory = attr.Factory(lambda: [4])
 
@@ -20,6 +20,6 @@ class Command:
 
 
 @backends
-def test_attrs(backend):
+def test_attrs(backend: Backend):
     result = parse(Command, "meow", backend=backend)
     assert result == Command(name="meow", default=4, default_factory=[4])

@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Any
 
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, invoke
+from tests.utils import Backend, backends, invoke
 
 log = logging.getLogger("test")
 
@@ -16,23 +17,23 @@ def level_three():
     return {"three": True}
 
 
-def level_two(three: Annotated[dict, cappa.Dep(level_three)]):
+def level_two(three: Annotated[dict[str, Any], cappa.Dep(level_three)]):
     log.debug("two")
     return {"two": {**three}}
 
 
 def level_one(
-    two: Annotated[dict, cappa.Dep(level_two)],
-    three: Annotated[dict, cappa.Dep(level_three)],
+    two: Annotated[dict[str, Any], cappa.Dep(level_two)],
+    three: Annotated[dict[str, Any], cappa.Dep(level_three)],
 ):
     log.debug("one")
     return {"one": {**two, **three}}
 
 
 def command(
-    one: Annotated[dict, cappa.Dep(level_one)],
-    two: Annotated[dict, cappa.Dep(level_two)],
-    three: Annotated[dict, cappa.Dep(level_three)],
+    one: Annotated[dict[str, Any], cappa.Dep(level_one)],
+    two: Annotated[dict[str, Any], cappa.Dep(level_two)],
+    three: Annotated[dict[str, Any], cappa.Dep(level_three)],
 ):
     return {**one, **two, **three}
 
@@ -43,7 +44,7 @@ class Command: ...
 
 
 @backends
-def test_invoke_top_level_command(caplog, backend):
+def test_invoke_top_level_command(caplog: Any, backend: Backend):
     """Assert multiple paths to explicit dependencies are still fulfilled.
 
     * Ensure they are only called once overall, regardless of the number of downstream dependents.

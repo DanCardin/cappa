@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import textwrap
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 import pytest
 from typing_extensions import Annotated
@@ -19,7 +19,7 @@ class Args:
     maybe: Annotated[str | None, cappa.Arg(short=True, help="maybe?")] = None
 
 
-def test_default_settings(capsys):
+def test_default_settings(capsys: Any):
     with pytest.raises(cappa.HelpExit) as e:
         parse(Args, "--help", completion=False)
 
@@ -44,7 +44,7 @@ def test_default_settings(capsys):
     )
 
 
-def test_override_default_format(capsys):
+def test_override_default_format(capsys: Any):
     with pytest.raises(cappa.HelpExit) as e:
         parse(
             Args,
@@ -76,7 +76,7 @@ def test_override_default_format(capsys):
     )
 
 
-def test_override_help_format(capsys):
+def test_override_help_format(capsys: Any):
     with pytest.raises(cappa.HelpExit) as e:
         parse(
             Args,
@@ -111,7 +111,7 @@ def test_override_help_format(capsys):
     )
 
 
-def test_choice_options(capsys):
+def test_choice_options(capsys: Any):
     @dataclass
     class Args:
         required: Annotated[Literal["one", "two", "three"], cappa.Arg(help="Required.")]
@@ -162,13 +162,13 @@ def test_choice_options(capsys):
     )
 
 
-def test_callable_help_formatter(capsys):
+def test_callable_help_formatter(capsys: Any):
     @dataclass
     class Args:
         required: Annotated[int, cappa.Arg(help="Required.")]
         not_required: Annotated[int | None, cappa.Arg(help="erm.")] = None
 
-    def help_formatter(arg: cappa.Arg) -> str | None:
+    def help_formatter(arg: cappa.Arg[Any]) -> str | None:
         if arg.field_name == "required":
             return f"Num args: {arg.num_args}"
         return None
@@ -203,7 +203,7 @@ def test_callable_help_formatter(capsys):
     )
 
 
-def test_explicitly_wrapped_formatter(capsys):
+def test_explicitly_wrapped_formatter(capsys: Any):
     @dataclass
     class Args:
         name: Annotated[str, cappa.Arg(help="Optional.")] = "arg"

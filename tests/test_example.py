@@ -4,11 +4,11 @@ import pathlib
 from dataclasses import dataclass, field
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_positional_string(backend):
+def test_positional_string(backend: Backend):
     @dataclass
     class ArgTest:
         name: str
@@ -18,7 +18,7 @@ def test_positional_string(backend):
 
 
 @backends
-def test_path(backend):
+def test_path(backend: Backend):
     @dataclass
     class ArgTest:
         name: pathlib.PurePath
@@ -28,7 +28,7 @@ def test_path(backend):
 
 
 @backends
-def test_bool(backend):
+def test_bool(backend: Backend):
     @dataclass
     class ArgTest:
         flag: bool
@@ -38,7 +38,7 @@ def test_bool(backend):
 
 
 @backends
-def test_tuple(backend):
+def test_tuple(backend: Backend):
     @dataclass
     class ArgTest:
         exact_num_args: tuple[str, int] = field(
@@ -56,7 +56,7 @@ def test_tuple(backend):
 
 
 @backends
-def test_missing_value_defaults(backend):
+def test_missing_value_defaults(backend: Backend):
     @dataclass
     class ArgTest:
         exact_num_args: tuple[str, int] = field(

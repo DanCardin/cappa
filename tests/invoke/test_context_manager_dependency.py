@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, invoke
+from tests.utils import Backend, backends, invoke
 
 log = logging.getLogger("test")
 
@@ -33,7 +33,7 @@ class Command: ...
 
 
 @backends
-def test_invoke_top_level_command(backend):
+def test_invoke_top_level_command(backend: Backend):
     buffer, result = invoke(Command, backend=backend)
 
     assert buffer.closed is True

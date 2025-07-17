@@ -7,11 +7,11 @@ from typing_extensions import Annotated
 
 import cappa
 from cappa.parser import backend
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_invalid_choice_help(backend):
+def test_invalid_choice_help(backend: Backend):
     @dataclass
     class Args:
         value: Annotated[str, cappa.Arg(long=True)]

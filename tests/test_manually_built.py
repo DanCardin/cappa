@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
+from typing import Any, List
 
 import pytest
 
 import cappa
 from cappa.output import Exit
 from cappa.parse import parse_list, parse_value
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -29,14 +29,14 @@ command = cappa.Command(
 
 
 @backends
-def test_valid(backend):
+def test_valid(backend: Backend):
     result = parse(command, "one", "2", "3", backend=backend)
     assert result == Foo(bar="one", baz=[2, 3])
 
 
 @pytest.mark.help
 @backends
-def test_help(capsys, backend):
+def test_help(capsys: Any, backend: Backend):
     with pytest.raises(Exit):
         parse(command, "-h", backend=backend)
 
@@ -56,7 +56,7 @@ class Foo2:
 
 
 @backends
-def test_subcommand(backend):
+def test_subcommand(backend: Backend):
     command = cappa.Command(
         Foo2,
         arguments=[

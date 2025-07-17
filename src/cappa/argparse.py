@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-import typing
-from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Callable, Hashable, TypeVar, cast
 
 from cappa.arg import Arg, ArgAction
 from cappa.command import Command, Subcommand
@@ -11,11 +10,14 @@ from cappa.help import generate_arg_groups
 from cappa.invoke import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.parser import RawOption, Value
-from cappa.typing import assert_never, assert_type
+from cappa.typing import assert_type
+
+if TYPE_CHECKING:
+    from _typeshed import SupportsWrite
 
 if sys.version_info < (3, 9):  # pragma: no cover
     # Backport https://github.com/python/cpython/pull/3680
-    original_get_action_name = argparse._get_action_name
+    original_get_action_name = argparse._get_action_name  # pyright: ignore
 
     def _get_action_name(
         argument: argparse.Action | None,
@@ -28,45 +30,47 @@ if sys.version_info < (3, 9):  # pragma: no cover
 
         return name
 
-    argparse._get_action_name = _get_action_name
+    argparse._get_action_name = _get_action_name  # pyright: ignore
 
 
-T = typing.TypeVar("T")
+T = TypeVar("T")
 
 
 # Work around argparse's lack of `metavar` support on various built-in actions.
-class _HelpAction(argparse._HelpAction):
-    def __init__(self, metavar=None, **kwargs):
+class _HelpAction(argparse._HelpAction):  # pyright: ignore
+    def __init__(self, metavar: str | None = None, **kwargs: Any):
         self.metavar = metavar
         super().__init__(**kwargs)
 
 
-class _VersionAction(argparse._VersionAction):
-    def __init__(self, metavar=None, **kwargs):
+class _VersionAction(argparse._VersionAction):  # pyright: ignore
+    def __init__(self, metavar: str | None = None, **kwargs: Any):
         self.metavar = metavar
         super().__init__(**kwargs)
 
 
-class _StoreTrueAction(argparse._StoreTrueAction):
-    def __init__(self, metavar=None, **kwargs):
+class _StoreTrueAction(argparse._StoreTrueAction):  # pyright: ignore
+    def __init__(self, metavar: str | None = None, **kwargs: Any):
         self.metavar = metavar
         super().__init__(**kwargs)
 
 
-class _StoreFalseAction(argparse._StoreFalseAction):
-    def __init__(self, metavar=None, **kwargs):
+class _StoreFalseAction(argparse._StoreFalseAction):  # pyright: ignore
+    def __init__(self, metavar: str | None = None, **kwargs: Any):
         self.metavar = metavar
         super().__init__(**kwargs)
 
 
-class _CountAction(argparse._CountAction):
-    def __init__(self, metavar=None, **kwargs):
+class _CountAction(argparse._CountAction):  # pyright: ignore
+    def __init__(self, metavar: str | None = None, **kwargs: Any):
         self.metavar = metavar
         super().__init__(**kwargs)
 
 
 class ArgumentParser(argparse.ArgumentParser):
-    def __init__(self, *args, command: Command, output: Output, **kwargs):
+    def __init__(
+        self, *args: Any, command: Command[Any], output: Output, **kwargs: Any
+    ):
         super().__init__(*args, **kwargs)
         self.command = command
         self.output = output
@@ -77,32 +81,32 @@ class ArgumentParser(argparse.ArgumentParser):
         self.register("action", "version", _VersionAction)
         self.register("action", "count", _CountAction)
 
-    def error(self, message):
+    def error(self, message: str):
         # Avoids argparse's error prefixing code, deferring it to Output
         self.exit(2, message)
 
-    def exit(self, status=0, message=None):
+    def exit(self, status: int = 0, message: str | None = None):
         if message:
             message = message.capitalize()
 
         raise Exit(message, code=status, prog=self.prog)
 
-    def print_help(self, file=None):
+    def print_help(self, file: SupportsWrite[str] | None = None):
         raise HelpExit(self.command.help_formatter(self.command, self.prog))
 
 
-def custom_action(arg: Arg, action: Callable):
+def custom_action(arg: Arg[Any], action: Callable[..., Any]):
     class CustomAction(argparse.Action):
         def __call__(  # type: ignore
             self,
             parser: ArgumentParser,
-            namespace,
-            values,
-            option_string=None,
+            namespace: argparse.Namespace,
+            values: Any,
+            option_string: str | None = None,
         ):
             # XXX: This should ideally be able to inject parser state, but here, we dont
             #      have access to the same state as the native parser.
-            fulfilled_deps: dict = {
+            fulfilled_deps: dict[Hashable, Any] = {
                 Output: parser.output,
                 Value: Value(values),
                 Command: namespace.__command__,
@@ -126,7 +130,7 @@ class Nestedspace(argparse.Namespace):
     once has been chosen.
     """
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any):
         if "." in name:
             group, name = name.split(".", 1)
             ns = getattr(self, group, Nestedspace())
@@ -141,7 +145,8 @@ def backend(
     argv: list[str],
     output: Output,
     prog: str,
-) -> tuple[typing.Any, Command[T], dict[str, typing.Any]]:
+    provide_completions: bool = False,
+) -> tuple[Any, Command[T], dict[str, Any]]:
     parser = create_parser(command, output=output, prog=prog)
 
     try:
@@ -168,9 +173,9 @@ def backend(
 
 
 def create_parser(
-    command: Command, output: Output, prog: str
+    command: Command[Any], output: Output, prog: str
 ) -> argparse.ArgumentParser:
-    kwargs: dict[str, typing.Any] = {}
+    kwargs: dict[str, Any] = {}
     if sys.version_info >= (3, 9):  # pragma: no cover
         kwargs["exit_on_error"] = False
 
@@ -190,7 +195,10 @@ def create_parser(
 
 
 def add_arguments(
-    parser: argparse.ArgumentParser, command: Command, output: Output, dest_prefix=""
+    parser: ArgumentParser,
+    command: Command[Any],
+    output: Output,
+    dest_prefix: str = "",
 ):
     arg_groups = generate_arg_groups(command, include_hidden=True)
     for (group_name, group_exclusive), args in arg_groups:
@@ -200,38 +208,37 @@ def add_arguments(
 
         for arg in args:
             if isinstance(arg, Arg):
-                add_argument(argparse_group, arg, dest_prefix=dest_prefix)
-            elif isinstance(arg, Subcommand):
+                add_argument(parser, argparse_group, arg, dest_prefix=dest_prefix)
+            else:
                 add_subcommands(
                     parser, group_name, arg, output=output, dest_prefix=dest_prefix
                 )
-            else:
-                assert_never(arg)
 
 
 def add_argument(
-    parser: argparse.ArgumentParser | argparse._ArgumentGroup,
-    arg: Arg,
-    dest_prefix="",
-    **extra_kwargs,
+    parser: ArgumentParser,  # pyright: ignore
+    subparser: argparse.ArgumentParser | argparse._ArgumentGroup,  # pyright: ignore
+    arg: Arg[Any],
+    dest_prefix: str = "",
+    **extra_kwargs: Any,
 ):
     if arg.propagate:
-        raise ValueError("The argparse backend does not support the `Arg.propagate`.")
+        raise RuntimeError("The argparse backend does not support the `Arg.propagate`.")
 
     names: list[str] = []
     if arg.short:
-        short = assert_type(arg.short, list)
+        short: list[str] = assert_type(arg.short, list)
         names.extend(short)
 
     if arg.long:
-        long = assert_type(arg.long, list)
+        long: list[str] = assert_type(arg.long, list)
         names.extend(long)
 
     is_positional = not names
 
     num_args = backend_num_args(arg.num_args, assert_type(arg.required, bool))
 
-    kwargs: dict[str, typing.Any] = {
+    kwargs: dict[str, Any] = {
         "dest": dest_prefix + assert_type(arg.field_name, str),
         "help": arg.help,
         "metavar": arg.value_name,
@@ -251,7 +258,10 @@ def add_argument(
     kwargs.update(deprecated_kwarg)
     kwargs.update(extra_kwargs)
 
-    parser.add_argument(*names, **kwargs)
+    try:
+        subparser.add_argument(*names, **kwargs)
+    except argparse.ArgumentError as e:
+        raise Exit(str(e), code=2, prog=parser.prog)
 
 
 def add_subcommands(
@@ -259,7 +269,7 @@ def add_subcommands(
     group: str,
     subcommands: Subcommand,
     output: Output,
-    dest_prefix="",
+    dest_prefix: str = "",
 ):
     subcommand_dest = subcommands.field_name
     subparsers = parser.add_subparsers(
@@ -308,7 +318,7 @@ def backend_num_args(num_args: int | None, required: bool) -> int | str | None:
 
 
 def to_dict(value: argparse.Namespace):
-    result = {}
+    result: dict[str, Any] = {}
     for k, v in value.__dict__.items():
         if isinstance(v, argparse.Namespace):
             v = to_dict(v)
@@ -317,20 +327,20 @@ def to_dict(value: argparse.Namespace):
     return result
 
 
-def join_help(*segments):
+def join_help(*segments: str | None):
     return " ".join([s for s in segments if s])
 
 
-def get_action(arg: Arg) -> argparse.Action | type[argparse.Action] | str:
+def get_action(arg: Arg[Any]) -> argparse.Action | type[argparse.Action] | str:
     action = arg.action
     if isinstance(action, ArgAction):
         return action.value
 
-    action = typing.cast(Callable, action)
+    action = cast(Callable[..., Any], action)
     return custom_action(arg, action)
 
 
-def add_deprecated_kwarg(arg: Arg | Command) -> dict[str, typing.Any]:
+def add_deprecated_kwarg(arg: Arg[Any] | Command[Any]) -> dict[str, Any]:
     if sys.version_info < (3, 13) or not arg.deprecated:
         return {}
 

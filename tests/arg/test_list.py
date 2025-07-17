@@ -6,11 +6,11 @@ from typing import Union
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_list_option(backend):
+def test_list_option(backend: Backend):
     @dataclass
     class ArgTest:
         variable_number: Annotated[list[str], cappa.Arg(short=True, long=True)] = field(
@@ -29,7 +29,7 @@ def test_list_option(backend):
 
 
 @backends
-def test_list_positional(backend):
+def test_list_positional(backend: Backend):
     @dataclass
     class ArgTest:
         variable_number: list[str] = field(default_factory=list)
@@ -45,7 +45,7 @@ def test_list_positional(backend):
 
 
 @backends
-def test_optional_list(backend):
+def test_optional_list(backend: Backend):
     @dataclass
     class ArgTest:
         value: Annotated[Union[list[str], None], cappa.Arg(short=True, long=True)] = (

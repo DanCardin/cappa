@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -65,11 +66,11 @@ def test_no_completion():
     assert e.value.code == 2
 
 
-def test_arg_completion(capsys):
+def test_arg_completion(capsys: Any):
     @dataclass
     class Example: ...
 
-    completion: cappa.Arg = cappa.Arg(short="-p", long="--pompletion")
+    completion: cappa.Arg[Any] = cappa.Arg(short="-p", long="--pompletion")
 
     result = cappa.parse(Example, argv=[], completion=completion, backend=backend)
     assert result == Example()

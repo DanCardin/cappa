@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_invalid_choice_help(backend):
+def test_invalid_choice_help(backend: Backend):
     @dataclass
     class Args:
         arg: str

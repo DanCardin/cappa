@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -20,7 +21,7 @@ class Args:
 
 
 @backends
-def test_required_missing(backend, capsys):
+def test_required_missing(backend: Backend, capsys: Any):
     with pytest.raises(cappa.Exit) as e:
         parse(Args, "--help", backend=backend)
     assert e.value.code == 0
@@ -30,7 +31,7 @@ def test_required_missing(backend, capsys):
 
 
 @backends
-def test_explicit_group(backend, capsys):
+def test_explicit_group(backend: Backend, capsys: Any):
     @dataclass
     class Args:
         subcommand: Annotated[Foo, cappa.Subcommand(group=cappa.Group(name="Yup"))]
@@ -44,7 +45,7 @@ def test_explicit_group(backend, capsys):
 
 
 @backends
-def test_tuple_group(backend, capsys):
+def test_tuple_group(backend: Backend, capsys: Any):
     @dataclass
     class Args:
         subcommand: Annotated[Foo, cappa.Subcommand(group=(1, "Yup"))]

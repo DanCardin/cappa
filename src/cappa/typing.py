@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import enum
 import inspect
-import typing
 from dataclasses import dataclass
+from types import MethodType
+from typing import Any, Protocol, TypeVar
 
 from typing_extensions import assert_never
 
 from cappa.type_view import TypeView
 
 
-class DocType(typing.Protocol):
+class DocType(Protocol):
     documentation: str
 
 
@@ -37,11 +38,11 @@ __all__ = [
 ]
 
 
-T = typing.TypeVar("T")
+T = TypeVar("T")
 
 
-def find_annotations(type_view: TypeView, kind: type[T]) -> list[T]:
-    result = []
+def find_annotations(type_view: TypeView[Any], kind: type[T]) -> list[T]:
+    result: list[T] = []
     for annotation in type_view.metadata:
         if isinstance(annotation, kind):
             result.append(annotation)
@@ -52,12 +53,12 @@ def find_annotations(type_view: TypeView, kind: type[T]) -> list[T]:
     return result
 
 
-def assert_type(value: typing.Any, typ: type[T]) -> T:
+def assert_type(value: Any, typ: type[T]) -> T:
     assert isinstance(value, typ), value
-    return typing.cast(T, value)
+    return value
 
 
-def detect_choices(type_view: TypeView) -> list[str] | None:
+def detect_choices(type_view: TypeView[Any]) -> list[str] | None:
     if type_view.is_optional:
         type_view = type_view.strip_optional()
 
@@ -77,5 +78,5 @@ def detect_choices(type_view: TypeView) -> list[str] | None:
     return None
 
 
-def get_method_class(fn):
+def get_method_class(fn: MethodType) -> type:
     return inspect._findclass(fn)  # type: ignore

@@ -7,7 +7,7 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -17,7 +17,7 @@ class Command:
 
 
 @backends
-def test_required_implicit(backend):
+def test_required_implicit(backend: Backend):
     with pytest.raises(cappa.Exit) as e:
         parse(Command, "-b", "b", backend=backend)
 
@@ -29,7 +29,7 @@ def test_required_implicit(backend):
 
 
 @backends
-def test_required_explicit(backend):
+def test_required_explicit(backend: Backend):
     with pytest.raises(cappa.Exit) as e:
         parse(Command, "-a", "a", backend=backend)
 
@@ -41,7 +41,7 @@ def test_required_explicit(backend):
 
 
 @backends
-def test_required_lists_all(backend):
+def test_required_lists_all(backend: Backend):
     with pytest.raises(cappa.Exit) as e:
         parse(Command, backend=backend)
 
@@ -50,7 +50,7 @@ def test_required_lists_all(backend):
 
 
 @backends
-def test_required_explicit_false(backend):
+def test_required_explicit_false(backend: Backend):
     @dataclass
     class Example:
         a: Annotated[str, cappa.Arg(short="-a", required=False)]
@@ -66,7 +66,7 @@ def test_required_explicit_false(backend):
 
 
 @backends
-def test_required_explicit_false_union_none_no_explicit_default(backend):
+def test_required_explicit_false_union_none_no_explicit_default(backend: Backend):
     @dataclass
     class Example:
         c: Annotated[Union[str, None], cappa.Arg(short="-c", required=False)]
@@ -79,7 +79,7 @@ def test_required_explicit_false_union_none_no_explicit_default(backend):
 
 
 @backends
-def test_required_unbounded_list(backend):
+def test_required_unbounded_list(backend: Backend):
     @dataclass
     class Example:
         c: Annotated[list[str], cappa.Arg(required=True)]
@@ -93,7 +93,7 @@ def test_required_unbounded_list(backend):
 
 
 @backends
-def test_required_option(backend):
+def test_required_option(backend: Backend):
     @dataclass
     class Example:
         c: Annotated[list[str], cappa.Arg(short=True, required=True)]

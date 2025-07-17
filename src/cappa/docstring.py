@@ -25,7 +25,7 @@ class ClassHelpText:
 
     @classmethod
     def collect(cls, command: type) -> Self:
-        args = {}
+        args: dict[str, str] = {}
 
         doc = get_doc(command)
         if docstring_parser:
@@ -53,7 +53,7 @@ class ClassHelpText:
         return cls(summary=summary, body=body, args=args)
 
 
-def get_doc(cls):
+def get_doc(cls: type):
     """Lifted from dataclasses source."""
     doc = cls.__doc__ or ""
 

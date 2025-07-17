@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from typing_extensions import Annotated
 
 import cappa
 from cappa.default import DefaultFormatter
-from tests.utils import CapsysOutput, backends, parse
+from tests.utils import Backend, CapsysOutput, backends, parse
 
 
 @backends
-def test_show_default_default_true(backend, capsys):
+def test_show_default_default_true(backend: Backend, capsys: Any):
     @dataclass
     class Command:
         foo: bool = False
@@ -27,7 +28,7 @@ def test_show_default_default_true(backend, capsys):
 
 
 @backends
-def test_show_default_set_false(backend, capsys):
+def test_show_default_set_false(backend: Backend, capsys: Any):
     @dataclass
     class Command:
         foo: Annotated[bool, cappa.Arg(show_default=False)] = False
@@ -42,7 +43,7 @@ def test_show_default_set_false(backend, capsys):
 
 
 @backends
-def test_show_default_no_option_shows_for_false_default(backend, capsys):
+def test_show_default_no_option_shows_for_false_default(backend: Backend, capsys: Any):
     @dataclass
     class Command:
         foo: Annotated[bool, cappa.Arg(long="--foo/--no-foo")] = False
@@ -58,7 +59,7 @@ def test_show_default_no_option_shows_for_false_default(backend, capsys):
 
 
 @backends
-def test_show_default_no_option_shows_for_true_default(backend, capsys):
+def test_show_default_no_option_shows_for_true_default(backend: Backend, capsys: Any):
     @dataclass
     class Command:
         foo: Annotated[bool, cappa.Arg(long="--foo/--no-foo")] = True
@@ -74,7 +75,7 @@ def test_show_default_no_option_shows_for_true_default(backend, capsys):
 
 
 @backends
-def test_show_default_string(backend, capsys):
+def test_show_default_string(backend: Backend, capsys: Any):
     @dataclass
     class Command:
         foo: Annotated[str, cappa.Arg(show_default="~{default}~")] = "asdf"
@@ -87,7 +88,7 @@ def test_show_default_string(backend, capsys):
 
 
 @backends
-def test_show_default_explicit(backend, capsys):
+def test_show_default_explicit(backend: Backend, capsys: Any):
     @dataclass
     class Command:
         foo: Annotated[str, cappa.Arg(show_default=DefaultFormatter("!{default}!"))] = (
@@ -102,7 +103,7 @@ def test_show_default_explicit(backend, capsys):
 
 
 @backends
-def test_static(backend, capsys):
+def test_static(backend: Backend, capsys: Any):
     @dataclass
     class Command:
         foo: Annotated[str | None, cappa.Arg(show_default="always show")] = None

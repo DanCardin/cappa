@@ -2,16 +2,17 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_string_group(backend, capsys):
+def test_string_group(backend: Backend, capsys: Any):
     @dataclass
     class Args:
         name: Annotated[str, cappa.Arg(group="Strings")]
@@ -26,7 +27,7 @@ def test_string_group(backend, capsys):
 
 
 @backends
-def test_tuple_group(backend, capsys):
+def test_tuple_group(backend: Backend, capsys: Any):
     @dataclass
     class Args:
         name: Annotated[str, cappa.Arg(group=(1, "Strings"))]

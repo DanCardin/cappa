@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Generic, TypedDict, TypeVar
+from typing import Any, Dict, Generic, TypedDict, TypeVar, Union, overload
 
 
 class BaseTypedDict(TypedDict): ...
 
 
-T = TypeVar("T", bound=BaseTypedDict)
+S = TypeVar("S", bound=Union[Dict[str, Any], BaseTypedDict])
 
 
 @dataclass
-class State(Generic[T]):
+class State(Generic[S]):
     """A store of arbitrary data.
 
     State can be used as arguments to `Arg.parse`, `Arg.action`,
@@ -33,16 +33,24 @@ class State(Generic[T]):
         ...     arg3: Annotated[int, cappa.Arg(default=cappa.ValueFrom(parse_arg))]
     """
 
-    state: T = field(default_factory=dict)  # type: ignore
+    state: S = field(default_factory=dict)  # type: ignore
 
-    def set(self, key: str, value):
+    def set(self, key: str, value: Any):
         self.state[key] = value  # type: ignore
 
-    def get(self, key, *, default=None):
+    def get(self, key: str, *, default: Any = None):
         return self.state.get(key, default)
 
+    @overload
     @classmethod
-    def ensure(cls, state: State[T] | None) -> State[T]:
+    def ensure(cls, state: None) -> State[dict[str, Any]]: ...
+
+    @overload
+    @classmethod
+    def ensure(cls, state: State[S]) -> State[S]: ...
+
+    @classmethod
+    def ensure(cls, state: State[S] | None) -> State[S] | State[dict[str, Any]]:
         if state is None:
             return State()
         return state

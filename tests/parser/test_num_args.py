@@ -6,7 +6,7 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 def action():
@@ -14,7 +14,7 @@ def action():
 
 
 @backends
-def test_single_opt(backend):
+def test_single_opt(backend: Backend):
     @dataclass
     class Args:
         kill_switch: Annotated[
@@ -30,7 +30,7 @@ def test_single_opt(backend):
 
 
 @backends
-def test_num_args_list(backend):
+def test_num_args_list(backend: Backend):
     @dataclass
     class Args:
         foo: Annotated[

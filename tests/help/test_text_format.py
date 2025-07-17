@@ -1,17 +1,18 @@
 import sys
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from rich.console import Console
 from rich.text import Text
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @pytest.mark.help
 @backends
-def test_arg_renders_text(backend, capsys):
+def test_arg_renders_text(backend: Backend, capsys: Any):
     @dataclass
     class Args:
         foo: str
@@ -44,7 +45,7 @@ def test_arg_renders_text(backend, capsys):
 
 @pytest.mark.help
 @backends
-def test_arg_renders_string(backend, capsys):
+def test_arg_renders_string(backend: Backend, capsys: Any):
     @dataclass
     class Args:
         foo: str

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @cappa.command(name="insiders")
@@ -14,6 +14,6 @@ class Args:
 
 
 @backends
-def test_single_opt(backend):
+def test_single_opt(backend: Backend):
     args = parse(Args, "-ab", "1", backend=backend)
     assert args == Args(arg=1, foo=False)

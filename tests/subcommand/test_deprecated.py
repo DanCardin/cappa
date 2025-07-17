@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
@@ -20,7 +21,7 @@ class ArgTest:
     sub: cappa.Subcommands[Sub | None] = None
 
 
-def test_native_backend(capsys):
+def test_native_backend(capsys: Any):
     """Note, argparse only support deprecated at or above 3.13."""
     result = parse(ArgTest)
     assert result.sub is None
@@ -34,7 +35,7 @@ def test_native_backend(capsys):
 
 
 @pytest.mark.skipif(sys.version_info >= (3, 13), reason="requires python3.13 or higher")
-def test_argparse_le_313(capsys):
+def test_argparse_le_313(capsys: Any):
     """Below 3.13, this option has no effect."""
     result = parse(ArgTest, backend=cappa.argparse.backend)
     assert result.sub is None
@@ -50,7 +51,7 @@ def test_argparse_le_313(capsys):
 @pytest.mark.skipif(
     sys.version_info < (3, 13), reason="Below 3.13, the behavior is different"
 )
-def test_argparse_ge_313(capsys):
+def test_argparse_ge_313(capsys: Any):
     result = parse(ArgTest, backend=cappa.argparse.backend)
     assert result.sub is None
     err = capsys.readouterr().err

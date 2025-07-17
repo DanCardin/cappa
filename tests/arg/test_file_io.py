@@ -3,14 +3,14 @@ from __future__ import annotations
 import io
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import BinaryIO, TextIO
+from typing import Any, BinaryIO, TextIO
 from unittest.mock import mock_open, patch
 
 import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @contextmanager
@@ -33,7 +33,7 @@ def stdin(content: str):
 
 
 @backends
-def test_text_io_default(backend):
+def test_text_io_default(backend: Backend):
     @dataclass
     class Foo:
         bar: TextIO
@@ -45,7 +45,7 @@ def test_text_io_default(backend):
 
 
 @backends
-def test_text_io(backend):
+def test_text_io(backend: Backend):
     @dataclass
     class Foo:
         bar: Annotated[TextIO, cappa.FileMode(mode="r")]
@@ -57,7 +57,7 @@ def test_text_io(backend):
 
 
 @backends
-def test_text_io_write(backend):
+def test_text_io_write(backend: Backend):
     @dataclass
     class Foo:
         bar: Annotated[BinaryIO, cappa.FileMode(mode="w")]
@@ -65,11 +65,11 @@ def test_text_io_write(backend):
     with file_content("wat", mode="w"):
         test = parse(Foo, "foo.py", backend=backend)
 
-    test.bar.write("wat")
+    test.bar.write(b"wat")
 
 
 @backends
-def test_binary_io_default(backend):
+def test_binary_io_default(backend: Backend):
     @dataclass
     class Foo:
         bar: BinaryIO
@@ -81,7 +81,7 @@ def test_binary_io_default(backend):
 
 
 @backends
-def test_binary_io(backend):
+def test_binary_io(backend: Backend):
     @dataclass
     class Foo:
         bar: Annotated[BinaryIO, cappa.FileMode(mode="rb")]
@@ -93,7 +93,7 @@ def test_binary_io(backend):
 
 
 @backends
-def test_binary_io_write(backend):
+def test_binary_io_write(backend: Backend):
     @dataclass
     class Foo:
         bar: Annotated[BinaryIO, cappa.FileMode(mode="wb")]
@@ -105,7 +105,7 @@ def test_binary_io_write(backend):
 
 
 @backends
-def test_stdin(backend):
+def test_stdin(backend: Backend):
     @dataclass
     class Foo:
         bar: Annotated[BinaryIO, cappa.FileMode(mode="r")]
@@ -116,7 +116,7 @@ def test_stdin(backend):
 
 
 @backends
-def test_stdin_binary(backend):
+def test_stdin_binary(backend: Backend):
     @dataclass
     class Foo:
         bar: Annotated[BinaryIO, cappa.FileMode(mode="rb")]
@@ -127,20 +127,20 @@ def test_stdin_binary(backend):
 
 
 @backends
-def test_stdout(backend, capsys):
+def test_stdout(backend: Backend, capsys: Any):
     @dataclass
     class Foo:
         bar: Annotated[BinaryIO, cappa.FileMode(mode="w")]
 
     test = parse(Foo, "-", backend=backend)
-    test.bar.write("wat")
+    test.bar.write("wat")  # type: ignore
 
     out = capsys.readouterr().out
     assert out == "wat"
 
 
 @backends
-def test_stdout_binary(backend, capsys):
+def test_stdout_binary(backend: Backend, capsys: Any):
     @dataclass
     class Foo:
         bar: Annotated[BinaryIO, cappa.FileMode(mode="wb")]
@@ -153,7 +153,7 @@ def test_stdout_binary(backend, capsys):
 
 
 @backends
-def test_invalid_mode_dash(backend):
+def test_invalid_mode_dash(backend: Backend):
     @dataclass
     class Foo:
         bar: Annotated[BinaryIO, cappa.FileMode(mode="tb")]
@@ -165,7 +165,7 @@ def test_invalid_mode_dash(backend):
 
 
 @backends
-def test_invalid_mode(backend):
+def test_invalid_mode(backend: Backend):
     @dataclass
     class Foo:
         bar: Annotated[BinaryIO, cappa.FileMode(mode="tb")]
@@ -178,7 +178,7 @@ def test_invalid_mode(backend):
 
 
 @backends
-def test_open_oserror(backend):
+def test_open_oserror(backend: Backend):
     @dataclass
     class Foo:
         bar: BinaryIO

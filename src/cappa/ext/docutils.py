@@ -4,11 +4,12 @@ import importlib
 import importlib.util
 import io
 import logging
-from typing import Any, ClassVar, Sequence, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Sequence, cast
 
 from rich.console import Console
 
 import cappa
+from cappa.command import Command
 from cappa.default import Default
 from cappa.help import HelpFormatter, generate_arg_groups
 from cappa.output import Displayable, theme
@@ -24,6 +25,9 @@ except ImportError:  # pragma: no cover
 from docutils import nodes
 from docutils.parsers.rst import Directive, directives
 
+if TYPE_CHECKING:
+    from sphinx.application import Sphinx
+
 log = logging.getLogger(__name__)
 
 FONT_FAMILY = (
@@ -31,7 +35,7 @@ FONT_FAMILY = (
 )
 
 
-def setup(app) -> dict:  # pragma: no cover
+def setup(app: Sphinx) -> dict[str, Any]:  # pragma: no cover
     app.add_directive("cappa", CappaDirective)
     return {"parallel_read_safe": True}
 
@@ -54,7 +58,7 @@ class CappaDirective(Directive):
         module = importlib.import_module(module_path)
         item = getattr(module, item_name)
 
-        command = cappa.collect(item)
+        command: Command[Any] = cappa.collect(item)
         if style == "terminal":
             return render_to_terminal(command, terminal_width)
 
@@ -64,7 +68,7 @@ class CappaDirective(Directive):
         raise ValueError(f"Unrecognized style {style}")
 
 
-def render_to_terminal(command: cappa.Command, terminal_width: int):
+def render_to_terminal(command: cappa.Command[Any], terminal_width: int):
     raw_help: list[Displayable] = HelpFormatter.default(command, command.real_name())
 
     line_wrap = ""
@@ -88,7 +92,7 @@ def render_to_terminal(command: cappa.Command, terminal_width: int):
     return [nodes.raw(text=html, format="html")]
 
 
-def render_to_docutils(command: cappa.Command, document):
+def render_to_docutils(command: cappa.Command[Any], document: nodes.document):
     section = nodes.section()
     document.note_implicit_target(section)
 
@@ -97,7 +101,7 @@ def render_to_docutils(command: cappa.Command, document):
     command_content = nodes.paragraph()
     section += command_content
 
-    description = []
+    description: list[str] = []
     if command.help:
         description.append(command.help)
     if command.description:

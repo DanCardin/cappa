@@ -1,16 +1,17 @@
 import sys
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from rich.console import Console
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @pytest.mark.help
 @backends
-def test_arg_description_renders_markdown(backend, capsys):
+def test_arg_description_renders_markdown(backend: Backend, capsys: Any):
     @dataclass
     class Args:
         foo: str

@@ -7,11 +7,11 @@ import pytest
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_sequence_unioned_with_scalar(backend):
+def test_sequence_unioned_with_scalar(backend: Backend):
     @dataclass
     class Args:
         foo: Union[list[str], str]
@@ -28,7 +28,7 @@ def test_sequence_unioned_with_scalar(backend):
 
 
 @backends
-def test_sequence_with_scalar_action(backend):
+def test_sequence_with_scalar_action(backend: Backend):
     @dataclass
     class Args:
         foo: Annotated[list[str], cappa.Arg(action=cappa.ArgAction.set, num_args=1)]
@@ -45,7 +45,7 @@ def test_sequence_with_scalar_action(backend):
 
 
 @backends
-def test_sequence_with_scalar_num_args(backend):
+def test_sequence_with_scalar_num_args(backend: Backend):
     @dataclass
     class Args:
         foo: Annotated[list[str], cappa.Arg(num_args=1, short=True)]
@@ -71,7 +71,7 @@ def test_sequence_with_scalar_num_args(backend):
 
 
 @backends
-def test_scalar_with_sequence_action(backend):
+def test_scalar_with_sequence_action(backend: Backend):
     @dataclass
     class Args:
         foo: Annotated[str, cappa.Arg(action=cappa.ArgAction.append)]
@@ -87,7 +87,7 @@ def test_scalar_with_sequence_action(backend):
 
 
 @backends
-def test_scalar_with_sequence_num_args(backend):
+def test_scalar_with_sequence_num_args(backend: Backend):
     @dataclass
     class Args:
         foo: Annotated[str, cappa.Arg(num_args=5)]

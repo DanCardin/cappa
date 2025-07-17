@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, Callable, ClassVar, Generic, TextIO, Union
+from typing import Any, Callable, ClassVar, Hashable, Protocol, TextIO, Union
 
 import rich.prompt
 from typing_extensions import Self, TypeAlias, TypeVar
@@ -58,7 +58,7 @@ class Default:
         return self.fallback(other)
 
     def __call__(
-        self, state: State | None = None, input: TextIO | None = None
+        self, state: State[Any] | None = None, input: TextIO | None = None
     ) -> tuple[bool, Any | None]:
         for default in self.sequence:
             if isinstance(default, ValueFrom):
@@ -66,7 +66,7 @@ class Default:
             elif isinstance(default, (Prompt, Confirm)):
                 value = default(input=input)
             else:
-                value = default()  # type: ignore
+                value = default()
 
             if value is not Empty:
                 return default.is_parsed, value
@@ -77,8 +77,10 @@ class Default:
         return True, self.default
 
 
-class DefaultType:
+class DefaultType(Protocol):
     is_parsed: ClassVar[bool] = False
+
+    def __call__(self, *_: Any, **__: Any) -> Any: ...  # pragma: no cover
 
     def __or__(self, other: DefaultTypes) -> Default:
         return Default(self) | other
@@ -98,15 +100,15 @@ class Env(DefaultType):
     """
 
     env_vars: tuple[str, ...]
-    default: str | None | EmptyType = Empty
+    default: str | EmptyType | None = Empty
 
     def __init__(
-        self, env_var: str, *env_vars: str, default: str | None | EmptyType = Empty
+        self, env_var: str, *env_vars: str, default: str | EmptyType | None = Empty
     ):
         object.__setattr__(self, "env_vars", (env_var, *env_vars))
         object.__setattr__(self, "default", default)
 
-    def __call__(self) -> str | None | EmptyType:
+    def __call__(self) -> str | EmptyType | None:
         for env_var in self.env_vars:
             value = os.getenv(env_var)
             if value is not None:
@@ -117,7 +119,7 @@ class Env(DefaultType):
         return self.default
 
 
-class Prompt(DefaultType, rich.prompt.Prompt):
+class Prompt(rich.prompt.Prompt, DefaultType):
     """Prompt the user for a value, returning the response.
 
     Examples:
@@ -142,7 +144,7 @@ class Prompt(DefaultType, rich.prompt.Prompt):
         return super().__call__(default=Empty, stream=input)
 
 
-class Confirm(DefaultType, rich.prompt.Confirm):
+class Confirm(rich.prompt.Confirm, DefaultType):
     """Prompt the user for a confirmation, returning `True`/`False`.
 
     Examples:
@@ -183,21 +185,21 @@ class ValueFrom(DefaultType):
         >>> arg = Arg(default=ValueFrom(from_file, name="config.json"))
     """
 
-    callable: Callable
+    callable: Callable[..., Any]
     kwargs: dict[str, Any]
 
     is_parsed: ClassVar[bool] = True
 
-    def __init__(self, callable: Callable, **kwargs: Any):
+    def __init__(self, callable: Callable[..., Any], **kwargs: Any):
         object.__setattr__(self, "callable", callable)
         object.__setattr__(self, "kwargs", kwargs)
 
-    def __call__(self, state: State | None = None):
+    def __call__(self, state: State[Any] | None = None):
         from cappa.invoke import fulfill_deps
 
         kwargs = self.kwargs
         if state:
-            deps = {State: state}
+            deps: dict[Hashable, Any] = {State: state}
             resolved = fulfill_deps(self.callable, deps, allow_empty=True)
             kwargs = {**resolved.kwargs, **self.kwargs}
 
@@ -205,12 +207,12 @@ class ValueFrom(DefaultType):
 
 
 @dataclass
-class DefaultFormatter(Generic[T]):
+class DefaultFormatter:
     format: str = "{default}"
     show: bool = True
 
     @classmethod
-    def disabled(cls):
+    def disabled(cls) -> Self:
         return cls(show=False)
 
     @classmethod

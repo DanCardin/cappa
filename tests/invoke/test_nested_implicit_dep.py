@@ -6,7 +6,7 @@ from typing import Union
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, invoke
+from tests.utils import Backend, backends, invoke
 
 
 def foo(tlc: TopLevelCommand, subcommand: Subcommand, foo: Foo):
@@ -30,7 +30,7 @@ class TopLevelCommand:
 
 
 @backends
-def test_every_dependency_level(backend):
+def test_every_dependency_level(backend: Backend):
     result = invoke(TopLevelCommand, "subcommand", "foo", backend=backend)
     assert result == (
         TopLevelCommand(cmd=Subcommand(cmd=Foo())),
@@ -40,6 +40,6 @@ def test_every_dependency_level(backend):
 
 
 @backends
-def test_no_subcmd(backend):
+def test_no_subcmd(backend: Backend):
     result = invoke(TopLevelCommand, backend=backend)
     assert result == 4

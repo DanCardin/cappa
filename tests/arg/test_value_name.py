@@ -7,7 +7,7 @@ from typing_extensions import Annotated
 
 import cappa
 from cappa import Subcommands
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -22,6 +22,6 @@ class A:
 
 
 @backends
-def test_value_name_uses_correct_value(backend):
+def test_value_name_uses_correct_value(backend: Backend):
     result = parse(Example, "a", "-a", "test", backend=backend)
     assert result == Example(subcommand=A(a="test"))

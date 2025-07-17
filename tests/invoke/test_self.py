@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, invoke
+from tests.utils import Backend, backends, invoke
 
 
 def foo(command: cappa.Self[HasDefault]):
@@ -36,7 +37,7 @@ class Bar(HasDefault):
 
 
 @backends
-def test_typing_self(capsys, backend):
+def test_typing_self(capsys: Any, backend: Backend):
     invoke(Command, deps=[foo], backend=backend)
     out = capsys.readouterr().out
     assert "called with 1" in out

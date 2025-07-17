@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import typing
 from dataclasses import dataclass, field
+from typing import Any, Generic, TextIO, TypedDict
 
 from typing_extensions import Unpack
 
 import cappa
+from cappa.base import Backend, CappaCapable, T
 from cappa.help import HelpFormattable
 from cappa.invoke import DepTypes
 from cappa.state import State
@@ -16,24 +17,23 @@ __all__ = [
 ]
 
 
-class RunnerArgs(typing.TypedDict, total=False):
+class RunnerArgs(TypedDict, total=False):
     """Available kwargs for `parse` and `invoke` function, to match `CommandRunner` fields."""
 
-    obj: type
-    deps: DepTypes
-    backend: typing.Callable | None
+    argv: list[str]
+    backend: Backend | None
     output: cappa.Output | None
     color: bool
-    version: str | cappa.Arg
-    help: bool | cappa.Arg
-    completion: bool | cappa.Arg
-    help_formatter: HelpFormattable
-    input: typing.TextIO | None
-    state: State | None
+    version: str | cappa.Arg[str] | None
+    help: bool | cappa.Arg[bool]
+    completion: bool | cappa.Arg[bool]
+    help_formatter: HelpFormattable | None
+    input: TextIO | None
+    state: State[Any] | None
 
 
 @dataclass
-class CommandRunner:
+class CommandRunner(Generic[T]):
     """Object to hold common parse/invoke invocation state, for testing.
 
     Accepts almost identical inputs to that of `parse`/`invoke`. The notable
@@ -59,7 +59,7 @@ class CommandRunner:
         Create an instance with no arguments means there is no default state
 
         >>> runner = CommandRunner()
-        >>> runner.parse("one", obj=Obj)
+        >>> runner.parse(Obj, "one")
         Obj(first='one', second='2')
 
         Or create a runner that always uses the same base CLI object, and default base command
@@ -75,49 +75,77 @@ class CommandRunner:
         Obj(first='first', second='two')
     """
 
-    obj: type | None = None
+    obj: CappaCapable[T] | None = None
     deps: DepTypes = None
-    backend: typing.Callable | None = None
+    backend: Backend | None = None
     output: cappa.Output | None = None
     color: bool = True
-    version: str | cappa.Arg | None = None
-    help: bool | cappa.Arg = True
-    completion: bool | cappa.Arg = True
+    version: str | cappa.Arg[str] | None = None
+    help: bool | cappa.Arg[bool] = True
+    completion: bool | cappa.Arg[bool] = True
     help_formatter: HelpFormattable | None = None
-    input: typing.TextIO | None = None
-    state: State | None = None
+    input: TextIO | None = None
+    state: State[Any] | None = None
 
     base_args: list[str] = field(default_factory=lambda: [])
 
-    def coalesce_args(self, *args: str, **kwargs: Unpack[RunnerArgs]) -> dict:
-        return {
-            "argv": self.base_args + list(args),
-            "obj": kwargs.get("obj") or self.obj,
-            "backend": kwargs.get("backend") or self.backend,
-            "output": kwargs.get("output") or self.output,
-            "color": kwargs.get("color") or self.color,
-            "version": kwargs.get("version") or self.version,
-            "help": kwargs["help"] if "help" in kwargs else self.help,
-            "completion": kwargs["completion"]
+    def coalesce_kwargs(self, *args: str, **kwargs: Unpack[RunnerArgs]) -> RunnerArgs:
+        return RunnerArgs(
+            argv=self.base_args + list(args),
+            backend=kwargs.get("backend") or self.backend,
+            output=kwargs.get("output") or self.output,
+            color=kwargs.get("color") or self.color,
+            version=kwargs.get("version") or self.version,
+            help=kwargs["help"] if "help" in kwargs else self.help,
+            completion=kwargs["completion"]
             if "completion" in kwargs
             else self.completion,
-            "help_formatter": kwargs["help_formatter"]
-            if "help_formatter" in kwargs
-            else self.help_formatter,
-            "input": kwargs.get("input") or self.input,
-            "state": kwargs.get("state") or self.state,
-        }
+            help_formatter=kwargs.get("help_formatter") or self.help_formatter,
+            input=kwargs.get("input") or self.input,
+            state=kwargs.get("state") or self.state,
+        )
 
-    def parse(self, *args: str, **kwargs: Unpack[RunnerArgs]):
-        final_kwargs = self.coalesce_args(*args, **kwargs)
-        return cappa.parse(**final_kwargs)
+    def collect_args(
+        self, obj: CappaCapable[T] | str | None = None, *args: str
+    ) -> tuple[CappaCapable[T], tuple[str, ...]]:
+        if isinstance(obj, str):
+            assert self.obj
+            return self.obj, (obj, *args)
 
-    def invoke(self, *args: str, **kwargs: Unpack[RunnerArgs]):
-        final_kwargs = self.coalesce_args(*args, **kwargs)
-        deps = kwargs.get("deps") or self.deps
-        return cappa.invoke(**final_kwargs, deps=deps)
+        obj = obj or self.obj
+        assert obj
+        return obj, args
 
-    async def invoke_async(self, *args: str, **kwargs: Unpack[RunnerArgs]):
-        final_kwargs = self.coalesce_args(*args, **kwargs)
-        deps = kwargs.get("deps") or self.deps
-        return await cappa.invoke_async(**final_kwargs, deps=deps)
+    def parse(
+        self,
+        obj: CappaCapable[T] | str | None = None,
+        *args: str,
+        **kwargs: Unpack[RunnerArgs],
+    ) -> T:
+        obj, args = self.collect_args(obj, *args)
+        final_kwargs = self.coalesce_kwargs(*args, **kwargs)
+        return cappa.parse(obj, **final_kwargs)
+
+    def invoke(
+        self,
+        obj: CappaCapable[T] | str | None = None,
+        *args: str,
+        deps: DepTypes = None,
+        **kwargs: Unpack[RunnerArgs],
+    ) -> Any:
+        obj, args = self.collect_args(obj, *args)
+        final_kwargs = self.coalesce_kwargs(*args, **kwargs)
+        deps = deps or self.deps
+        return cappa.invoke(obj, **final_kwargs, deps=deps)
+
+    async def invoke_async(
+        self,
+        obj: CappaCapable[T] | str | None = None,
+        *args: str,
+        deps: DepTypes = None,
+        **kwargs: Unpack[RunnerArgs],
+    ) -> Any:
+        obj, args = self.collect_args(obj, *args)
+        final_kwargs = self.coalesce_kwargs(*args, **kwargs)
+        deps = deps or self.deps
+        return await cappa.invoke_async(obj, **final_kwargs, deps=deps)

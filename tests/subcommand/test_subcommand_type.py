@@ -4,7 +4,7 @@ import typing
 from dataclasses import dataclass
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -23,7 +23,7 @@ class Bar:
 
 
 @backends
-def test_subcommand_type_type_alias(backend):
+def test_subcommand_type_type_alias(backend: Backend):
     result = parse(Command, "foo", "4", backend=backend)
     assert result == Command(cmd=Foo(f=4))
 

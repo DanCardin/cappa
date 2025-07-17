@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -12,7 +13,7 @@ import cappa
 from tests.utils import parse
 
 
-def test_line_wraps_correctly_with_terminal_escape_codes(capsys):
+def test_line_wraps_correctly_with_terminal_escape_codes(capsys: Any):
     @dataclass
     class Args:
         a: Annotated[str, cappa.Arg(short=True)]

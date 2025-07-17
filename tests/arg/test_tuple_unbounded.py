@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from typing_extensions import Annotated
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @backends
-def test_positional_arg(backend):
+def test_positional_arg(backend: Backend):
     @dataclass
     class ArgTest:
         numbers: tuple[int, ...]
@@ -19,7 +19,7 @@ def test_positional_arg(backend):
 
 
 @backends
-def test_option_flag(backend):
+def test_option_flag(backend: Backend):
     @dataclass
     class ArgTest:
         numbers: Annotated[tuple[int, ...], cappa.Arg(short=True)]

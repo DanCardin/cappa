@@ -6,7 +6,7 @@ from typing import Literal
 import pytest
 
 import cappa
-from tests.utils import backends, parse
+from tests.utils import Backend, backends, parse
 
 
 @dataclass
@@ -15,7 +15,7 @@ class ArgTest:
 
 
 @backends
-def test_literal(backend):
+def test_literal(backend: Backend):
     test = parse(ArgTest, "two", backend=backend)
     assert test.name == "two"
 
