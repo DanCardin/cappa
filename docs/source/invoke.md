@@ -27,7 +27,7 @@ invoked for your command.
    itself. However being forced to define function at the same location as your
    CLI definition may or may not be a drawback at all, for your usecase.
 
-2. You can utilize the expliicit `invoke=function` argument:
+2. You can utilize the explicit `invoke=function` argument:
 
    ```python
    def function(example: Example):
@@ -57,16 +57,25 @@ invoked for your command.
    ```
 
    The primary benefit of using string references, especially in large
-   applications is import speed. This is equally true in other libraries, like
-   click, where you need to essentially import your entire codebase in order to
-   evaluate **just** the shape of the CLI enough to show help text.
+   applications is import speed. This style enables you to decouple the definition
+   of a CLI's shape from the code that is called for a given CLI command.
+   By using this style, the import to e.g. `foo.bar.function` is deferred
+   until that specific command is selected.
 
-   With string references, you **can** (whether or not you should) define your
-   entire API shape in a standalone `cli.py` file with zero imports to the rest
-   of your code. This should ensure your CLI has a fast time-to-helptext.
+   With this pattern it is possible to avoid **all** imports to your project's code
+   at runtime to ensure optimal time-to-helptext and (depending on your project's
+   structure) potentially avoid importing large swathes of your project on a given
+   CLI invocation.
 
-   Then at runtime, when the specific command/subcommand is chosen, only the
-   relevant portions of your code need to be imported.
+   ```{note}
+   This is equally true in other libraries, and was a significant consideration during
+   cappa's creation. For example with `click`, a naive CLI implementation will result
+   in **all** code that the CLI depends on being imported, even to display help text.
+
+   The equivalent solution for a click application is to inline all imports into the function
+   handlers themselves. This can certainly work, but then can also cause issues when paired
+   with features like Enum-based `choices` or `type` arguments.
+   ```
 
 4. In simple cases, you can forgo classes entirely in favor of functions.
 

@@ -1,13 +1,15 @@
 # Changelog
 
-### 0.29.0
+## 0.29.0
 
 ## Unreleased: 0.29.0
 
+- docs: Add argument validation documentation.
 - feat: Test against python 3.14.
 - fix: Apply pyright strict typing.
 - fix: Function callables ability to depend on implicit Deps.
 - docs: Improve docs relating to `Output`.
+
 ## 0.28
 
 ### 0.28.1

@@ -73,7 +73,7 @@ class Command(Generic[T]):
             This option is only relevant to subcommands.
         default_short: If `True`, all arguments will be treated as though annotated
             with `Annotated[T, Arg(short=True)]`, unless otherwise annotated.
-        default_true: If `True`, all arguments will be treated as though annotated
+        default_long: If `True`, all arguments will be treated as though annotated
             with `Annotated[T, Arg(long=True)]`, unless otherwise annotated.
         deprecated: If supplied, the argument will be marked as deprecated. If given `True`,
             a default message will be generated, otherwise a supplied string will be

@@ -23,27 +23,97 @@ By default:
 
 However, by using `Arg`, with syntax like
 `name: Annotated[str, cappa.Arg(...)]`, you can customize the behavior of the
-field.
+field. For each field of customization, there is a default inferred value, based
+on the particulars of the dataclass and/or other configured fields.
 
-- `short=True` (equivalent to `short='-n'` for this example) turns the option
-  from a positional argument into a flag.
-- `long` works the same way as short (and can be used together), but for `--`
-  flags, like `--name`.
-- `count=True` counts the number of flag instance. Frequently used for `-v`,
-  `-vv`, `-vvv` verbosity handling.
-- `help='...'` allows customizing the help text outside the docstring.
-- `parse=<callable>` allows parsing of more complex input values the cannot be
-  handled through the type annotation system directly.
+Below we document when configuring a given field might **imply** some other field by default
+(e.g. `count=True` **implies** `num_args=0`), however in all cases, an explicitly
+provided value will take precedence over the default inference.
 
 ```{note}
 See the [annotation docs](./annotation.md) for more details on how annotations
 can be used and are interpreted to handle different kinds of CLI input.
 ```
 
-```{eval-rst}
-.. autoapiclass:: cappa.Arg
-   :noindex:
+(arg-value-name)=
+## `Arg.value_name`
+
+This field controls the name of the field in helptext/errors. By default it matches
+the dataclass' field name.
+
+```python
+@dataclass
+class Command:
+    foo: Annotated[int, cappa.Arg(value_name="bar")]
+    happy: Annotated[int, cappa.Arg(value_name="sad", long=True)] = 1
 ```
+
+Would yield help text like:
+
+```
+  Options
+    [--happy SAD]
+
+  Arguments
+    BAR
+```
+
+(arg-short)=
+## `Arg.short`
+
+By default, unannotated dataclass fields are assumed to be positional arguments.
+
+An `Arg.short` argument is a non-positional argument which can be selected by a
+single `-` followed by the short name.
+
+The value can be supplied in a few different ways:
+
+* `foo: Annotated[int, Arg(short=True)]`: Rendered as `-f`. If there are more than one
+  field starting with "f" with `short=True`, at least one will need to be disambiguated.
+* `foo: Annotated[int, Arg(short='-b')]`: Rendered as-is
+* `foo: Annotated[int, Arg(short='b')]`: Rendered as `-b`.
+* `foo: Annotated[int, Arg(short=['-b', '-f'])]`: Rendered as **both/either** `-b` and `-f`.
+* `foo: Annotated[int, Arg(short='-b/-f')]`: Rendered as **both/either** `-b` and `-f`.
+
+(arg-long)=
+## `Arg.long`
+
+By default, unannotated dataclass fields are assumed to be positional arguments.
+
+An `Arg.long` argument is a non-positional argument which can be selected by a
+single `--` followed by the long name.
+
+```{note}
+`snake_case` field names will be converted to `dash-case` by default.
+```
+
+The value can be supplied in a few different ways:
+
+* `foo: Annotated[int, Arg(long=True)]`: Rendered as `--foo`.
+  field starting with "f" with `long=True`, at least one will need to be disambiguated.
+* `foo: Annotated[int, Arg(long='--bar')]`: Rendered as-is
+* `foo: Annotated[int, Arg(long='bar')]`: Rendered as `--bar`.
+* `foo: Annotated[int, Arg(long=['--bar', '-foo'])]`: Rendered as **both/either** `--bar` and `--foo`.
+* `foo: Annotated[int, Arg(long='--bar/--foo')]`: Rendered as **both/either** `--bar` and `--foo`.
+
+(arg-count)=
+## `Arg.count`
+
+Counts instances of the argument in question. This implies `num_args=0` and `action=ArgAction.count` by default.
+
+The canonical example of this is counting verbosity flags.
+```python
+@dataclass
+class Example:
+    verbose: Annotated[int, cappa.Arg(short="-v", count=True),
+```
+
+(arg-help)=
+## `Arg.help`
+Controls the per-argument help text.
+
+See [Help](./help.md) for more details, but in short help text is inferred by
+default from a few different sources, including docstrings and "attribute docstrings".
 
 (arg-action)=
 ## `Arg.action`
@@ -299,7 +369,7 @@ class Example:
     value: Annotated[int, cappa.Arg(default=cappa.ValueFrom(load_default, key='value'))]
 ```
 
-This construct is able to be automatically supplied with [cappa.State](State), in the even shared
+This construct is able to be automatically supplied with [cappa.State](State), in the event shared
 parse state is required to evaluate a field's default.
 
 As noted above, a value produced by `ValueFrom` **does not** invoke the `Arg.parse` parser. This is
@@ -635,6 +705,37 @@ More injectable dependencies **could** be supported. In particular the `Arg` ins
 it's just not immediately obvious what that would be. File an issue if you have a usecase!
 ```
 
+## `Arg.choices`
+
+This can be used to limit the set of valid inputs to one of a few literal values, 
+for example, `Arg(choices=['a', 'b', 'c']`.
+
+Both `Literal`s (and literal unions) and `Enum`s automatically infer `choices`.
+
+## `Arg.completion`
+
+This is an optional function which, if provided will be called during CLI (typically TAB)
+completion events in the shell. You can supply a function which accepts the partial
+input and returns an optional list of completions for that input.
+
+```{note}
+`Arg.choices` has a default completion implementation.
+```
+
+```python
+def complete_file(raw: str) -> list[cappa.Completion]:
+    return [filename for filename in os.listdir() if filename.startswith(raw)]
+
+@dataclass
+class Foo:
+    file: Annotated[str, cappa.Arg(completion=complete_file)
+```
+
+```{note}
+Filename completion is actually natively supported by the shells, so this example is
+somewhat unnecessary to **actually** implement yourself.
+```
+
 ## `Arg.has_value`
 
 `Arg(has_value=True/False)` can be used to explicitly control whether the argument in question
@@ -798,3 +899,24 @@ Would yield:
 Note, this is no different from use of `Arg.group` in any other context, except in that
 the argument only exists at the declaration point, so any grouping configuration will
 also propagate down into the way child commands render those arguments as well.
+
+## `Arg.hidden`
+
+Controls whether an argument is displayed in help text.
+
+## `Arg.required`
+
+Controls whether an argument is required.
+
+## `Arg.deprecated`
+
+When truthy, will emit a deprecation message upon use of an argument. There is
+a default message generated, but supplying a string will yield **that** as the
+deprecation message.
+
+## API
+
+```{eval-rst}
+.. autoapiclass:: cappa.Arg
+   :noindex:
+```

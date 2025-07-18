@@ -3,58 +3,88 @@
 A command can be as simple as a dataclass-like object, with no additional
 annotations. Supported object-types include:
 
-- dataclasses
-- pydantic models
-- pydantic dataclasses
-- attrs classes
+````{collapse} dataclasses
+:open: 
 
 ```python
+from cappa import parse
+
 from dataclasses import dataclass
 
 @dataclass
 class Dataclass:
     name: str
 
-# or
+value = parse(Dataclass)
+assert isinstance(value, Dataclass)
+```
+````
+
+````{collapse} Pydantic models
+```python
+from cappa import parse
 from pydantic import BaseModel
 
 class PydanticModel(BaseModel):
     name: str
 
-# or
+value = parse(PydanticModel)
+assert isinstance(value, PydanticModel)
+```
+````
 
+````{collapse} Pydantic dataclasses
+```python
+from cappa import parse
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
 @pydantic_dataclass
 class PydanticDataclass:
     name: str
 
-# or
+value = parse(PydanticDataclass)
+assert isinstance(value, PydanticDataclass)
+```
+````
+
+````{collapse} Attrs classes
+```python
+from cappa import parse
 from attr import define
 
 @define
 class AttrsClass:
     name: str
 
-
-from cappa import parse
-
-p1 = parse(Dataclass)
-assert isinstance(p1, Dataclass)
-
-p2 = parse(PydanticModel)
-assert isinstance(p2, PydanticModel)
-
-p3 = parse(PydanticDataclass)
-assert isinstance(p3, PydanticDataclass)
-
-p4 = parse(AttrsClass)
-assert isinstance(p4, PAttrsClass)
+value = parse(AttrsClass)
+assert isinstance(value, AttrsClass)
 ```
+````
 
-However, you can additionally wrap the class in the `cappa.command` decorator to
-gain access to (described below) more customizability (such as customizing the
-command's name) and behavior (such as [invoke](./invoke.md)).
+````{collapse} cattrs classes
+```python
+from cappa import parse
+from attr import define
+
+@define
+class CAttrsClass:
+    name: str
+
+value = parse(CAttrsClass)
+assert isinstance(value, CAttrsClass)
+```
+````
+
+An undecorated dataclass-class will receive all the default [cappa.command](cappa.command)
+behavior. In order to customize or change the default behavior, you would
+begin by wrapping the class in the `@cappa.command` decorator like so:
+
+```python
+@cappa.command()
+@dataclass
+class Dataclass:
+    name: str
+```
 
 ```{note}
 The wrapped class is directly returned from the decorator. So unlike `click`,
@@ -62,12 +92,30 @@ the resultant object can be directly used in the same way that you'd have been
 able to do sans decorator.
 ```
 
-```{eval-rst}
-.. autoapiclass:: cappa.Command
-   :noindex:
+```{note}
+All arguments to [cappa.command](cappa.command) directly translate to [cappa.Command](cappa.Command)
+attributes. When annotating an object with `@command()`, you are essentially pre-configuring
+the generated [cappa.Command](cappa.Command) for that particular command.
 ```
 
-## Command/Subcommand Name
+## Subcommands
+
+See [Subcommands](./subcommand.md) for details.
+
+In short, any supported dataclass-like class that can be a top-level command is also
+compatible with being a subcommand. The only difference is that subcommands
+are attached to parent commands in a tree by way of having the parent define which
+subcommands are available options.
+
+```python
+from cappa import Subcommands
+
+@dataclass
+class Command:
+    subcommand: Subcommands[SubcmdOne | SubcmdTwo]
+```
+
+## `@command(name=...)` / `Command.name`
 
 By default, the name of the command is inferred from the name of the containing
 class, and converted to dash-case. For example `Example` would become `example`,
@@ -75,38 +123,78 @@ and `SomeLongName` would become `some-long-name`.
 
 The `name` field can be used to override this behavior.
 
-## Help/Description Text
+## `@command(help=...)` / `Command.help`
 
 See [Help Text Inference](./help.md) for details.
 
-Command also accepts a "description", which constitutes the extended text
-section below.
+Essentially this replaces any inferred (from docstring) **short** help text for the command.
+
+## `@command(description=...)` / `Command.description`
+
+See [Help Text Inference](./help.md) for details.
+
+Essentially this replaces any inferred (from docstring) **extended** help text for the command.
+
+## `@command(invoke=...)` / `Command.invoke`
+
+See [Invoke](./invoke.md) documentation for more details.
+
+Essentially this invokes a function upon a command/subcommand being selected during parsing,
+corresponds to use of the `cappa.invoke` API rather than `cappa.parse`.
+
+This API is roughly comparable to how `click` maps subcommands to functions.
+
+## `@command(hidden=...)` / `Command.hidden`
+
+Excludes the command in question from parent helptext generation. As such this
+option is only relevant to subcommands.
+
+## `@command(default_short=...)` / `Command.default_short`
+
+By default unannotated arguments are considered to be ordered positional aruguments.
+
+This option controls whether un-annotated arguments default to implying [Arg(short=True)](arg-short).
+
+For example:
 
 ```python
-class Example:
-    """Example CLI.
+@command(default_short=True)
+@dataclass
+class Foo:
+    bar: int
 
-    With some long description.
-
-    Arguments:
-        foo: The number of foos
-    """
-    foo: int
+# which is then called like:
+# `foo -b 4`
 ```
 
-would produce something like the following help text:
+## `@command(default_long=...)` / `Command.default_long`
 
+By default unannotated arguments are considered to be ordered positional aruguments.
+
+This option controls whether un-annotated arguments default to implying [Arg(long=True)](arg-long).
+
+For example:
+
+```python
+@command(default_long=True)
+@dataclass
+class Foo:
+    bar: int
+
+# which is then called like:
+# `foo --bar 4`
 ```
-Usage: example.py [-h]
 
-Example CLI. With some long description.
+## `@command(deprecated=...)` / `Command.deprecated`
 
-Positional Arguments:
-  foo                  The number of foos
+This generates a warning if the command in question is used at runtime.
+
+If `True` is supplied, a default deprecation message is generated. Alternatively
+it accepts the string message that should be emitted.
+
+## API
+
+```{eval-rst}
+.. autoapiclass:: cappa.Command
+   :noindex:
 ```
-
-## Invoke
-
-See [Invoke](./invoke.md) documentation for more details. Essentially this
-invokes a function upon a command/subcommand being selected during parsing, when
-using `cappa.invoke` instead of `cappa.parse`.
