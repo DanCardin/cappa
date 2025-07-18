@@ -23,9 +23,6 @@ from cappa.typing import assert_type
 if typing.TYPE_CHECKING:
     from cappa.command import Command
 
-HelpFormattable: TypeAlias = typing.Callable[
-    ["Command[typing.Any]", str], typing.List[Displayable]
-]
 ArgGroup: TypeAlias = typing.Tuple[
     typing.Tuple[str, bool], typing.List[typing.Union[Arg[Any], Subcommand]]
 ]
@@ -42,6 +39,16 @@ ArgFormat: TypeAlias = typing.Union[
     ],
     typing.Callable[[Arg[Any]], typing.Union[TextComponent, None]],
 ]
+
+
+class HelpFormattable(typing.Protocol):
+    left_padding: Dimension
+    arg_format: ArgFormat
+    default_format: str
+
+    def __call__(
+        self, command: Command[Any], prog: str
+    ) -> list[Displayable]: ...  # pragma: no cover
 
 
 def create_version_arg(version: str | Arg[Any] | None = None) -> Arg[Any] | None:
@@ -108,7 +115,7 @@ def create_completion_arg(completion: bool | Arg[bool] = True) -> Arg[bool] | No
 
 
 @dataclass(frozen=True)
-class HelpFormatter:
+class HelpFormatter(HelpFormattable):
     left_padding: Dimension = (0, 0, 0, 2)
     arg_format: ArgFormat = (
         Markdown("{help}"),
@@ -117,7 +124,7 @@ class HelpFormatter:
     )
     default_format: str = "(Default: {default})"
 
-    default: typing.ClassVar[Self]
+    default: typing.ClassVar[HelpFormatter]
 
     def __call__(self, command: Command[Any], prog: str) -> list[Displayable]:
         arg_groups = generate_arg_groups(command)
@@ -176,7 +183,7 @@ def add_long_args(
 
 
 def format_arg(
-    console: Console, help_formatter: HelpFormatter, arg: Arg[Any]
+    console: Console, help_formatter: HelpFormattable, arg: Arg[Any]
 ) -> Displayable:
     arg_format = help_formatter.arg_format
     if not isinstance(arg_format, Iterable) or isinstance(arg_format, str):
@@ -259,10 +266,7 @@ def _replace_rich_text_component(c: TextComponent, text: str) -> TextComponent:
             style=c.style,
             justify=c.justify,
             overflow=c.overflow,
-            # no_wrap=c.no_wrap,
             end=c.end,
-            # tab_size=c.tab_size,
-            # spans=c.spans,
         )
 
     if isinstance(c, Markdown):
