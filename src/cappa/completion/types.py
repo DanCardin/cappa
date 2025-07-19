@@ -29,6 +29,14 @@ class ShellHandler:
 class Completion:
     value: str | None = None
     help: str | None = None
+    arg: Arg[Any] | None = None
+
+    @property
+    def description(self) -> str:
+        if not self.arg or self.arg.help:
+            return self.help or ""
+
+        return f"<{self.arg.value_name}> {self.help}".strip()
 
 
 @dataclasses.dataclass

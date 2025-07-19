@@ -8,7 +8,7 @@ from typing import Any, Callable, Generic, Hashable, List, Optional, cast
 from cappa.arg import Arg, ArgAction, ArgActionType, Group
 from cappa.command import Command, Subcommand
 from cappa.completion.types import Completion, FileCompletion
-from cappa.help import format_subcommand_names
+from cappa.help import format_arg, format_subcommand_names
 from cappa.invoke import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.typing import T, assert_type
@@ -372,20 +372,30 @@ def parse_option(
     parse_state: ParseState, context: ParseContext, raw: RawOption
 ) -> None:
     if raw.name not in context.options:
-        possible_values = [
-            name for name in context.options if name.startswith(raw.name)
-        ]
+        possible_options: dict[str, Arg[Any]] = {
+            name: arg
+            for name, arg in context.options.items()
+            if name.startswith(raw.name)
+        }
 
         if parse_state.provide_completions:
-            options = [
-                Completion(option, help=context.options[option].help)
-                for option in possible_values
-            ]
+            options: list[Completion] = []
+            for name, option in possible_options.items():
+                rendered_help = str(
+                    format_arg(
+                        parse_state.output.output_console,
+                        context.command.help_formatter,
+                        option,
+                    )
+                ).strip()
+                completion = Completion(name, help=rendered_help, arg=option)
+                options.append(completion)
+
             raise CompletionAction(*options)
 
         message = f"Unrecognized arguments: {raw.name}"
-        if possible_values:
-            message += f" (Did you mean: {', '.join(possible_values)})"
+        if possible_options:
+            message += f" (Did you mean: {', '.join(possible_options.keys())})"
 
         raise BadArgumentError(
             message, value=raw.name, command=parse_state.current_command
