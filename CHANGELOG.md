@@ -4,6 +4,7 @@
 
 ## Unreleased: 0.29.0
 
+- fix: Undocumented completions.
 - docs: Add argument validation documentation.
 - feat: Test against python 3.14.
 - fix: Apply pyright strict typing.

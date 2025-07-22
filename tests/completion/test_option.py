@@ -14,7 +14,7 @@ def test_long_option_name():
         default: bool = False
 
     result = parse_completion(Args, "--d")
-    assert result == "--default:"
+    assert result == "--default:<default> (Default: False)"
 
 
 def test_long_option_name_with_help():
@@ -23,7 +23,7 @@ def test_long_option_name_with_help():
         default: Annotated[bool, cappa.Arg(help="Enables default")] = False
 
     result = parse_completion(Args, "--d")
-    assert result == "--default:Enables default"
+    assert result == "--default:Enables default (Default: False)"
 
 
 def test_multiple_matches():
@@ -44,3 +44,12 @@ def test_short_name():
 
     result = parse_completion(Args, "-a")
     assert result is None
+
+
+def test_no_help_value_name():
+    @dataclass
+    class Args:
+        apple: Annotated[str, cappa.Arg(long=True)]
+
+    result = parse_completion(Args, "--a")
+    assert result == "--apple:<apple>"

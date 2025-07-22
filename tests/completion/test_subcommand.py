@@ -37,4 +37,4 @@ def test_subcommand_name_with_partial():
 def test_subcommand_args():
     result = parse_completion(Args, "bar", "--n")
     assert result
-    assert result == "--nested-opt:"
+    assert result == "--nested-opt:<nested_opt>"

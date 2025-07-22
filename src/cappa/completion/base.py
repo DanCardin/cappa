@@ -69,5 +69,5 @@ def format_completions(*completions: Completion | FileCompletion) -> str | None:
     result: list[str] = []
     for item in completions:
         item = cast(Completion, item)
-        result.append(f"{item.value}:{item.help if item.help else ''}")
+        result.append(f"{item.value}:{item.description}")
     return "\n".join(result)
