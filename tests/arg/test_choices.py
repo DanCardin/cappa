@@ -87,3 +87,29 @@ def test_literal_parse_sequence(backend: Backend):
 
     result = parse(LiteralParse, "--log-level", "  debug  ", backend=backend)
     assert result == LiteralParse(log_level="DEBUG")
+
+
+explicit_choice_default = ["1s", "1m"]
+
+
+@backends
+def test_explicit_choice_sequence(backend: Backend):
+    @dataclass
+    class Example:
+        interval: Annotated[
+            list[str] | None, cappa.Arg(choices=explicit_choice_default, default=["1m"])
+        ]
+
+    result = parse(Example, backend=backend)
+    assert result == Example(interval=["1m"])
+
+    result = parse(Example, "1s", backend=backend)
+    assert result == Example(interval=["1s"])
+
+    with pytest.raises(cappa.Exit) as e:
+        parse(Example, "2s", backend=backend)
+
+    assert (
+        e.value.message
+        == "Invalid value for 'interval': Invalid choice: '2s' (choose from '1s', '1m')"
+    )

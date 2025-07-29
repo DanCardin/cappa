@@ -2,7 +2,11 @@
 
 ## 0.29.0
 
-## Unreleased: 0.29.0
+## 0.29.1
+
+- fix: Explicit choice sequence runtime error.
+
+## 0.29.0
 
 - fix: Undocumented completions.
 - docs: Add argument validation documentation.

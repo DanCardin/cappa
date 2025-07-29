@@ -14,6 +14,7 @@ from typing import (
     TextIO,
     Type,
     Union,
+    cast,
 )
 
 from typing_extensions import Never
@@ -27,7 +28,6 @@ from cappa.typing import (
 
 __all__ = [
     "parse_list",
-    "parse_literal",
     "parse_literal",
     "parse_set",
     "parse_tuple",
@@ -138,7 +138,14 @@ def parse_literal(typ: MaybeTypeView[T]) -> Parser[T]:
     type_view = _as_type_view(typ)
     unique_type_args = set(type_view.args)
 
-    def literal_mapper(value: Any) -> T:
+    def literal_mapper(value: T) -> T:
+        if isinstance(value, (list, set, tuple)):
+            for item in cast(Sequence[Any], value):
+                if item not in unique_type_args:
+                    raise choices_error(type_view.args, item)
+
+            return value  # type: ignore
+
         if value in unique_type_args:
             return value
 

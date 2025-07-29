@@ -712,6 +712,22 @@ for example, `Arg(choices=['a', 'b', 'c']`.
 
 Both `Literal`s (and literal unions) and `Enum`s automatically infer `choices`.
 
+```{note}
+It **may** be preferable to use typing inference to **imply** choices as opposed to
+providing explicit choices depending on what you're doing.
+
+In scenarios with simple types/mappings, it wont make any difference (other than
+yielding more or less precise type information to a type checker). For example `foo: Literal[1, 2]`
+or `foo: list[Literal[1, 2]]` can be instead provided as `choices=` and it will yield
+exactly the same behavior.
+
+However, the type inference is sufficiently comprehensive that it is **possible** to
+yield more complex types like `list[tuple[str, Literal["1m", "1s"]]]`, where a simple
+`choices=` option **cannot** precisely target the required values. In such cases providing
+`choices=` will likely yield a runtime error, whereas using the inferred type validation
+will correctly parse the inputs.
+```
+
 ## `Arg.completion`
 
 This is an optional function which, if provided will be called during CLI (typically TAB)
