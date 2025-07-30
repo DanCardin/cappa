@@ -41,6 +41,7 @@ dev-dependencies = [
 
 [tool.ruff]
 target-version = "py38"
+exclude = ["tests/py312"]
 
 [tool.ruff.lint]
 select = ["C", "D", "E", "F", "I", "N", "Q", "RET", "RUF", "S", "T", "UP", "YTT"]

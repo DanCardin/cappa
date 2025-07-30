@@ -4,7 +4,8 @@ install:
 	uv sync --all-extras
 
 test:
-	uv run --no-sync --all-extras coverage run -m pytest src tests
+	@PYTEST_ARGS="$$(uv run python -c 'import sys; print("--ignore=tests/py312" if sys.version_info < (3,12) else "")')"; \
+	uv run --no-sync --all-extras coverage run -m pytest src tests "$$PYTEST_ARGS"
 	uv run --no-sync coverage combine
 	uv run --no-sync coverage report
 	uv run --no-sync coverage xml

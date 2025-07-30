@@ -22,9 +22,7 @@ from typing_extensions import Never
 from cappa.file_io import FileMode
 from cappa.state import S, State
 from cappa.type_view import TypeView
-from cappa.typing import (
-    T,
-)
+from cappa.typing import T, is_type_alias
 
 __all__ = [
     "parse_list",
@@ -94,6 +92,9 @@ def parse_value(typ: MaybeTypeView[T]) -> Parser[T]:
     """
     type_view = _as_type_view(typ)
 
+    if is_type_alias(type_view):
+        return parse_value(type_view.annotation.__value__)
+
     if type_view.is_literal:
         return parse_literal(type_view)
 
@@ -144,7 +145,7 @@ def parse_literal(typ: MaybeTypeView[T]) -> Parser[T]:
                 if item not in unique_type_args:
                     raise choices_error(type_view.args, item)
 
-            return value  # type: ignore
+            return value  # pyright: ignore
 
         if value in unique_type_args:
             return value
