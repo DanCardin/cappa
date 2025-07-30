@@ -88,14 +88,16 @@ def get_method_class(fn: MethodType) -> type:
 if sys.version_info < (3, 12):
 
     def is_type_alias(type_view: TypeView[Any]) -> bool:
-        type_alias_type = (
+        type_alias_type: type[Any] | None = (
             typing_extensions.TypeAliasType
             if hasattr(typing_extensions, "TypeAliasType")
             else None
         )
-        if type_alias_type:
-            return isinstance(type_view.annotation, type_alias_type)
-        return False
+        return (
+            isinstance(type_view.annotation, type_alias_type)
+            if type_alias_type is not None
+            else False
+        )
 
 else:
 

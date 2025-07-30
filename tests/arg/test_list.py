@@ -14,7 +14,7 @@ def test_list_option(backend: Backend):
     @dataclass
     class ArgTest:
         variable_number: Annotated[list[str], cappa.Arg(short=True, long=True)] = field(
-            default_factory=list
+            default_factory=lambda: []
         )
 
     test = parse(
@@ -32,7 +32,7 @@ def test_list_option(backend: Backend):
 def test_list_positional(backend: Backend):
     @dataclass
     class ArgTest:
-        variable_number: list[str] = field(default_factory=list)
+        variable_number: list[str] = field(default_factory=lambda: [])
 
     test = parse(
         ArgTest,

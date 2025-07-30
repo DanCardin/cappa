@@ -2,7 +2,17 @@ from __future__ import annotations
 
 import dataclasses
 import inspect
-from typing import TYPE_CHECKING, Any, Protocol, TextIO, Type, TypeVar, Union, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Protocol,
+    TextIO,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 from rich.theme import Theme
 from typing_extensions import dataclass_transform
@@ -412,7 +422,7 @@ def command(
         # Functions (and in particular class methods, must return a function object in order
         # to be attached as methods) cannot be nested, so we can just directly return it.
         if inspect.isfunction(_decorated_cls):
-            return _decorated_cls  # type: ignore
+            return cast(U, _decorated_cls)
 
         # Whereas classes will **generally** be the **exact** object as `_decorated_cls` was,
         # except in the case of dynamically generated subclasses used for detecting methods.

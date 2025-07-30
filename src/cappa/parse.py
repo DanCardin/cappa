@@ -145,7 +145,7 @@ def parse_literal(typ: MaybeTypeView[T]) -> Parser[T]:
                 if item not in unique_type_args:
                     raise choices_error(type_view.args, item)
 
-            return value  # pyright: ignore
+            return cast(T, value)
 
         if value in unique_type_args:
             return value

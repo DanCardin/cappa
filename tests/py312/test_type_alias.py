@@ -7,8 +7,9 @@ from typing import Annotated, Literal
 import cappa
 from tests.utils import Backend, backends, parse
 
+
 if sys.version_info >= (3, 12):
-    type Numbers = Literal[1, 2, 3]
+    type Numbers = Literal[1, 2, 3]  # pyright: ignore
 
     @backends
     def test_scalar(backend: Backend):

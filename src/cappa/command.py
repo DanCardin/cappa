@@ -81,8 +81,10 @@ class Command(Generic[T]):
     """
 
     cmd_cls: type[T]
-    arguments: list[Arg[Any] | Subcommand] = dataclasses.field(default_factory=list)
-    propagated_arguments: list[Arg[Any]] = dataclasses.field(default_factory=list)
+    arguments: list[Arg[Any] | Subcommand] = dataclasses.field(
+        default_factory=lambda: []
+    )
+    propagated_arguments: list[Arg[Any]] = dataclasses.field(default_factory=lambda: [])
 
     name: str | None = None
     help: str | None = None

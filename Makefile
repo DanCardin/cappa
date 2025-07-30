@@ -1,4 +1,4 @@
-.PHONY: install test lint lint-typos lint-examples format
+.PHONY: install test lint lint-base lint-312 lint-typos lint-examples format
 
 install:
 	uv sync --all-extras

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import TYPE_CHECKING, Any, Callable, Hashable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, Hashable, List, TypeVar, cast
 
 from cappa.arg import Arg, ArgAction
 from cappa.command import Command, Subcommand
@@ -227,11 +227,11 @@ def add_argument(
 
     names: list[str] = []
     if arg.short:
-        short: list[str] = assert_type(arg.short, list)
+        short = cast(List[str], arg.short)
         names.extend(short)
 
     if arg.long:
-        long: list[str] = assert_type(arg.long, list)
+        long = cast(List[str], arg.long)
         names.extend(long)
 
     is_positional = not names
@@ -288,7 +288,7 @@ def add_subcommands(
             description=subcommand.description,
             formatter_class=parser.formatter_class,
             add_help=False,
-            command=subcommand,  # type: ignore
+            command=subcommand,
             output=output,
             prog=f"{parser.prog} {subcommand.real_name()}",
             **deprecated_kwarg,

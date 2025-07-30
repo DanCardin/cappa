@@ -34,7 +34,7 @@ class Field:
     annotation: type
     default: typing.Any | EmptyType = Empty
     default_factory: typing.Any | EmptyType = Empty
-    metadata: dict[str, Any] = dataclasses.field(default_factory=dict)
+    metadata: dict[str, Any] = dataclasses.field(default_factory=lambda: {})
 
 
 @dataclasses.dataclass
@@ -47,7 +47,7 @@ class DataclassField(Field):
                 continue
             field = cls(
                 name=f.name,
-                annotation=f.type,  # pyright: ignore
+                annotation=f.type,  # type: ignore
                 default=f.default if f.default is not dataclasses.MISSING else Empty,
                 default_factory=f.default_factory
                 if f.default_factory is not dataclasses.MISSING

@@ -622,7 +622,7 @@ def infer_parse(
 
         literal_type = Literal[tuple(arg.choices)]  # type: ignore
         literal_parse: Parser[Any] = parse_literal(literal_type)  # type: ignore
-        parse = [*parse, literal_parse]
+        parse = cast(Sequence[Parser[Any]], [*parse, literal_parse])
 
     return evaluate_parse(parse, type_view, state=state)
 
