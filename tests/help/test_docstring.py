@@ -171,7 +171,11 @@ def test_escaped_markdown(backend: Backend, capsys: Any, monkeypatch: Any):
     with pytest.raises(cappa.Exit), ignore_docstring_parser(monkeypatch):
         parse(Escaped, "--help", backend=backend, completion=False)
 
-    result = strip_trailing_whitespace(capsys.readouterr().out)
+    result = capsys.readouterr().out
+    for char in "┌─┐│└┘":
+        result = result.replace(char, "")
+    result = strip_trailing_whitespace(result)
+
     assert result == dedent(
         """\
         Usage: escaped [-h]

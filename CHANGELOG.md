@@ -4,6 +4,7 @@
 
 ## 0.29.1
 
+- fix: Lower bounds of dependency versions and test for them.
 - feat: Handle python 3.12 syntax for explicit `type <Type>` aliases.
 - fix: Explicit choice sequence runtime error.
 
