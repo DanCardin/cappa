@@ -215,7 +215,7 @@ class ClassTypes(Enum):
                 is_base_model = False
 
             if is_base_model:
-                if pydantic.__version__.startswith("1."):  # pyright: ignore
+                if getattr(pydantic, "__version__", "1.0").startswith("1."):  # pyright: ignore, pragma: no cover
                     return cls.pydantic_v1
                 return cls.pydantic_v2
 

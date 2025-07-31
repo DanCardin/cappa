@@ -19,23 +19,6 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
-        pydantic-version: ["1.0", ""]
-
-        # No need to matrix test pydantic versions. But the matrix syntax still
-        # keeps the file DRY.
-        exclude:
-          - python-version: "3.8"
-            pydantic-version: "1.0"
-          - python-version: "3.9"
-            pydantic-version: "1.0"
-          - python-version: "3.10"
-            pydantic-version: "1.0"
-          - python-version: "3.11"
-            pydantic-version: "1.0"
-          - python-version: "3.13"
-            pydantic-version: "1.0"
-          - python-version: "3.14"
-            pydantic-version: "1.0"
 
     env:
       UV_CACHE_DIR: /tmp/.uv-cache
@@ -62,13 +45,6 @@ jobs:
       - name: Install dependencies
         run: make install
 
-      - name: Minimize uv cache
-        run: uv cache prune --ci
-
-      - if: ${{ matrix.pydantic-version != '' }}
-        name: Install pydantic matrix version
-        run: uv pip install 'pydantic~=${{ matrix.pydantic-version }}'
-
       - name: Run Linters
         run: make lint
         if: ${{ !endsWith(matrix.python-version, '-dev') }}
@@ -80,15 +56,24 @@ jobs:
       - name: Run tests
         run: make test
 
+      - name: Install dependencies
+        run: make install-lowest
+
+      - name: Run tests
+        run: make test
+
+      - name: Generate coverage
+        run: make coverage
+
       - name: Store test result artifacts
         uses: actions/upload-artifact@v4
         with:
-          path: coverage-${{ matrix.python-version }}-${{ matrix.pydantic-version }}.xml
+          path: coverage-${{ matrix.python-version }}.xml
 
       - uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          name: python=${{ matrix.python-version }}-pydantic=${{matrix.pydantic-version}}
+          name: python=${{ matrix.python-version }}
           files: coverage.xml
 
   typos:

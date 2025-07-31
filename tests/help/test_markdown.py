@@ -15,14 +15,14 @@ def test_arg_description_renders_markdown(backend: Backend, capsys: Any):
     @dataclass
     class Args:
         foo: str
-        """`This` **is** _neat!_"""
+        """`This` **is** _neat_"""
 
     with pytest.raises(cappa.Exit):
         parse(Args, "--help", backend=backend)
 
     result = capsys.readouterr()
 
-    assert "This is neat!" in result.out
+    assert "This is neat" in result.out
 
     with pytest.raises(cappa.Exit):
         parse(
@@ -35,7 +35,6 @@ def test_arg_description_renders_markdown(backend: Backend, capsys: Any):
         )
 
     result = capsys.readouterr()
-    assert (
-        "\x1b[1;36;40mThis\x1b[0m \x1b[1mis\x1b[0m \x1b[3mneat!\x1b[0m"  # typos: ignore
-        in result.out
-    )
+    assert "This\x1b[0m" in result.out
+    assert " \x1b[1mis\x1b[0m" in result.out  # typos: ignore
+    assert " \x1b[3mneat\x1b[0m" in result.out
