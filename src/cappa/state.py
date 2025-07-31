@@ -33,7 +33,7 @@ class State(Generic[S]):
         ...     arg3: Annotated[int, cappa.Arg(default=cappa.ValueFrom(parse_arg))]
     """
 
-    state: S = field(default_factory=dict)  # type: ignore
+    state: S = field(default_factory=lambda: {})  # type: ignore
 
     def set(self, key: str, value: Any):
         self.state[key] = value  # type: ignore

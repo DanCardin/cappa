@@ -15,7 +15,7 @@ def test_num_args_unbounded_length_num_args(backend: Backend):
     @dataclass
     class Args:
         a: Annotated[list[str], cappa.Arg(short=True, num_args=-1)] = field(
-            default_factory=list
+            default_factory=lambda: []
         )
         b: Annotated[str, cappa.Arg(short=True)] = field(default="")
         foo: Optional[str] = None

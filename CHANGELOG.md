@@ -4,6 +4,7 @@
 
 ## 0.29.1
 
+- feat: Handle python 3.12 syntax for explicit `type <Type>` aliases.
 - fix: Explicit choice sequence runtime error.
 
 ## 0.29.0

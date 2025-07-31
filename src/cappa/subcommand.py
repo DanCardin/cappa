@@ -46,7 +46,7 @@ class Subcommand:
     group: str | tuple[int, str] | Group = DEFAULT_SUBCOMMAND_GROUP
     hidden: bool = False
 
-    options: dict[str, Command[Any]] = dataclasses.field(default_factory=dict)
+    options: dict[str, Command[Any]] = dataclasses.field(default_factory=lambda: {})
     types: Iterable[type] | EmptyType = Empty
 
     @classmethod

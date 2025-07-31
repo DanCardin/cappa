@@ -4,7 +4,7 @@ import typing
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from itertools import groupby
-from typing import Any, Sequence, cast
+from typing import Any, Sequence, Tuple, cast
 
 from rich.console import Console, NewLine
 from rich.markdown import Markdown
@@ -31,19 +31,14 @@ Dimension: TypeAlias = typing.Tuple[int, int, int, int]
 TextComponent = typing.Union[Text, Markdown, str]
 ArgFormat: TypeAlias = typing.Union[
     TextComponent,
-    typing.Sequence[
-        typing.Union[
-            TextComponent,
-            typing.Callable[[Arg[Any]], typing.Union[TextComponent, None]],
-        ]
-    ],
     typing.Callable[[Arg[Any]], typing.Union[TextComponent, None]],
 ]
+ArgFormats: TypeAlias = typing.Sequence[ArgFormat]
 
 
 class HelpFormattable(typing.Protocol):
     left_padding: Dimension
-    arg_format: ArgFormat
+    arg_format: ArgFormat | ArgFormats
     default_format: str
 
     def __call__(
@@ -117,7 +112,7 @@ def create_completion_arg(completion: bool | Arg[bool] = True) -> Arg[bool] | No
 @dataclass(frozen=True)
 class HelpFormatter(HelpFormattable):
     left_padding: Dimension = (0, 0, 0, 2)
-    arg_format: ArgFormat = (
+    arg_format: ArgFormat | ArgFormats = (
         Markdown("{help}"),
         Markdown("{choices}"),
         Markdown("{default}", style="dim italic"),
@@ -143,8 +138,12 @@ class HelpFormatter(HelpFormattable):
         lines.extend(add_long_args(console, self, arg_groups))
         return lines
 
-    def with_arg_format(self, _format: ArgFormat, *formats: ArgFormat) -> Self:
-        format = _format if isinstance(_format, tuple) else (_format,)
+    def with_arg_format(
+        self, _format: ArgFormat | tuple[ArgFormat, ...], *formats: ArgFormat
+    ) -> Self:
+        format = cast(
+            Tuple[ArgFormat, ...], _format if isinstance(_format, tuple) else (_format,)
+        )
         arg_format = (*format, *formats)
         return replace(self, arg_format=arg_format)
 
@@ -185,9 +184,13 @@ def add_long_args(
 def format_arg(
     console: Console, help_formatter: HelpFormattable, arg: Arg[Any]
 ) -> Displayable:
-    arg_format = help_formatter.arg_format
-    if not isinstance(arg_format, Iterable) or isinstance(arg_format, str):
-        arg_format = (arg_format,)
+    unknown_arg_format = help_formatter.arg_format
+    if isinstance(unknown_arg_format, Iterable) and not isinstance(
+        unknown_arg_format, str
+    ):
+        arg_format = cast(Sequence[ArgFormat], unknown_arg_format)
+    else:
+        arg_format = (unknown_arg_format,)
 
     segments: list[TextComponent] = []
     for format_segment in arg_format:

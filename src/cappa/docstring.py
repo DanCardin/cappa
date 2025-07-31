@@ -90,7 +90,7 @@ def get_attribute_docstrings(command: type) -> dict[str, str]:
             if last_assignment:
                 name = typing.cast(ast.Name, last_assignment.target).id
                 value = typing.cast(ast.Constant, node.value).value
-                result[name] = value
+                result[name] = str(value)
                 continue
 
         last_assignment = node if isinstance(node, ast.AnnAssign) else None

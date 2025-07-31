@@ -41,7 +41,7 @@ class Example:
     subcommand: Annotated[Union[MeowCommand, BarkCommand], cappa.Subcommand]
 
     flags: Annotated[list[str], cappa.Arg(short=True, long=True)] = field(
-        default_factory=list
+        default_factory=lambda: []
     )
     flag: bool = False  # --flag
 

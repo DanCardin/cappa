@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from typing import Sequence, Union
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from docutils import nodes
-from docutils.core import publish_from_doctree
+from docutils.core import publish_from_doctree  # pyright: ignore
 from docutils.parsers.rst.states import Body, RSTStateMachine
 from docutils.utils import new_document
 from typing_extensions import Annotated
@@ -31,8 +31,9 @@ class Subcommand:
 
 
 def create_directive(*, style: str, cls_name: str = "Foo", terminal_width: int = 0):
-    state = Body(RSTStateMachine([], None))
-    state.build_table = Mock()
+    with patch("docutils.parsers.rst.states.Body.build_table"):
+        state = Body(RSTStateMachine([], ""))
+
     state.document = new_document("<rst-doc>", None)
     return CappaDirective(
         "cappa",
@@ -50,7 +51,7 @@ def create_directive(*, style: str, cls_name: str = "Foo", terminal_width: int =
 def render(nodes: Sequence[nodes.Node]) -> str:
     doc = new_document("<rst-doc>", None)
     doc += nodes
-    return publish_from_doctree(doc, writer_name="html").decode()
+    return publish_from_doctree(doc, writer_name="html").decode()  # pyright: ignore
 
 
 def test_invalid():

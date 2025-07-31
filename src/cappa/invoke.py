@@ -62,7 +62,7 @@ class InvokeResolutionError(RuntimeError):
 @dataclass
 class Resolved(Generic[C]):
     callable: InvokeCallableSpec[C]
-    kwargs: dict[str, Any | Resolved[Any]] = field(default_factory=dict)
+    kwargs: dict[str, Any | Resolved[Any]] = field(default_factory=lambda: {})
     args: tuple[Any, ...] = field(default=())
     result: C | EmptyType = Empty
 

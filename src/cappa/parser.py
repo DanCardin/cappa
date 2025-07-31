@@ -169,9 +169,9 @@ class ParseContext:
     options: dict[str, Arg[Any]]
     propagated_options: set[str]
     parent_context: ParseContext | None = None
-    exclusive_args: dict[str, Arg[Any]] = dataclasses.field(default_factory=dict)
+    exclusive_args: dict[str, Arg[Any]] = dataclasses.field(default_factory=lambda: {})
 
-    result: dict[str, Any] = dataclasses.field(default_factory=dict)
+    result: dict[str, Any] = dataclasses.field(default_factory=lambda: {})
 
     @classmethod
     def from_command(
