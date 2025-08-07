@@ -2,13 +2,10 @@ from __future__ import annotations
 
 import enum
 import inspect
-import sys
-import typing
 from dataclasses import dataclass
 from types import MethodType
 from typing import Any, Protocol, TypeVar
 
-import typing_extensions
 from typing_extensions import assert_never
 
 from cappa.type_view import TypeView
@@ -83,31 +80,3 @@ def detect_choices(type_view: TypeView[Any]) -> list[str] | None:
 
 def get_method_class(fn: MethodType) -> type:
     return inspect._findclass(fn)  # type: ignore
-
-
-if sys.version_info < (3, 12):
-
-    def is_type_alias(type_view: TypeView[Any]) -> bool:
-        type_alias_type: type[Any] | None = (
-            typing_extensions.TypeAliasType
-            if hasattr(typing_extensions, "TypeAliasType")
-            else None
-        )
-        return (
-            isinstance(type_view.annotation, type_alias_type)
-            if type_alias_type is not None
-            else False
-        )
-
-else:
-
-    def is_type_alias(type_view: TypeView[Any]) -> bool:
-        backport_type_alias_type = (
-            typing_extensions.TypeAliasType
-            if hasattr(typing_extensions, "TypeAliasType")
-            else None
-        )
-        type_alias_types = tuple(
-            t for t in (typing.TypeAliasType, backport_type_alias_type) if t is not None
-        )
-        return isinstance(type_view.annotation, type_alias_types)

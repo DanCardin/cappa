@@ -321,6 +321,9 @@ def fulfill_deps(
     for index, param_view in enumerate(callable_view.parameters):
         type_view: TypeView[Any] = param_view.type_view  # pyright: ignore
 
+        # Unwrap TypeAliasType instances like `type Foo = Annotated[int, Dep(foo)]`
+        type_view = type_view.strip_type_alias()
+
         # "Native" supported annotations
         if type_view.is_annotated and SelfType in type_view.metadata:
             result[param_view.name] = fulfilled_deps[SelfType]
