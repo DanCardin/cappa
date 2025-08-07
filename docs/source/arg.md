@@ -765,7 +765,7 @@ to `True` in most cases), you **could** conceivably manually combine `has_value=
 custom [action](#action), to avoid cappa trying to map your `Arg` back to a specific attribute.
 
 (argument-destructuring)=
-## `Arg.destructured`/`Arg.destructure()`
+## `Arg.destructured`
 
 **Generally** a single class/type corresponds to a command, and that type's attributes correspond to
 the arguments/options for that command.
@@ -778,11 +778,14 @@ class attribute maps to more than one CLI argument.
 
 ```python
 from __future__ import annotations
+from dataclasses import dataclass
 from typing import Annotated
+
+from cappa import Arg, Destructured
 
 @dataclass
 class Args:
-    sub_object: Annotated[SubObject, Arg.destructured()]
+    sub_object: Destructured[SubObject]
 
 
 @dataclass

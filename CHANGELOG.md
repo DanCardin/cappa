@@ -2,6 +2,10 @@
 
 ## 0.29.0
 
+## 0.29.2
+- fix: Provide simpler `Destructured[T]` annotation.
+- fix: Add support for explicit type alias `Dep`s.
+
 ## 0.29.1
 
 - fix: Lower bounds of dependency versions and test for them.

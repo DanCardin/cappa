@@ -1,6 +1,6 @@
 [project]
 name = "cappa"
-version = "0.29.1"
+version = "0.29.2"
 description = "Declarative CLI argument parser."
 
 urls = { repository = "https://github.com/dancardin/cappa" }
@@ -16,14 +16,11 @@ dependencies = [
     "rich >= 12.1.0",
     "typing-extensions >= 4.8.0",
     "typing-extensions >= 4.12.0; python_version >= '3.13'",
-    "type-lens >= 0.2.4",
+    "type-lens >= 0.2.5",
 ]
 
 [project.optional-dependencies]
-docstring = [
-    "docstring-parser >= 0.15",
-    "docstring-parser >= 0.17; python_version >= '3.14'",
-]
+docstring = ["docstring-parser >= 0.15", "docstring-parser >= 0.17; python_version >= '3.14'"]
 
 [tool.uv]
 dev-dependencies = [
@@ -31,7 +28,6 @@ dev-dependencies = [
     "coverage >= 7.3.0",
     "mypy >= 1.0.0",
     "pyright >= 1.1.398",
-    "basedpyright >= 1.29.1",
     "ruff >= 0.9.0",
     "docutils >= 0.20.0",
     "sphinx >= 7.1.0",
@@ -87,7 +83,6 @@ exclude = ["tests/py312"]
 
 [tool.pyright]
 typeCheckingMode = "strict"
-typeCheckingModeOverrides = { "type_lens/**" = "basic" }
 
 [tool.typos.default]
 extend-ignore-re = [".*#.*typos: ignore[^\\n]*\\n"]

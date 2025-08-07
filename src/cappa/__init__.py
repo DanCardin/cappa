@@ -13,6 +13,7 @@ from cappa.type_view import Empty, EmptyType
 
 # isort: split
 from cappa.arg import Arg, ArgAction, Group
+from cappa.destructure import Destructured
 
 # isort: split
 from cappa import argparse
@@ -26,6 +27,7 @@ __all__ = [
     "Confirm",
     "Default",
     "Dep",
+    "Destructured",
     "Empty",
     "EmptyType",
     "Env",
