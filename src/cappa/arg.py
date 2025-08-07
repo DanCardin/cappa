@@ -6,6 +6,7 @@ import dataclasses
 import enum
 from functools import cached_property
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Generic,
@@ -42,6 +43,9 @@ from cappa.typing import (
     detect_choices,
     find_annotations,
 )
+
+if TYPE_CHECKING:
+    from cappa.destructure import Destructure, destructure
 
 
 @enum.unique
@@ -209,7 +213,7 @@ class Arg(Generic[T]):
     show_default: bool | str | DefaultFormatter = True
     propagate: bool = False
 
-    destructured: Destructured | None = None
+    destructured: Destructure | None = None
     has_value: bool | None = None
 
     type_view: TypeView[Any] | None = None
@@ -231,6 +235,9 @@ class Arg(Generic[T]):
         docs: list[DocType] = find_annotations(type_view, Doc)
         fallback_help = docs[0].documentation if docs else fallback_help
 
+        destructured_: list[Destructure] = find_annotations(type_view, Destructure)
+        destructured: Destructure | None = destructured_[0] if destructured_ else None
+
         # Dataclass field metadata takes precedence if it exists.
         field_metadata: list[Arg[Any]] = extract_dataclass_metadata(field, Arg)
         if field_metadata:
@@ -250,9 +257,10 @@ class Arg(Generic[T]):
                 field_name=field_name,
                 default=default,
                 state=state,
+                destructured=destructured,
             )
 
-            if arg.destructured:
+            if normalized_arg.destructured:
                 destructured_args = destructure(normalized_arg, type_view)
                 result.extend(destructured_args)
             else:
@@ -271,6 +279,7 @@ class Arg(Generic[T]):
         default_long: bool = False,
         exclusive: bool = False,
         state: State[Any] | None = None,
+        destructured: Destructure | None = None,
     ) -> Arg[Any]:
         if type_view is None:
             type_view = TypeView(Any)
@@ -323,11 +332,13 @@ class Arg(Generic[T]):
             has_value=has_value,
             type_view=type_view,
             show_default=show_default,
+            destructured=destructured or self.destructured,
         )
 
     @classmethod
-    def destructure(cls, settings: Destructured | None = None):
-        return cls(destructured=settings or Destructured())
+    def destructure(cls):
+        """Mark a an argument as destructured. See also the shorter `Destructured` alias."""
+        return cls(destructured=Destructure())
 
     def names(self, *, n: int = 0) -> list[str]:
         short_names = cast(List[str], self.short or [])
@@ -742,4 +753,4 @@ def infer_has_value(arg: Arg[Any], action: ArgActionType):
     return True
 
 
-from cappa.destructure import Destructured, destructure  # noqa: E402
+from cappa.destructure import Destructure, destructure  # noqa: E402

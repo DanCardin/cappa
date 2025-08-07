@@ -12,7 +12,7 @@ if sys.version_info >= (3, 12):
     def foo():
         return 45
 
-    type Number = Annotated[int, cappa.Dep(foo)]
+    type Number = Annotated[int, cappa.Dep(foo)]  # pyright: ignore
 
     @dataclass
     class ArgTest:

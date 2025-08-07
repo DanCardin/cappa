@@ -1,19 +1,25 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Any, Hashable
+from typing import TYPE_CHECKING, Any, Hashable, TypeVar
 
 from type_lens import TypeView
+from typing_extensions import Annotated
 
-from cappa.arg import Arg, ArgActionType
-from cappa.invoke import fulfill_deps
 from cappa.output import Output
-from cappa.parser import ParseContext, ParseState, Value, determine_action_handler
 from cappa.typing import assert_type
+
+if TYPE_CHECKING:
+    from cappa.arg import Arg, ArgActionType
 
 
 @dataclass
-class Destructured: ...
+class Destructure:
+    """Collection for destructuring settings."""
+
+
+T = TypeVar("T")
+Destructured = Annotated[T, Destructure()]
 
 
 def destructure(arg: Arg[Any], type_view: TypeView[Any]) -> list[Arg[Any]]:
@@ -76,5 +82,13 @@ def restructure(root_arg: Arg[Any], action: ArgActionType):
     return restructure_action
 
 
+from cappa.arg import Arg  # noqa: E402
 from cappa.command import Command  # noqa: E402
+from cappa.invoke import fulfill_deps  # noqa: E402
+from cappa.parser import (  # noqa: E402
+    ParseContext,
+    ParseState,
+    Value,
+    determine_action_handler,
+)
 from cappa.subcommand import Subcommand  # noqa: E402
