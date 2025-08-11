@@ -180,7 +180,8 @@ class Arg(Generic[T]):
             a default message will be generated, otherwise a supplied string will be
             used as the deprecation message.
         show_default: Whether to show the default value in help text. Defaults to `True`.
-        destructured: When set, destructures the annotated type into current-level arguments.
+        destructure: When set, destructures the annotated type into current-level arguments.
+            Generally prefer to use `field: Destructured[T]` syntax to setting this directly.
             See `Arg.destructure`.
         has_value: Whether the argument has a value that should be saved back to the destination
             type. For most `Arg`, this will default to `True`, however `--help` is an example
@@ -213,7 +214,7 @@ class Arg(Generic[T]):
     show_default: bool | str | DefaultFormatter = True
     propagate: bool = False
 
-    destructured: Destructure | None = None
+    destructure: Destructure | bool | None = None
     has_value: bool | None = None
 
     type_view: TypeView[Any] | None = None
@@ -235,8 +236,10 @@ class Arg(Generic[T]):
         docs: list[DocType] = find_annotations(type_view, Doc)
         fallback_help = docs[0].documentation if docs else fallback_help
 
-        destructured_: list[Destructure] = find_annotations(type_view, Destructure)
-        destructured: Destructure | None = destructured_[0] if destructured_ else None
+        destructure_: list[Destructure] = find_annotations(type_view, Destructure)
+        destructure_annotation: Destructure | None = (
+            destructure_[0] if destructure_ else None
+        )
 
         # Dataclass field metadata takes precedence if it exists.
         field_metadata: list[Arg[Any]] = extract_dataclass_metadata(field, Arg)
@@ -257,10 +260,10 @@ class Arg(Generic[T]):
                 field_name=field_name,
                 default=default,
                 state=state,
-                destructured=destructured,
+                destructure=destructure_annotation,
             )
 
-            if normalized_arg.destructured:
+            if normalized_arg.destructure:
                 destructured_args = destructure(normalized_arg, type_view)
                 result.extend(destructured_args)
             else:
@@ -279,7 +282,7 @@ class Arg(Generic[T]):
         default_long: bool = False,
         exclusive: bool = False,
         state: State[Any] | None = None,
-        destructured: Destructure | None = None,
+        destructure: Destructure | bool | None = None,
     ) -> Arg[Any]:
         if type_view is None:
             type_view = TypeView(Any)
@@ -314,6 +317,11 @@ class Arg(Generic[T]):
         show_default: DefaultFormatter = DefaultFormatter.from_unknown(
             self.show_default
         )  # pyright: ignore
+
+        destructure = destructure or self.destructure
+        if destructure is True:
+            destructure = Destructure()
+
         return dataclasses.replace(
             self,
             default=default,
@@ -332,13 +340,13 @@ class Arg(Generic[T]):
             has_value=has_value,
             type_view=type_view,
             show_default=show_default,
-            destructured=destructured or self.destructured,
+            destructure=destructure,
         )
 
     @classmethod
-    def destructure(cls):
+    def destructured(cls):
         """Mark a an argument as destructured. See also the shorter `Destructured` alias."""
-        return cls(destructured=Destructure())
+        return cls(destructure=Destructure())
 
     def names(self, *, n: int = 0) -> list[str]:
         short_names = cast(List[str], self.short or [])
