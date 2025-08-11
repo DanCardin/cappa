@@ -17,6 +17,7 @@
 
 - fix: Destructured relative context, e.g. counting.
 - fix: Add support for explicit type alias `Dep`s.
+- fix: Propagation of mutually exclusive options that map to the same `Arg.field_name`.
 
 ## 0.29.1
 

@@ -28,6 +28,5 @@ class Args2:
     config: Annotated[Config, cappa.Arg(destructure=True)]
 
 
-def test_destructured_true():
-    test = parse(Args2, "--color=red")
-    assert test == Args2(config=Config(color="red"))
+test = parse(Args2, "--color=red")
+assert test == Args2(config=Config(color="red"))
