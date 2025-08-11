@@ -354,7 +354,7 @@ class Command(Generic[T]):
                 isinstance(arg, Arg)
                 and not arg.short
                 and not arg.long
-                and not arg.destructured
+                and not arg.destructure
             ) or isinstance(arg, Subcommand):
                 yield arg
 

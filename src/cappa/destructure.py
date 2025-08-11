@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from cappa.arg import Arg, ArgActionType
 
 
-@dataclass
+@dataclass(frozen=True)
 class Destructure:
     """Collection for destructuring settings."""
 
@@ -63,11 +63,12 @@ def restructure(root_arg: Arg[Any], action: ArgActionType):
     ):
         root_field_name = assert_type(root_arg.field_name, str)
         result = context.result.setdefault(root_field_name, {})
+        nested_context = replace(context, result=result)
 
         fulfilled_deps: dict[Hashable, Any] = {
             Command: parse_state.current_command,
             Output: parse_state.output,
-            ParseContext: context,
+            ParseContext: nested_context,
             Arg: arg,
             Value: value,
         }

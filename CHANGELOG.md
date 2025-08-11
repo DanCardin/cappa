@@ -1,9 +1,21 @@
 # Changelog
 
-## 0.29.0
+## 0.30.0
 
-## 0.29.2
-- fix: Provide simpler `Destructured[T]` annotation.
+- fix: BREAKING CHANGE: Provide simpler `Destructured[T]` annotation.
+
+  Previously `Annotated[T, Arg(destructured=Destructured())]`, this was
+  comparatively verbose, when there is currently practical use for configuring
+  `Arg` options on the destructured root argument.
+
+  As such the `Destructured` name has been repurposed as a convenience annotation
+  similar to `Subcommands`.
+
+  The forms: `Annotated[T, Destructure]`, `Annotated[T, Arg.destructured()]`,
+  `Annotated[T, Arg(destructure=True]`, and `Annotated[T, Arg(destructure=Destructure())]`
+  still remain in the event future use is assigned to configuration on the root field.
+
+- fix: Destructured relative context, e.g. counting.
 - fix: Add support for explicit type alias `Dep`s.
 
 ## 0.29.1
