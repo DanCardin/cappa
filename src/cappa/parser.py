@@ -166,7 +166,8 @@ class ParseContext:
     command: Command[Any]
     arguments: deque[Arg[Any] | Subcommand]
     missing_options: set[str]
-    options: dict[str, Arg[Any]]
+    arguments_by_field_name: dict[str, list[Arg[Any]]]
+    arguments_by_value_name: dict[str, Arg[Any]]
     propagated_options: set[str]
     parent_context: ParseContext | None = None
     exclusive_args: dict[str, Arg[Any]] = dataclasses.field(default_factory=lambda: {})
@@ -179,24 +180,10 @@ class ParseContext:
         command: Command[Any],
         parent_context: ParseContext | None = None,
     ) -> ParseContext:
-        options, missing_options, propagated_options = cls.collect_options(command)
-        arguments = deque(command.positional_arguments)
-        return cls(
-            command=command,
-            parent_context=parent_context,
-            options=options,
-            propagated_options=propagated_options,
-            arguments=arguments,
-            missing_options=missing_options,
-        )
-
-    @staticmethod
-    def collect_options(
-        command: Command[Any],
-    ) -> tuple[dict[str, Arg[Any]], set[str], set[str]]:
-        result: dict[str, Arg[Any]] = {}
-        unique_names: set[str] = set()
+        arguments_by_field_name: dict[str, list[Arg[Any]]] = {}
+        arguments_by_value_name: dict[str, Arg[Any]] = {}
         propagated_options: set[str] = set()
+        unique_field_names: set[str] = set()
 
         def add_option_names(arg: Arg[Any]):
             for opts in (arg.short, arg.long):
@@ -204,30 +191,43 @@ class ParseContext:
                     continue
 
                 for key in cast(List[str], opts):
-                    if key in result:
+                    if key in arguments_by_value_name:
                         raise ValueError(f"Conflicting option string: {key}")
 
-                    result[key] = arg
+                    arguments_by_value_name[key] = arg
 
+        native_command_field_names: set[str] = set()
         for arg in command.options:
             field_name = cast(str, arg.field_name)
 
             if arg.action not in ArgAction.meta_actions():
-                unique_names.add(field_name)
-            result[field_name] = arg
+                unique_field_names.add(field_name)
+
+            native_command_field_names.add(field_name)
+            arguments_by_field_name.setdefault(field_name, []).append(arg)
             add_option_names(arg)
 
         for arg in command.propagated_arguments:
             field_name = cast(str, arg.field_name)
 
-            if field_name in result:
+            if field_name in native_command_field_names:
                 continue
 
             propagated_options.add(field_name)
-            result[field_name] = arg
+            arguments_by_field_name.setdefault(field_name, []).append(arg)
             add_option_names(arg)
 
-        return result, unique_names, propagated_options
+        arguments = deque(command.positional_arguments)
+
+        return cls(
+            command=command,
+            parent_context=parent_context,
+            arguments_by_field_name=arguments_by_field_name,
+            arguments_by_value_name=arguments_by_value_name,
+            propagated_options=propagated_options,
+            arguments=arguments,
+            missing_options=unique_field_names,
+        )
 
     @cached_property
     def propagated_context(self) -> dict[str, ParseContext]:
@@ -354,9 +354,10 @@ def parse(parse_state: ParseState, context: ParseContext) -> None:
     # Options are not explicitly iterated over because they can occur multiple times non-contiguouesly.
     # So instead we check afterward, if there are any missing which we haven't yet fulfilled.
     required_missing_options = [
-        context.options[opt_name]
+        arg
         for opt_name in sorted(context.missing_options)
-        if context.options[opt_name].required
+        for arg in context.arguments_by_field_name[opt_name]
+        if arg.required
     ]
     if required_missing_options:
         names = ", ".join([opt.names_str("/") for opt in required_missing_options])
@@ -371,10 +372,10 @@ def parse(parse_state: ParseState, context: ParseContext) -> None:
 def parse_option(
     parse_state: ParseState, context: ParseContext, raw: RawOption
 ) -> None:
-    if raw.name not in context.options:
+    if raw.name not in context.arguments_by_value_name:
         possible_options: dict[str, Arg[Any]] = {
             name: arg
-            for name, arg in context.options.items()
+            for name, arg in context.arguments_by_value_name.items()
             if name.startswith(raw.name)
         }
 
@@ -401,7 +402,7 @@ def parse_option(
             message, value=raw.name, command=parse_state.current_command
         )
 
-    arg = context.options[raw.name]
+    arg = context.arguments_by_value_name[raw.name]
 
     consume_arg(parse_state, context, arg, raw)
 
@@ -412,7 +413,9 @@ def parse_short_option(
     if arg.name == "-" and parse_state.provide_completions:
         return parse_option(parse_state, context, arg)
 
-    virtual_options, virtual_arg = generate_virtual_args(arg, context.options)
+    virtual_options, virtual_arg = generate_virtual_args(
+        arg, context.arguments_by_value_name
+    )
     *first_virtual_options, last_virtual_option = virtual_options
 
     for opt in first_virtual_options:
