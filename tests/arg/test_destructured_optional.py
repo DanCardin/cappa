@@ -2,26 +2,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import pytest
-
 import cappa
 from tests.utils import parse
 
 
 @dataclass
 class Foo:
-    foo: int
+    foo: int = 4
 
 
 @dataclass
-class OptionalArgs:
-    attrs: cappa.Destructured[Foo | None]
+class CLI:
+    attrs: cappa.Destructured[Foo | None] = None
 
 
 def test_destructured_optional():
-    with pytest.raises(ValueError) as e:
-        parse(OptionalArgs)
-    assert (
-        str(e.value)
-        == "Destructured arguments currently only support singular concrete types."
-    )
+    result = parse(CLI)
+    assert result == CLI(attrs=None)

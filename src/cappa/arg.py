@@ -248,8 +248,11 @@ class Arg(Generic[T]):
 
         result: list[Arg[Any]] = []
         for arg in args:
+            # field_name and default are evaluated outside `normalize` because they can
+            # potentially depend on the type's dataclass-like field information, whereas
+            # nothing else does.
             field_name = infer_field_name(arg, field)
-            default = infer_default(arg, type_view, field)
+            default = infer_default(arg, type_view, field, destructure_annotation)
 
             normalized_arg = arg.normalize(
                 type_view,
@@ -421,10 +424,15 @@ def infer_field_name(arg: Arg[Any], field: Field) -> str:
 
 
 def infer_default(
-    arg: Arg[Any], type_view: TypeView[Any], field: Field | None = None
+    arg: Arg[Any],
+    type_view: TypeView[Any],
+    field: Field | None = None,
+    destructure: Destructure | None = None,
 ) -> Any:
     if field:
-        arg_default = Default.from_value(infer_default(arg, type_view))
+        arg_default = Default.from_value(
+            infer_default(arg, type_view, destructure=destructure)
+        )
         if field.default is not Empty:
             return arg_default | field.default
 
@@ -445,6 +453,9 @@ def infer_default(
 
     if type_view.is_optional:
         return None
+
+    if destructure:
+        return ValueFrom(type_view.annotation)
 
     if type_view.is_subclass_of(bool):
         return False

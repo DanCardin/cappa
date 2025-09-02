@@ -23,12 +23,13 @@ Destructured = Annotated[T, Destructure()]
 
 
 def destructure(arg: Arg[Any], type_view: TypeView[Any]) -> list[Arg[Any]]:
-    if not isinstance(type_view.annotation, type):
+    annotation = type_view.strip_optional().annotation
+    if not isinstance(annotation, type):
         raise ValueError(
             "Destructured arguments currently only support singular concrete types."
         )
 
-    command: Command[Any] = Command.collect(Command.get(type_view.annotation))  # pyright: ignore
+    command: Command[Any] = Command.collect(Command.get(annotation))  # pyright: ignore
     virtual_args = command.arguments
 
     def _parse_destructured(value: dict[str, Any]):

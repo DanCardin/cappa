@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.30.1
+
+- fix: Infer class constructor as default for `Destructured` class.
+
 ## 0.30.0
 
 - fix: BREAKING CHANGE: Provide simpler `Destructured[T]` annotation.
