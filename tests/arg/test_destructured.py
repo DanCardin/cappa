@@ -26,7 +26,7 @@ class Attributes:
 
 @dataclass
 class Args:
-    attrs: cappa.Destructured[Attributes]
+    attrs: Annotated[cappa.Destructured[Attributes], cappa.Arg(hidden=True)]
 
 
 def test_destructured():
