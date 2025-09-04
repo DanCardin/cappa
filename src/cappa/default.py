@@ -268,7 +268,7 @@ class ValueFrom(DefaultType):
         object.__setattr__(self, "kwargs", kwargs)
 
     def __call__(self, state: State[Any] | None = None):
-        from cappa.invoke import fulfill_deps
+        from cappa.invoke.base import fulfill_deps
 
         kwargs = self.kwargs
         if state:

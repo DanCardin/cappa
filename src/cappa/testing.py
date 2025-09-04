@@ -8,7 +8,7 @@ from typing_extensions import Unpack
 import cappa
 from cappa.base import Backend, CappaCapable, T
 from cappa.help import HelpFormattable
-from cappa.invoke import DepTypes
+from cappa.invoke.types import DepTypes
 from cappa.state import State
 
 __all__ = [

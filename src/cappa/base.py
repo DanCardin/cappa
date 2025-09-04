@@ -1,15 +1,12 @@
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import inspect
 from typing import (
     TYPE_CHECKING,
     Any,
-    Protocol,
     TextIO,
-    Type,
-    TypeVar,
-    Union,
     cast,
     overload,
 )
@@ -27,28 +24,14 @@ from cappa.help import (
     create_help_arg,
     create_version_arg,
 )
-from cappa.invoke import DepTypes, InvokeCallable, InvokeCallableSpec, resolve_callable
+from cappa.invoke.base import resolve_callable
+from cappa.invoke.types import DepTypes, InvokeCallableSpec
 from cappa.output import Output
 from cappa.state import S, State
+from cappa.types import Backend, CappaCapable, FuncOrClassDecorator, ParseResult, T, U
 
 if TYPE_CHECKING:
     from cappa.arg import Arg
-
-T = TypeVar("T")
-U = TypeVar("U")
-
-CappaCapable = Union[InvokeCallable[T], Type[T], Command[T]]
-
-
-class Backend(Protocol):
-    def __call__(
-        self,
-        command: Command[T],
-        argv: list[str],
-        output: Output,
-        prog: str,
-        provide_completions: bool = False,
-    ) -> tuple[Any, Command[T], dict[str, Any]]: ...  # pragma: no cover
 
 
 def parse(
@@ -97,7 +80,7 @@ def parse(
         help_formatter: Override the default help formatter.
         state: Optional initial State object.
     """
-    _, _, instance, _, _ = parse_command(
+    parse_result = parse_command(
         obj=obj,
         argv=argv,
         input=input,
@@ -111,7 +94,7 @@ def parse(
         help_formatter=help_formatter,
         state=state,
     )
-    return instance
+    return parse_result.instance.call(managed=False)
 
 
 def invoke(
@@ -163,7 +146,7 @@ def invoke(
         help_formatter: Override the default help formatter.
         state: Optional initial State object.
     """
-    command, parsed_command, instance, concrete_output, state = parse_command(
+    parse_result = parse_command(
         obj=obj,
         argv=argv,
         input=input,
@@ -177,19 +160,20 @@ def invoke(
         help_formatter=help_formatter,
         state=state,
     )
-    resolved, global_deps = resolve_callable(
-        command,
-        parsed_command,
-        instance,
-        output=concrete_output,
-        state=state,
-        deps=deps,
-    )
-    for dep in global_deps:
-        with dep.get(output=concrete_output):
-            pass
+    with parse_result.instance.get() as instance:
+        resolved, global_deps = resolve_callable(
+            parse_result.root_command,
+            parse_result.parsed_command,
+            instance,
+            output=parse_result.output,
+            state=parse_result.state,
+            deps=deps,
+        )
+        for dep in global_deps:
+            with dep.get(output=parse_result.output):
+                pass
 
-    return resolved.call(output=concrete_output)
+        return resolved.call(output=parse_result.output)
 
 
 async def invoke_async(
@@ -241,7 +225,7 @@ async def invoke_async(
         help_formatter: Override the default help formatter.
         state: Optional initial State object.
     """
-    command, parsed_command, instance, concrete_output, state = parse_command(
+    parse_result = parse_command(
         obj=obj,
         argv=argv,
         input=input,
@@ -255,20 +239,22 @@ async def invoke_async(
         help_formatter=help_formatter,
         state=state,
     )
-    resolved, global_deps = resolve_callable(
-        command,
-        parsed_command,
-        instance,
-        output=concrete_output,
-        state=state,
-        deps=deps,
-    )
-    for dep in global_deps:
-        async with dep.get_async(output=concrete_output):
-            pass
+    async with parse_result.instance.get_async() as instance:
+        resolved, global_deps = resolve_callable(
+            parse_result.root_command,
+            parse_result.parsed_command,
+            instance,
+            output=parse_result.output,
+            state=parse_result.state,
+            deps=deps,
+        )
+        async with contextlib.AsyncExitStack() as stack:
+            for dep in global_deps:
+                await stack.enter_async_context(
+                    dep.get_async(output=parse_result.output)
+                )
 
-    async with resolved.get_async(output=concrete_output) as value:
-        return value
+            return await resolved.call_async(output=parse_result.output)
 
 
 def parse_command(
@@ -285,7 +271,7 @@ def parse_command(
     output: Output | None = None,
     help_formatter: HelpFormattable | None = None,
     state: State[S] | None = None,
-) -> tuple[Command[T], Command[T], T, Output, State[Any]]:
+) -> ParseResult[T, S]:
     concrete_backend = _coalesce_backend(backend)
     concrete_output = _coalesce_output(output, theme, color)
     concrete_state: State[S] = State.ensure(state)  # type: ignore
@@ -299,7 +285,7 @@ def parse_command(
         help_formatter=help_formatter,
         state=concrete_state,
     )
-    command, parsed_command, instance, state = Command.parse_command(  # pyright: ignore
+    return Command.parse_command(  # pyright: ignore
         command,
         argv=argv,
         input=input,
@@ -307,14 +293,6 @@ def parse_command(
         output=concrete_output,
         state=concrete_state,
     )
-    return command, parsed_command, instance, concrete_output, concrete_state  # pyright: ignore
-
-
-class FuncOrClassDecorator(Protocol):
-    @overload
-    def __call__(self, x: type[T], /) -> type[T]: ...
-    @overload
-    def __call__(self, x: T, /) -> T: ...
 
 
 @overload
