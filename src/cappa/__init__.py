@@ -1,10 +1,10 @@
-from cappa.base import collect, command, invoke, invoke_async, parse
+from cappa.base import collect, command, invoke, invoke_async, parse, parse_async
 from cappa.command import Command
 from cappa.completion.types import Completion
 from cappa.default import Confirm, Default, Env, Prompt, ValueFrom
 from cappa.file_io import FileMode
 from cappa.help import HelpFormattable, HelpFormatter
-from cappa.invoke import Dep, Self
+from cappa.invoke.types import Dep, Self
 from cappa.output import Exit, HelpExit, Output
 from cappa.parse import default_parse, unpack_arguments
 from cappa.state import State
@@ -52,5 +52,6 @@ __all__ = [
     "invoke",
     "invoke_async",
     "parse",
+    "parse_async",
     "unpack_arguments",
 ]

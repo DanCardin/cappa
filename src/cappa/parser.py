@@ -19,7 +19,7 @@ from cappa.arg import Arg, ArgAction, ArgActionType, Group
 from cappa.command import Command, Subcommand
 from cappa.completion.types import Completion, FileCompletion
 from cappa.help import format_args, format_subcommand_names
-from cappa.invoke import fulfill_deps
+from cappa.invoke.base import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.typing import T, assert_type
 

@@ -1,15 +1,13 @@
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import inspect
 from typing import (
     TYPE_CHECKING,
     Any,
-    Protocol,
+    Hashable,
     TextIO,
-    Type,
-    TypeVar,
-    Union,
     cast,
     overload,
 )
@@ -19,19 +17,16 @@ from typing_extensions import dataclass_transform
 
 from cappa import argparse, parser
 from cappa.class_inspect import detect
-from cappa.command import Command, ParseResult
+from cappa.command import Command
 from cappa.help import HelpFormattable, HelpFormatter
-from cappa.invoke import DepTypes, InvokeCallable, InvokeCallableSpec, resolve_callable
+from cappa.invoke.base import resolve_callable
+from cappa.invoke.types import DepTypes, InvokeCallableSpec
 from cappa.output import Output
 from cappa.state import S, State
+from cappa.types import Backend, CappaCapable, FuncOrClassDecorator, ParseResult, T, U
 
 if TYPE_CHECKING:
     from cappa.arg import Arg
-
-T = TypeVar("T")
-U = TypeVar("U")
-
-CappaCapable = Union[InvokeCallable[T], Type[T], Command[T]]
 
 
 def create_version_arg(version: str | Arg[Any] | None = None) -> Arg[Any] | None:
@@ -105,17 +100,6 @@ def create_completion_arg(completion: bool | Arg[bool] = True) -> Arg[bool] | No
     )
 
 
-class Backend(Protocol):
-    def __call__(
-        self,
-        command: Command[T],
-        argv: list[str],
-        output: Output,
-        prog: str,
-        provide_completions: bool = False,
-    ) -> tuple[Any, Command[T], dict[str, Any]]: ...  # pragma: no cover
-
-
 def parse(
     obj: CappaCapable[T],
     *,
@@ -130,6 +114,7 @@ def parse(
     output: Output | None = None,
     help_formatter: HelpFormattable | None = None,
     state: State[Any] | None = None,
+    exit_stack: contextlib.ExitStack | None = None,
 ) -> T:
     """Parse the command, returning an instance of `obj`.
 
@@ -161,8 +146,12 @@ def parse(
             attributes.
         help_formatter: Override the default help formatter.
         state: Optional initial State object.
+        exit_stack: Optional ExitStack to use for managing context managers. If provided,
+            the caller is responsible for closing the stack, allowing context to exceed the
+            function call. If not provided, contexts are not entered (parse does not manage
+            contexts by default).
     """
-    result = parse_command(
+    parse_result = parse_command(
         obj=obj,
         argv=argv,
         input=input,
@@ -176,7 +165,83 @@ def parse(
         help_formatter=help_formatter,
         state=state,
     )
-    return result.instance
+    if exit_stack is not None:
+        return exit_stack.enter_context(parse_result.instance.get(managed=True))
+    return parse_result.instance.call(managed=False)
+
+
+async def parse_async(
+    obj: CappaCapable[T],
+    *,
+    argv: list[str] | None = None,
+    input: TextIO | None = None,
+    backend: Backend | None = None,
+    color: bool = True,
+    version: str | Arg[Any] | None = None,
+    help: bool | Arg[Any] = True,
+    completion: bool | Arg[Any] = True,
+    theme: Theme | None = None,
+    output: Output | None = None,
+    help_formatter: HelpFormattable | None = None,
+    state: State[Any] | None = None,
+    exit_stack: contextlib.AsyncExitStack | None = None,
+) -> T:
+    """Parse the command asynchronously, returning an instance of `obj`.
+
+    This is the async version of `parse()`, necessary when using async parse functions.
+
+    In the event that a subcommand is selected, only the selected subcommand
+    function is invoked.
+
+    Arguments:
+        obj: A class which can represent a CLI command chain.
+        argv: Defaults to the process argv. This command is generally only
+            necessary when testing.
+        input: Defaults to the process stdin. This command is generally only
+            necessary when testing.
+        backend: A function used to perform the underlying parsing and return a raw
+            parsed state. This defaults to the native cappa parser, but can be changed
+            to the argparse parser at `cappa.argparse.backend`.
+        color: Whether to output in color.
+        version: If a string is supplied, adds a -v/--version flag which returns the
+            given string as the version. If an `Arg` is supplied, uses the `name`/`short`/`long`/`help`
+            fields to add a corresponding version argument. Note the `name` is assumed to **be**
+            the CLI's version, e.x. `Arg('1.2.3', help="Prints the version")`.
+        help: If `True` (default to True), adds a -h/--help flag. If an `Arg` is supplied,
+            uses the `short`/`long`/`help` fields to add a corresponding help argument.
+        completion: Enables completion when using the cappa `backend` option. If `True`
+            (default to True), adds a --completion flag. An `Arg` can be supplied to customize
+            the argument's behavior.
+        theme: Optional rich theme to customized output formatting.
+        output: Optional `Output` instance. A default `Output` will constructed if one is not provided.
+            Note the `color` and `theme` arguments take precedence over manually constructed `Output`
+            attributes.
+        help_formatter: Override the default help formatter.
+        state: Optional initial State object.
+        exit_stack: Optional AsyncExitStack to use for managing async context managers.
+            If provided, the caller is responsible for closing the stack, allowing context
+            to exceed the function call. If not provided, contexts are not entered (parse does
+            not manage contexts by default).
+    """
+    parse_result = parse_command(
+        obj=obj,
+        argv=argv,
+        input=input,
+        backend=backend,
+        color=color,
+        version=version,
+        help=help,
+        completion=completion,
+        theme=theme,
+        output=output,
+        help_formatter=help_formatter,
+        state=state,
+    )
+    if exit_stack is not None:
+        return await exit_stack.enter_async_context(
+            parse_result.instance.get_async(managed=True)
+        )
+    return await parse_result.instance.call_async(managed=False)
 
 
 def invoke(
@@ -194,7 +259,8 @@ def invoke(
     output: Output | None = None,
     help_formatter: HelpFormattable | None = None,
     state: State[Any] | None = None,
-):
+    exit_stack: contextlib.ExitStack | None = None,
+) -> Any:
     """Parse the command, and invoke the selected async command or subcommand.
 
     In the event that a subcommand is selected, only the selected subcommand
@@ -227,8 +293,11 @@ def invoke(
             attributes.
         help_formatter: Override the default help formatter.
         state: Optional initial State object.
+        exit_stack: Optional ExitStack to use for managing context managers. If provided,
+            the caller is responsible for closing the stack, allowing context to exceed the
+            function call. If not provided, a new stack is created and automatically closed.
     """
-    result = parse_command(
+    parse_result = parse_command(
         obj=obj,
         argv=argv,
         input=input,
@@ -242,20 +311,36 @@ def invoke(
         help_formatter=help_formatter,
         state=state,
     )
-    resolved, global_deps = resolve_callable(
-        result.command,
-        result.parsed_command,
-        result.instance,
-        implicit_deps=result.implicit_deps,
-        output=result.output,
-        state=result.state,
-        deps=deps,
-    )
-    for dep in global_deps:
-        with dep.get(output=result.output):
-            pass
 
-    return resolved.call(output=result.output)
+    def _invoke_with_stack(stack: contextlib.ExitStack):
+        instance = stack.enter_context(parse_result.instance.get())
+
+        # Resolve all implicit deps
+        resolved_implicit_deps: dict[Hashable, Any] = {}
+        for key, resolved_dep in parse_result.implicit_deps.items():
+            resolved_implicit_deps[key] = stack.enter_context(
+                resolved_dep.get(output=parse_result.output)
+            )
+
+        resolved, global_deps = resolve_callable(
+            parse_result.root_command,
+            parse_result.parsed_command,
+            instance,
+            implicit_deps=resolved_implicit_deps,
+            output=parse_result.output,
+            state=parse_result.state,
+            deps=deps,
+        )
+        for dep in global_deps:
+            stack.enter_context(dep.get(output=parse_result.output))
+
+        return stack.enter_context(resolved.get(output=parse_result.output))
+
+    if exit_stack is not None:
+        return _invoke_with_stack(exit_stack)
+
+    with contextlib.ExitStack() as stack:
+        return _invoke_with_stack(stack)
 
 
 async def invoke_async(
@@ -273,6 +358,7 @@ async def invoke_async(
     output: Output | None = None,
     help_formatter: HelpFormattable | None = None,
     state: State[Any] | None = None,
+    exit_stack: contextlib.AsyncExitStack | None = None,
 ) -> Any:
     """Parse the command, and invoke the selected command or subcommand.
 
@@ -306,8 +392,11 @@ async def invoke_async(
             attributes.
         help_formatter: Override the default help formatter.
         state: Optional initial State object.
+        exit_stack: Optional AsyncExitStack to use for managing async context managers.
+            If provided, the caller is responsible for closing the stack, allowing context to
+            exceed the function call. If not provided, a new stack is created and automatically closed.
     """
-    result = parse_command(
+    parse_result = parse_command(
         obj=obj,
         argv=argv,
         input=input,
@@ -321,21 +410,38 @@ async def invoke_async(
         help_formatter=help_formatter,
         state=state,
     )
-    resolved, global_deps = resolve_callable(
-        result.command,
-        result.parsed_command,
-        result.instance,
-        implicit_deps=result.implicit_deps,
-        output=result.output,
-        state=result.state,
-        deps=deps,
-    )
-    for dep in global_deps:
-        async with dep.get_async(output=result.output):
-            pass
 
-    async with resolved.get_async(output=result.output) as value:
-        return value
+    async def _invoke_async_with_stack(stack: contextlib.AsyncExitStack):
+        instance = await stack.enter_async_context(parse_result.instance.get_async())
+
+        # Resolve all implicit deps
+        resolved_implicit_deps: dict[Hashable, Any] = {}
+        for key, resolved_dep in parse_result.implicit_deps.items():
+            resolved_implicit_deps[key] = await stack.enter_async_context(
+                resolved_dep.get_async(output=parse_result.output)
+            )
+
+        resolved, global_deps = resolve_callable(
+            parse_result.root_command,
+            parse_result.parsed_command,
+            instance,
+            implicit_deps=resolved_implicit_deps,
+            output=parse_result.output,
+            state=parse_result.state,
+            deps=deps,
+        )
+        for dep in global_deps:
+            await stack.enter_async_context(dep.get_async(output=parse_result.output))
+
+        return await stack.enter_async_context(
+            resolved.get_async(output=parse_result.output)
+        )
+
+    if exit_stack is not None:
+        return await _invoke_async_with_stack(exit_stack)
+
+    async with contextlib.AsyncExitStack() as stack:
+        return await _invoke_async_with_stack(stack)
 
 
 def parse_command(
@@ -374,13 +480,6 @@ def parse_command(
         output=concrete_output,
         state=concrete_state,
     )
-
-
-class FuncOrClassDecorator(Protocol):
-    @overload
-    def __call__(self, x: type[T], /) -> type[T]: ...
-    @overload
-    def __call__(self, x: T, /) -> T: ...
 
 
 @overload
