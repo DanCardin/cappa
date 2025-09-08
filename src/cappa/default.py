@@ -2,7 +2,16 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, Callable, ClassVar, Hashable, Protocol, TextIO, Union
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Hashable,
+    Protocol,
+    TextIO,
+    Union,
+    runtime_checkable,
+)
 
 import rich.prompt
 from typing_extensions import Self, TypeAlias, TypeVar
@@ -38,9 +47,43 @@ class Default:
 
     @classmethod
     def from_value(cls, default: Any) -> Default:
-        return cls().fallback(default)
+        """Produce a `Default` instance where the provided value is an explicit default.
 
-    def fallback(self, other: DefaultTypes | Any) -> Default:
+        A default produced this way will resolve to a `Value` which gets appended to the
+        fallback sequence rather than being overwriting the Default-level static fallback.
+
+        Essentially `Default(..., Value(4), default=5)` will **always** evaluate to `4` if
+        upstream fallbacks do not provide a value, and `5` will never be used. In practice
+        this is utilized when `Arg(default=4)` is provided.
+
+        This is distinct but similar to `Default() | 4 | 5` (which uses `fallback_to`), which
+        would resolve to `Default((), default=5)`, the 4 being overwritten and never used.
+        """
+        return cls().fallback_to(default, explicit=True)
+
+    @classmethod
+    def fallback_from(cls, *defaults: Default | EmptyType | Any | None) -> Default:
+        """Return a `Default` instance from a sequence of potential defaults.
+
+        This is used to compose different levels of default sources (Arg.default versus
+        normalization time defaults).
+        """
+        for default in defaults:
+            if default is not Empty:
+                return Default.from_value(default)
+
+        return cls()
+
+    def fallback_to(self, other: DefaultTypes | Any, explicit: bool = False) -> Default:
+        """Produce a new Default from the current default and a supplied alternative.
+
+        Examples:
+            >>> Default(Env("FOO")).fallback_to(5)
+            Default(sequence=(Env(env_vars=('FOO',), ...),), default=5)
+
+            >>> Default(Env("FOO")).fallback_to(5, explicit=True)
+            Default(sequence=(Env(env_vars=('FOO',), ...), Value(value=5)), default=<_EmptyEnum.EMPTY: 0>)
+        """
         cls = type(self)
         if isinstance(other, cls):
             return cls(*self.sequence, *other.sequence, default=other.default)
@@ -50,16 +93,30 @@ class Default:
             if self.default is Empty and isinstance(other, Env):
                 default = other.default
 
+            if isinstance(other, PromptType):
+                other = Prompt.from_prompt(other)
+
+            if isinstance(other, ConfirmType):
+                other = Confirm.from_confirm(other)
+
             return cls(*self.sequence, other, default=default)
+
+        if explicit:
+            return cls(*self.sequence, Value(other))
 
         return cls(*self.sequence, default=other)
 
-    def __or__(self, other: DefaultTypes) -> Default:
-        return self.fallback(other)
+    def __or__(self, other: Any) -> Default:
+        """Compose two potential defaults, returning a new one.
+
+        For example, `Default() | Prompt('...') | Env('FOO') | 5`. See `fallback_to` for details.
+        """
+        return self.fallback_to(other)
 
     def __call__(
         self, state: State[Any] | None = None, input: TextIO | None = None
     ) -> tuple[bool, Any | None]:
+        """Evaluate the default retrieval sequence, returning the first non-Empty value."""
         for default in self.sequence:
             if isinstance(default, ValueFrom):
                 value = default(state=state)
@@ -76,7 +133,13 @@ class Default:
 
         return True, self.default
 
+    @property
+    def has_value(self) -> bool:
+        """Whether the default instance **has** a default or if it's Empty."""
+        return not self.sequence and self.default is Empty
 
+
+@runtime_checkable
 class DefaultType(Protocol):
     is_parsed: ClassVar[bool] = False
 
@@ -167,6 +230,16 @@ class Confirm(rich.prompt.Confirm, DefaultType):
 
     def __call__(self, input: TextIO | None = None):  # type: ignore
         return super().__call__(default=Empty, stream=input)
+
+
+@dataclass(frozen=True)
+class Value(DefaultType):
+    value: Any
+
+    is_parsed: ClassVar[bool] = True
+
+    def __call__(self, state: State[Any] | None = None):
+        return self.value
 
 
 @dataclass(frozen=True)

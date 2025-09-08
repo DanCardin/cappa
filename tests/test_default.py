@@ -3,7 +3,7 @@ from cappa.type_view import Empty
 
 
 def test_default_combination():
-    assert Default().fallback(Default()) == Default()
+    assert Default().fallback_to(Default()) == Default()
     assert (Default() | Default()) == Default()
 
     assert Env("FOO") | Env("BAR") == Default(Env("FOO"), Env("BAR"), default=Empty)

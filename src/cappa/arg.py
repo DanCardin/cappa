@@ -24,15 +24,7 @@ from typing_extensions import TypeAlias
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
-from cappa.default import (
-    Confirm,
-    ConfirmType,
-    Default,
-    DefaultFormatter,
-    Prompt,
-    PromptType,
-    ValueFrom,
-)
+from cappa.default import Default, DefaultFormatter, ValueFrom
 from cappa.parse import Parser, evaluate_parse, parse_literal, parse_value
 from cappa.state import State
 from cappa.type_view import Empty, EmptyType, TypeView
@@ -290,8 +282,9 @@ class Arg(Generic[T]):
         if type_view is None:
             type_view = TypeView(Any)
 
+        default = Default.fallback_from(default, self.default)
+
         field_name = cast(str, field_name or self.field_name)
-        default = Default.from_value(default if default is not Empty else self.default)
 
         verify_type_compatibility(self, field_name, type_view)
         short = infer_short(self, field_name, default_short)
@@ -428,39 +421,34 @@ def infer_default(
     type_view: TypeView[Any],
     field: Field | None = None,
     destructure: Destructure | None = None,
-) -> Any:
+) -> Default:
     if field:
-        arg_default = Default.from_value(
-            infer_default(arg, type_view, destructure=destructure)
+        inferred_default: Default = infer_default(
+            arg, type_view, destructure=destructure
         )
+
         if field.default is not Empty:
-            return arg_default | field.default
+            return inferred_default | field.default
 
         if field.default_factory is not Empty:
-            return arg_default | ValueFrom(field.default_factory)
+            return inferred_default | ValueFrom(field.default_factory)
 
-        return arg_default
+        return inferred_default
 
     default = arg.default
     if default is not Empty:
-        if isinstance(default, PromptType):
-            return Prompt.from_prompt(default)
-
-        if isinstance(default, ConfirmType):
-            return Confirm.from_confirm(default)
-
-        return default
+        return Default.from_value(default)
 
     if type_view.is_optional:
-        return None
+        return Default(default=None)
 
     if destructure:
-        return ValueFrom(type_view.annotation)
+        return Default(ValueFrom(type_view.annotation))
 
     if type_view.is_subclass_of(bool):
-        return False
+        return Default(default=False)
 
-    return Empty
+    return Default()
 
 
 def infer_required(arg: Arg[Any], default: Default):
@@ -468,7 +456,7 @@ def infer_required(arg: Arg[Any], default: Default):
     if required is True:
         return True
 
-    if not default.sequence and default.default is Empty:
+    if default.has_value:
         if required is False:
             raise ValueError(
                 "When specifying `required=False`, a default value must be supplied able to be "

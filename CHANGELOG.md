@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.30.2
+
+- fix: Prioritize Arg.default over dataclass-level default.
+
+  Technically this might be considered a breaking change, but the original behavior
+  was unintended. `Arg.default` should **always** take precedence over inferred
+  defaults or class-level defaults.
+
+  This only manifests in cases where someone was supplying both a class-level default
+  and an `Arg` level default like: `foo: Annotated[int, Arg(default=5)] = 10`. This
+  **should** result in a `5` default but was erroneously yielding `10`.
+
+  There's no obvious practical reason to ever supply both with the old behavior
+  because the `Arg.default` would never have an effect. Now, it's possible to
+  use the `Arg.default` distinctly from the class level default outside the context
+  of use with cappa.
+
 ## 0.30.1
 
 - fix: Infer class constructor as default for `Destructured` class.
