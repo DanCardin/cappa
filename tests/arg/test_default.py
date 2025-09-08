@@ -31,3 +31,16 @@ def test_default_is_not_mapped(backend: Backend):
 
     test = parse(Command, backend=backend)
     assert test == Command("4")  # type: ignore
+
+
+@backends
+def test_explicit_arg_default_precedes_class_level(backend: Backend):
+    @dataclass
+    class Command:
+        foo: Annotated[int, cappa.Arg(default=10)] = 4
+
+    test = parse(Command, "1", backend=backend)
+    assert test == Command(1)
+
+    test = parse(Command, backend=backend)
+    assert test == Command(10)
