@@ -11,7 +11,7 @@ from typing_extensions import Unpack
 from cappa import argparse, parser
 from cappa.base import Backend
 from cappa.command import Command
-from cappa.invoke import DepTypes, InvokeCallable
+from cappa.invoke.types import DepTypes, InvokeCallable
 from cappa.output import Exit
 from cappa.testing import CommandRunner, RunnerArgs, T
 

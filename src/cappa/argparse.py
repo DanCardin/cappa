@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Callable, Hashable, List, TypeVar, cast
 from cappa.arg import Arg, ArgAction
 from cappa.command import Command, Subcommand
 from cappa.help import generate_arg_groups
-from cappa.invoke import fulfill_deps
+from cappa.invoke.base import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.parser import RawOption, Value
 from cappa.typing import assert_type

@@ -86,7 +86,7 @@ def restructure(root_arg: Arg[Any], action: ArgActionType):
 
 from cappa.arg import Arg  # noqa: E402
 from cappa.command import Command  # noqa: E402
-from cappa.invoke import fulfill_deps  # noqa: E402
+from cappa.invoke.base import fulfill_deps  # noqa: E402
 from cappa.parser import (  # noqa: E402
     ParseContext,
     ParseState,

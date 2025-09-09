@@ -4,7 +4,7 @@ from cappa.completion.types import Completion
 from cappa.default import Confirm, Default, Env, Prompt, ValueFrom
 from cappa.file_io import FileMode
 from cappa.help import HelpFormattable, HelpFormatter
-from cappa.invoke import Dep, Self
+from cappa.invoke.types import Dep, Self
 from cappa.output import Exit, HelpExit, Output
 from cappa.parse import default_parse, unpack_arguments
 from cappa.state import State

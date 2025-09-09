@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from cappa.arg import Arg
     from cappa.command import Command
     from cappa.help import HelpFormattable
+    from cappa.output import Output
 
 
 DEFAULT_SUBCOMMAND_GROUP = Group(3, "Subcommands", section=1)
@@ -99,12 +100,16 @@ class Subcommand:
         self,
         prog: str,
         parsed_args: dict[str, Any],
+        *,
+        output: Output,
         state: State[Any] | None = None,
         input: TextIO | None = None,
     ):
         option_name = parsed_args.pop("__name__")
         option = self.options[option_name]
-        return option.map_result(option, prog, parsed_args, state=state, input=input)
+        return option.map_result(
+            option, prog, parsed_args, output=output, state=state, input=input
+        )
 
     def available_options(self) -> list[Command[Any]]:
         return [o for o in self.options.values() if not o.hidden]
