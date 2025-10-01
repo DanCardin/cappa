@@ -138,6 +138,12 @@ class Default:
         """Whether the default instance **has** a default or if it's Empty."""
         return not self.sequence and self.default is Empty
 
+    @property
+    def fallback_value(self) -> Any:
+        return next(
+            (d.value for d in self.sequence if isinstance(d, Value)), self.default
+        )
+
 
 @runtime_checkable
 class DefaultType(Protocol):
@@ -302,11 +308,12 @@ class DefaultFormatter:
         if not self.show:
             return ""
 
-        default_raw_value = default.default
+        default_raw_value = default.fallback_value
         if default_raw_value in (None, Empty):
             default_raw_value = ""
 
         default_formatted_value = self.format.format(default=default_raw_value)
+
         if default_formatted_value == "":
             return default_formatted_value
 

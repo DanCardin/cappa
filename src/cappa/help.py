@@ -184,6 +184,9 @@ def add_long_args(
 def format_arg(
     console: Console, help_formatter: HelpFormattable, arg: Arg[Any]
 ) -> Displayable:
+    assert isinstance(arg.default, Default)
+    assert isinstance(arg.show_default, DefaultFormatter)
+
     unknown_arg_format = help_formatter.arg_format
     if isinstance(unknown_arg_format, Iterable) and not isinstance(
         unknown_arg_format, str
@@ -194,9 +197,6 @@ def format_arg(
 
     segments: list[TextComponent] = []
     for format_segment in arg_format:
-        assert isinstance(arg.default, Default)
-        assert isinstance(arg.show_default, DefaultFormatter)
-
         default = arg.show_default.format_default(
             arg.default, help_formatter.default_format
         )

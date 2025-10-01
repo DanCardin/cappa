@@ -75,6 +75,19 @@ def test_show_default_no_option_shows_for_true_default(backend: Backend, capsys:
 
 
 @backends
+def test_explicit_arg_default(backend: Backend, capsys: Any):
+    @dataclass
+    class Command:
+        foo: Annotated[bool, cappa.Arg(long="--foo/--no-foo", default=False)]
+
+    with pytest.raises(cappa.HelpExit):
+        parse(Command, "--help", backend=backend)
+
+    stdout = CapsysOutput.from_capsys(capsys).stdout.replace(" ", "")
+    assert "[--no-foo](Default:False)" in stdout
+
+
+@backends
 def test_show_default_string(backend: Backend, capsys: Any):
     @dataclass
     class Command:

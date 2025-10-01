@@ -725,8 +725,8 @@ def explode_negated_bool_args(args: Sequence[Arg[Any]]) -> Iterable[Arg[Any]]:
 
                 not_required = not arg.required
                 show_default = arg.show_default
-                default_is_true = arg.default.default is True and not_required
-                default_is_false = arg.default.default is False and not_required
+                default_is_true = arg.default.fallback_value is True and not_required
+                default_is_false = arg.default.fallback_value is False and not_required
                 disabled: DefaultFormatter = DefaultFormatter.disabled()
 
                 positive_arg = dataclasses.replace(
