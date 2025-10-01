@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.30.3
+
+- fix: Scenario where static defaults were not being shown in helptext.
+
 ## 0.30.2
 
 - fix: Prioritize Arg.default over dataclass-level default.

@@ -1,6 +1,6 @@
 [project]
 name = "cappa"
-version = "0.30.2"
+version = "0.30.3"
 description = "Declarative CLI argument parser."
 
 urls = { repository = "https://github.com/dancardin/cappa" }
