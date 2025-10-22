@@ -11,7 +11,7 @@ from rich.console import Console
 import cappa
 from cappa.command import Command
 from cappa.default import Default
-from cappa.help import HelpFormatter, generate_arg_groups
+from cappa.help import ArgGroup, HelpFormatter
 from cappa.output import Displayable, theme
 from cappa.type_view import Empty
 
@@ -69,7 +69,9 @@ class CappaDirective(Directive):
 
 
 def render_to_terminal(command: cappa.Command[Any], terminal_width: int):
-    raw_help: list[Displayable] = HelpFormatter.default(command, command.real_name())
+    raw_help: list[Displayable] = HelpFormatter.default.long(
+        command, command.real_name()
+    )
 
     line_wrap = ""
     if terminal_width == 0:
@@ -109,10 +111,19 @@ def render_to_docutils(command: cappa.Command[Any], document: nodes.document):
 
     section += nodes.paragraph(text="\n\n".join(description))
 
-    for (group_name, _), args in generate_arg_groups(command):
-        command_options = [arg for arg in args if isinstance(arg, cappa.Arg)]
+    for group in ArgGroup.collect(command):
+        # Collect all Args and Subcommands from field_groups
+        command_options: list[cappa.Arg[Any]] = []
+        command_subcommands: list[cappa.Subcommand] = []
+        for field_group in group.field_groups:
+            if field_group.args:
+                command_options.extend(field_group.args)
+            else:
+                assert field_group.subcommand
+                command_subcommands.append(field_group.subcommand)
+
         if command_options:
-            section += nodes.subtitle(text=group_name)
+            section += nodes.subtitle(text=group.name)
 
             option = nodes.bullet_list()
             section += option
@@ -143,7 +154,6 @@ def render_to_docutils(command: cappa.Command[Any], document: nodes.document):
                 if arg.help:
                     option_content += nodes.inline(text=f": {arg.help}")
 
-        command_subcommands = [arg for arg in args if isinstance(arg, cappa.Subcommand)]
         if command_subcommands:
             for subcmd in command_subcommands:
                 for o in subcmd.options.values():

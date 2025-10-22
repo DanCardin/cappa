@@ -97,28 +97,113 @@ ArgActionType: TypeAlias = Union[ArgAction, Callable[..., Any]]
 class Group:
     """Object used to control argument/subcommand grouping in generated help text.
 
+    Note, when implicit group syntax is used, exclusive groups are automatically inferred,
+    and the group identity is inferred to be the argument's `field_name`. E.g.
+    `foo: Annotated[bool, Arg(long="--foo"), Arg(long="--bar")]`.
+
     Args:
         order: A number representing the relative ordering among different argument
             groups. Groups with the same order will be displayed alphabetically by
             name.
         name: The display name of the group in help text.
-        exclusive: Whether arguments in the group should be considered mutually exclusive
-            of one another.
+        exclusive: Used to control whether items in the group are mutually exclusive with each other.
+            If `True`, the name of the group will be used to control group identity. If a string
+            is provided, items with the same exclusive string will be considered part of the same
+            exclusivity group.
         section: A secondary level of ordering. Sections have a higher order precedence
             than ``order``, in order to facilitate meta-ordering amongst kinds of groups
             (such as "meta" arguments (``--help``, ``--version``, etc) and subcommands).
             The default ``section`` for any normal argument/``Group`` is 0, for
             ``Subcommand`` it is 1, and for "meta" arguments it is 2.
+
+    Examples:
+        A non-exclusive group which just affects helptext display grouping
+        >>> arg = Arg(group=Group(name="Colors"))
+
+        An exclusive group, in which all "Colors"-named arguments are mutually exclusive
+        >>> arg = Arg(group=Group(name="Colors", exclusive=True))
+
+        An exclusive group, in which all "colors"-identity arguments are mutually exclusive,
+        but whose helptext is grouped alongside all other "Options".
+        >>> arg = Arg(group=Group(name="Options", exclusive="colors"))
     """
 
     order: int = dataclasses.field(default=0, compare=False)
     name: str = ""
-    exclusive: bool = False
+    exclusive: bool | str | None = dataclasses.field(default=None, compare=True)
     section: int = 0
+    id: str = ""
 
     @cached_property
     def key(self):
-        return (self.section, self.order, self.name, self.exclusive)
+        return (self.section, self.order, self.name, bool(self.exclusive))
+
+    def diff(self, other: Group) -> str:
+        """Return a string showing only the attributes that differ between two Groups.
+
+        Returns a string in the format:
+        "Group(attr=value, ...) != Group(attr=other_value, ...)"
+        """
+        differing_attrs: list[str] = ["id"]
+        for field in dataclasses.fields(self):
+            if not field.compare and field.name != "id":
+                continue
+
+            self_value = getattr(self, field.name)
+            other_value = getattr(other, field.name)
+            if self_value != other_value:
+                differing_attrs.append(field.name)
+
+        self_parts = [f"{attr}={getattr(self, attr)!r}" for attr in differing_attrs]
+        other_parts = [f"{attr}={getattr(other, attr)!r}" for attr in differing_attrs]
+
+        return f"Group({', '.join(self_parts)}) != Group({', '.join(other_parts)})"
+
+    @classmethod
+    def infer(
+        cls,
+        arg: Arg[Any],
+        is_option: bool,
+        exclusive: bool | str = False,
+    ) -> Group:
+        order = 0
+        name = None
+        section = 0
+
+        if isinstance(arg.group, Group):
+            order = arg.group.order
+            section = arg.group.section
+
+            if arg.group.name:
+                name = arg.group.name
+            if arg.group.exclusive is not None:
+                exclusive = arg.group.exclusive
+
+        if isinstance(arg.group, str):
+            name = arg.group
+
+        if isinstance(arg.group, tuple):
+            order, name = arg.group
+
+        if name is None:
+            if is_option:
+                name = "Options"
+            else:
+                name = "Arguments"
+                order = 1
+
+        if isinstance(exclusive, str):
+            identity = exclusive
+        else:
+            identity = name
+
+        return cls(
+            name=name,
+            order=order,
+            exclusive=bool(exclusive),
+            section=section,
+            id=identity,
+        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -136,7 +221,7 @@ class Arg(Generic[T]):
             flag. If a string is supplied, that will be used instead. If a string is supplied,
             it is split on '/' (forward slash), to support multiple options. Additionally
             accepts a list of strings.
-        count: If `True` the resultant argmuent will count instances and accept zero
+        count: If `True` the resultant argument will count instances and accept zero
             arguments.
         default: An explicit default CLI value. When left unspecified, the default is
             inferred from the class' default or the adapter default/default_factory.
@@ -225,7 +310,7 @@ class Arg(Generic[T]):
     ) -> list[Arg[Any]]:
         args: list[Arg[Any]] = find_annotations(type_view, cls) or [Arg()]
 
-        exclusive = len(args) > 1
+        exclusive = field.name if len(args) > 1 else False
 
         docs: list[DocType] = find_annotations(type_view, Doc)
         fallback_help = docs[0].documentation if docs else fallback_help
@@ -241,7 +326,7 @@ class Arg(Generic[T]):
             args = field_metadata
 
         result: list[Arg[Any]] = []
-        for arg in args:
+        for i, arg in enumerate(args, start=1):
             # field_name and default are evaluated outside `normalize` because they can
             # potentially depend on the type's dataclass-like field information, whereas
             # nothing else does.
@@ -258,6 +343,7 @@ class Arg(Generic[T]):
                 default=default,
                 state=state,
                 destructure=destructure_annotation,
+                show_default=arg.show_default if i == len(args) else False,
             )
 
             if normalized_arg.destructure:
@@ -277,9 +363,10 @@ class Arg(Generic[T]):
         field_name: str | None = None,
         default_short: bool = False,
         default_long: bool = False,
-        exclusive: bool = False,
+        exclusive: bool | str = False,
         state: State[Any] | None = None,
         destructure: Destructure | bool | None = None,
+        show_default: bool | str | DefaultFormatter | None = None,
     ) -> Arg[Any]:
         if type_view is None:
             type_view = TypeView(Any)
@@ -302,7 +389,7 @@ class Arg(Generic[T]):
         help = infer_help(self, fallback_help)
         completion = infer_completion(self, choices)
 
-        group = infer_group(self, short, long, exclusive)
+        group = Group.infer(self, bool(short or long), exclusive)
 
         value_name = infer_value_name(self, field_name, num_args)
         has_value = infer_has_value(self, action)
@@ -312,9 +399,9 @@ class Arg(Generic[T]):
                 "`Arg.propagate` requires a non-positional named option (`short` or `long`)."
             )
 
-        show_default: DefaultFormatter = DefaultFormatter.from_unknown(
-            self.show_default
-        )  # pyright: ignore
+        default_formatter: DefaultFormatter = DefaultFormatter.from_unknown(
+            show_default if show_default is not None else self.show_default
+        )
 
         destructure = destructure or self.destructure
         if destructure is True:
@@ -337,7 +424,7 @@ class Arg(Generic[T]):
             group=group,
             has_value=has_value,
             type_view=type_view,
-            show_default=show_default,
+            show_default=default_formatter,
             destructure=destructure,
         )
 
@@ -674,38 +761,6 @@ def infer_completion(
     return None
 
 
-def infer_group(
-    arg: Arg[Any],
-    short: list[str] | bool,
-    long: list[str] | bool,
-    exclusive: bool = False,
-) -> Group:
-    order = 0
-    name = None
-    section = 0
-
-    if isinstance(arg.group, Group):
-        name = arg.group.name
-        order = arg.group.order
-        exclusive = arg.group.exclusive
-        section = arg.group.section
-
-    if isinstance(arg.group, str):
-        name = arg.group
-
-    if isinstance(arg.group, tuple):
-        order, name = arg.group
-
-    if name is None:
-        if short or long:
-            name = "Options"
-        else:
-            name = "Arguments"
-            order = 1
-
-    return Group(name=name, order=order, exclusive=exclusive, section=section)
-
-
 def infer_value_name(arg: Arg[Any], field_name: str, num_args: int | None) -> str:
     if arg.value_name is not Empty:
         return arg.value_name
@@ -737,18 +792,26 @@ def explode_negated_bool_args(args: Sequence[Arg[Any]]) -> Iterable[Arg[Any]]:
                 default_is_true = arg.default.fallback_value is True and not_required
                 default_is_false = arg.default.fallback_value is False and not_required
                 disabled: DefaultFormatter = DefaultFormatter.disabled()
+                group = dataclasses.replace(
+                    cast(Group, arg.group),
+                    exclusive=True,
+                    id=cast(str, arg.field_name),
+                )
 
                 positive_arg = dataclasses.replace(
                     arg,
                     long=positives,
                     action=ArgAction.store_true,
                     show_default=show_default if default_is_true else disabled,
+                    group=group,
+                    help=None,
                 )
                 negative_arg = dataclasses.replace(
                     arg,
                     long=negatives,
                     action=ArgAction.store_false,
                     show_default=show_default if default_is_false else disabled,
+                    group=group,
                 )
 
                 yield positive_arg

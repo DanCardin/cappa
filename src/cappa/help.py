@@ -4,7 +4,7 @@ import typing
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from itertools import groupby
-from typing import Any, Sequence, Tuple, cast
+from typing import Any, List, Sequence, Tuple, cast
 
 from rich.console import Console, NewLine
 from rich.markdown import Markdown
@@ -23,10 +23,92 @@ from cappa.typing import assert_type
 if typing.TYPE_CHECKING:
     from cappa.command import Command
 
-ArgGroup: TypeAlias = typing.Tuple[
-    typing.Tuple[str, bool], typing.List[typing.Union[Arg[Any], Subcommand]]
-]
 Dimension: TypeAlias = typing.Tuple[int, int, int, int]
+
+
+@dataclass(frozen=True)
+class FieldGroup:
+    """A group of arguments or a subcommand sharing the same field_name.
+
+    Either `args` or `subcommand` will be set, never both.
+    """
+
+    field_name: str | None
+    required: bool
+    args: list[Arg[Any]] | None = None
+    subcommand: Subcommand | None = None
+
+
+@dataclass(frozen=True)
+class ArgGroup:
+    """A group of arguments/subcommands organized by their Group."""
+
+    name: str
+    field_groups: list[FieldGroup]
+
+    @staticmethod
+    def _by_group_key(arg: Arg[Any] | Subcommand) -> tuple[int, int, str, bool]:
+        return assert_type(arg.group, Group).key
+
+    @staticmethod
+    def _by_group(arg: Arg[Any] | Subcommand) -> str:
+        return assert_type(arg.group, Group).name
+
+    @classmethod
+    def collect(
+        cls, command: Command[Any], include_hidden: bool = False
+    ) -> list[ArgGroup]:
+        """Collect and group arguments from a command by their Group."""
+        sorted_args = sorted(command.all_arguments, key=cls._by_group_key)
+
+        result: list[ArgGroup] = []
+        for name, args in groupby(sorted_args, key=cls._by_group):
+            items = [a for a in args if include_hidden or not a.hidden]
+
+            field_grouped: dict[str | None, list[Arg[Any] | Subcommand]] = {}
+            for item in items:
+                field_name = item.field_name if item.field_name is not Empty else None
+                if field_name not in field_grouped:
+                    field_grouped[field_name] = []
+                field_grouped[field_name].append(item)
+
+            field_groups: list[FieldGroup] = []
+            for field_name, items in field_grouped.items():
+                # Validate that items are all Args or all Subcommands
+                first_item = items[0]
+                if isinstance(first_item, Arg):
+                    # Validate all are Args
+                    if not all(isinstance(item, Arg) for item in items):
+                        raise ValueError(  # pragma: no cover
+                            f"FieldGroup with field_name={field_name!r} contains mixed types: "
+                            f"Args and Subcommands cannot share the same field_name"
+                        )
+                    group_args = cast(List[Arg[Any]], items)
+
+                    # All items must have the same requiredness
+                    required_values = {arg.required for arg in group_args}
+                    assert len(required_values) == 1, (
+                        f"All items with field_name={field_name!r} must have the same "
+                        f"required value, got: {required_values}"
+                    )
+                    required = cast(bool, required_values.pop())
+                    field_groups.append(
+                        FieldGroup(field_name, required, args=group_args)
+                    )
+                else:
+                    assert len(items) == 1
+                    field_groups.append(
+                        FieldGroup(
+                            field_name,
+                            cast(bool, first_item.required),
+                            subcommand=first_item,
+                        )
+                    )
+
+            result.append(cls(name=name, field_groups=field_groups))
+
+        return result
+
 
 TextComponent = typing.Union[Text, Markdown, str]
 ArgFormat: TypeAlias = typing.Union[
@@ -41,72 +123,13 @@ class HelpFormattable(typing.Protocol):
     arg_format: ArgFormat | ArgFormats
     default_format: str
 
-    def __call__(
+    def long(
         self, command: Command[Any], prog: str
     ) -> list[Displayable]: ...  # pragma: no cover
 
-
-def create_version_arg(version: str | Arg[Any] | None = None) -> Arg[Any] | None:
-    if not version:
-        return None
-
-    if isinstance(version, str):
-        version = Arg(
-            value_name=version,
-            short=["-v"],
-            long=["--version"],
-            help="Show the version and exit.",
-            group=Group(1, "Help", section=2),
-            action=ArgAction.version,
-        )
-
-    if version.value_name is Empty:
-        raise ValueError(
-            "Expected explicit version `Arg` to supply version number as its name, like `Arg('1.2.3', ...)`"
-        )
-
-    if version.long is True:
-        version = replace(version, long="--version")
-
-    return version.normalize(
-        action=ArgAction.version, field_name="version", default=None
-    )
-
-
-def create_help_arg(help: bool | Arg[bool] | None = True) -> Arg[bool] | None:
-    if not help:
-        return None
-
-    if isinstance(help, bool):
-        help = Arg(
-            short=["-h"],
-            long=["--help"],
-            help="Show this message and exit.",
-            group=Group(0, "Help", section=2),
-            action=ArgAction.help,
-        )
-
-    return help.normalize(action=ArgAction.help, field_name="help", default=None)
-
-
-def create_completion_arg(completion: bool | Arg[bool] = True) -> Arg[bool] | None:
-    if not completion:
-        return None
-
-    if isinstance(completion, bool):
-        completion = Arg(
-            long=["--completion"],
-            choices=["generate", "complete"],
-            group=Group(2, "Help", section=2),
-            help="Use `--completion generate` to print shell-specific completion source.",
-            action=ArgAction.completion,
-        )
-
-    return completion.normalize(
-        field_name="completion",
-        action=ArgAction.completion,
-        default=None,
-    )
+    def short(
+        self, command: Command[Any], prog: str
+    ) -> Displayable: ...  # pragma: no cover
 
 
 @dataclass(frozen=True)
@@ -121,8 +144,8 @@ class HelpFormatter(HelpFormattable):
 
     default: typing.ClassVar[HelpFormatter]
 
-    def __call__(self, command: Command[Any], prog: str) -> list[Displayable]:
-        arg_groups = generate_arg_groups(command)
+    def long(self, command: Command[Any], prog: str) -> list[Displayable]:
+        arg_groups = ArgGroup.collect(command)
 
         lines: list[Displayable] = []
         lines.append(add_short_args(prog, arg_groups))
@@ -137,6 +160,10 @@ class HelpFormatter(HelpFormattable):
         console = Console()
         lines.extend(add_long_args(console, self, arg_groups))
         return lines
+
+    def short(self, command: Command[Any], prog: str) -> Displayable:
+        arg_groups = ArgGroup.collect(command)
+        return add_short_args(prog, arg_groups)
 
     def with_arg_format(
         self, _format: ArgFormat | tuple[ArgFormat, ...], *formats: ArgFormat
@@ -161,19 +188,26 @@ def add_long_args(
     table.add_column(justify="left", ratio=1)
     table.add_column(style="cappa.help", ratio=2)
 
-    for (group_name, _), args in arg_groups:
+    for group in arg_groups:
         table.add_row(
-            Text(group_name, style="cappa.group", justify="left"),
+            Text(group.name, style="cappa.group", justify="left"),
             Text(style="cappa.group"),
         )
-        for arg in args:
-            if isinstance(arg, Arg):
+
+        for field_group in group.field_groups:
+            if field_group.args:
+                combined = format_arg_name(field_group, ", ")
+
+                help_text = format_args(console, help_formatter, *field_group.args)
+
                 table.add_row(
-                    Padding(format_arg_name(arg, ", "), help_formatter.left_padding),
-                    format_arg(console, help_formatter, arg),
+                    Padding(combined, help_formatter.left_padding),
+                    help_text,
                 )
+
             else:
-                for option in arg.available_options():
+                assert field_group.subcommand
+                for option in field_group.subcommand.available_options():
                     table.add_row(*format_subcommand(help_formatter, option))
 
         table.add_row()
@@ -181,49 +215,52 @@ def add_long_args(
     return [table]
 
 
-def format_arg(
-    console: Console, help_formatter: HelpFormattable, arg: Arg[Any]
+def format_args(
+    console: Console, help_formatter: HelpFormattable, *args: Arg[Any]
 ) -> Displayable:
-    assert isinstance(arg.default, Default)
-    assert isinstance(arg.show_default, DefaultFormatter)
-
-    unknown_arg_format = help_formatter.arg_format
-    if isinstance(unknown_arg_format, Iterable) and not isinstance(
-        unknown_arg_format, str
-    ):
-        arg_format = cast(Sequence[ArgFormat], unknown_arg_format)
-    else:
-        arg_format = (unknown_arg_format,)
-
+    """Format multiple args with the same field_name by concatenating their help texts."""
     segments: list[TextComponent] = []
-    for format_segment in arg_format:
-        default = arg.show_default.format_default(
-            arg.default, help_formatter.default_format
-        )
 
-        choices = ""
-        if arg.choices:
-            choices = "Valid options: " + ", ".join(arg.choices) + "."
+    for arg in args:
+        assert isinstance(arg.default, Default)
+        assert isinstance(arg.show_default, DefaultFormatter)
 
-        context: dict[str, Any] = {
-            "help": arg.help or "",
-            "default": default,
-            "choices": choices,
-            "arg": arg,
-        }
+        unknown_arg_format = help_formatter.arg_format
+        if isinstance(unknown_arg_format, Iterable) and not isinstance(
+            unknown_arg_format, str
+        ):
+            arg_format = cast(Sequence[ArgFormat], unknown_arg_format)
+        else:
+            arg_format = (unknown_arg_format,)
 
-        if callable(format_segment):
-            format_segment = cast(TextComponent, format_segment(arg))
+        for format_segment in arg_format:
+            default = arg.show_default.format_default(
+                arg.default, help_formatter.default_format
+            )
 
-        format_segment_text = _get_text_component_text(format_segment)
-        if not format_segment_text:
-            continue
+            choices = ""
+            if arg.choices:
+                choices = "Valid options: " + ", ".join(arg.choices) + "."
 
-        formatted_text = format_segment_text.format(**context)
-        segment = _replace_rich_text_component(format_segment, formatted_text)
+            context: dict[str, Any] = {
+                "help": arg.help or "",
+                "default": default,
+                "choices": choices,
+                "arg": arg,
+            }
 
-        if segment:
-            segments.append(segment)
+            if callable(format_segment):
+                format_segment = cast(TextComponent, format_segment(arg))
+
+            format_segment_text = _get_text_component_text(format_segment)
+            if not format_segment_text:
+                continue
+
+            formatted_text = format_segment_text.format(**context)
+            segment = _replace_rich_text_component(format_segment, formatted_text)
+
+            if segment:
+                segments.append(segment)
 
     return _markdown_to_text(console, segments)
 
@@ -296,63 +333,54 @@ def format_subcommand(help_formatter: HelpFormatter, command: Command[Any]):
     )
 
 
-def format_short_help(command: Command[Any], prog: str) -> Displayable:
-    arg_groups = generate_arg_groups(command)
-    return add_short_args(prog, arg_groups)
-
-
-def generate_arg_groups(
-    command: Command[Any], include_hidden: bool = False
-) -> list[ArgGroup]:
-    def by_group_key(arg: Arg[Any] | Subcommand):
-        return assert_type(arg.group, Group).key
-
-    def by_group(arg: Arg[Any] | Subcommand):
-        group = assert_type(arg.group, Group)
-        return (group.name, group.exclusive)
-
-    sorted_args = sorted(command.all_arguments, key=by_group_key)
-    return [
-        (g, [a for a in args if include_hidden or not a.hidden])
-        for g, args in groupby(sorted_args, key=by_group)
-    ]
-
-
 def add_short_args(prog: str, arg_groups: list[ArgGroup]) -> str:
     segments: list[str] = [f"Usage: {prog}"]
-    for _, args in arg_groups:
-        for arg in args:
-            segments.append(format_arg_name(arg, ", ", n=1))
+    for group in arg_groups:
+        for field_group in group.field_groups:
+            segments.append(format_arg_name(field_group, ", ", n=1))
 
     return " ".join(segments)
 
 
-def format_arg_name(arg: Arg[Any] | Subcommand, delimiter: str, *, n: int = 0) -> str:
-    if isinstance(arg, Arg):
-        has_value = not ArgAction.is_non_value_consuming(arg.action)
+def format_arg_name(item: FieldGroup, delimiter: str, *, n: int = 0) -> str:
+    """Format the name(s) of args/subcommands for display.
 
-        arg_names = arg.names_str(delimiter, n=n)
-        if not arg.is_option:
-            arg_names = arg_names.upper()
+    If given a FieldGroup, formats all items together with appropriate brackets.
+    If given a single Arg/Subcommand, formats just that item.
+    """
+    if item.args:
+        parts: list[str] = []
+        for arg in item.args:
+            has_value = (
+                not ArgAction.is_non_value_consuming(arg.action) and arg.num_args != 0
+            )
 
-            if arg.num_args == -1:
-                arg_names = f"{arg_names} ..."
+            arg_names = arg.names_str(delimiter, n=n)
+            if not arg.is_option:
+                arg_names = arg_names.upper()
 
-        text = f"[cappa.arg]{arg_names}[/cappa.arg]"
+                if arg.num_args == -1:
+                    arg_names = f"{arg_names} ..."
 
-        if arg.is_option and has_value:
-            name = cast(str, arg.value_name).upper()
-            if arg.num_args == -1:
-                name = f"{name} ..."
+            text = f"[cappa.arg]{arg_names}[/cappa.arg]"
 
-            text = f"{text} [cappa.arg.name]{name}[/cappa.arg.name]"
+            # if arg.is_option and arg.num_args != 0:
+            if arg.is_option and has_value:
+                name = cast(str, arg.value_name).upper()
+                if arg.num_args == -1:
+                    name = f"{name} ..."
 
-        if not arg.required:
-            return rf"\[{text}]"
+                text = f"{text} [cappa.arg.name]{name}[/cappa.arg.name]"
 
-        return text
+            parts.append(text)
+        combined = ", ".join(parts)
 
-    arg_names = arg.names_str(",")
+        if not item.required:
+            return f"[{combined}]"
+        return combined
+
+    assert item.subcommand is not None
+    arg_names = item.subcommand.names_str(",")
     return f"{{[cappa.subcommand]{arg_names}[/cappa.subcommand]}}"
 
 

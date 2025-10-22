@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import textwrap
 from dataclasses import dataclass
 from typing import Any
 
@@ -9,7 +8,7 @@ from typing_extensions import Annotated
 
 import cappa
 from cappa.arg import Group
-from tests.utils import Backend, backends, parse, strip_trailing_whitespace
+from tests.utils import Backend, backends, parse
 
 
 @backends
@@ -56,17 +55,8 @@ def test_implicit_syntax_explicit_name(backend: Backend, capsys: Any):
 
     out = capsys.readouterr().out
 
-    expected = textwrap.indent(
-        textwrap.dedent(
-            """
-            Foo
-              [-v]                       (Default: 0)
-              [--verbosity VERBOSE]      (Default: 0)
-            """,
-        ),
-        "  ",
-    )
-    assert expected in strip_trailing_whitespace(out)
+    assert "[-v, --verbosity VERBOSE]" in out
+    assert "(Default: 0)" in out
 
 
 @backends
@@ -78,12 +68,12 @@ def test_explicit_groups(backend: Backend | None):
             cappa.Arg(
                 short="-v",
                 action=cappa.ArgAction.count,
-                group=Group(name="Verbose", exclusive=True),
+                group=Group(exclusive=True),
             ),
         ] = 0
         verbosity: Annotated[
             int,
-            cappa.Arg(long="--verbosity", group=Group(name="Verbose", exclusive=True)),
+            cappa.Arg(long="--verbosity", group=Group(exclusive=True)),
         ] = 0
 
     result = parse(ArgTest, backend=backend)
@@ -120,6 +110,5 @@ def test_differing_group_identity(backend: Backend):
         parse(ArgTest, backend=backend)
 
     assert str(e.value) == (
-        "Group details between `Group(order=0, name='Verbose', exclusive=False, section=0)` "
-        "and `Group(order=0, name='Verbose', exclusive=True, section=0)` must match"
+        "Group details do not match among arguments: Group(id='Verbose', exclusive=True) != Group(id='Verbose', exclusive=False)."
     )

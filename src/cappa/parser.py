@@ -18,7 +18,7 @@ from typing import (
 from cappa.arg import Arg, ArgAction, ArgActionType, Group
 from cappa.command import Command, Subcommand
 from cappa.completion.types import Completion, FileCompletion
-from cappa.help import format_arg, format_subcommand_names
+from cappa.help import format_args, format_subcommand_names
 from cappa.invoke import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.typing import T, assert_type
@@ -93,7 +93,7 @@ def backend(
             parse(parse_state, context)
         except HelpAction as e:
             raise HelpExit(
-                e.command.help_formatter(e.command, e.command_name),
+                e.command.help_formatter.long(e.command, e.command_name),
                 code=0,
                 prog=parse_state.prog,
             )
@@ -450,7 +450,7 @@ def parse_option(
             options: list[Completion] = []
             for name, option in possible_options.items():
                 rendered_help = str(
-                    format_arg(
+                    format_args(
                         parse_state.output.output_console,
                         context.command.help_formatter,
                         option,
@@ -660,8 +660,7 @@ def check_exclusive_group(
     if not group or not group.exclusive:
         return
 
-    group_name = group.name
-    exclusive_arg = context.exclusive_args.get(group_name)
+    exclusive_arg = context.exclusive_args.get(group.id)
 
     if exclusive_arg and exclusive_arg != arg:
         raise BadArgumentError(
@@ -672,7 +671,7 @@ def check_exclusive_group(
             arg=arg,
         )
 
-    context.exclusive_args[group_name] = arg
+    context.exclusive_args[group.id] = arg
 
 
 def consume_arg(

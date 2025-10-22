@@ -4,9 +4,9 @@ import argparse
 import sys
 from typing import TYPE_CHECKING, Any, Callable, Hashable, List, TypeVar, cast
 
-from cappa.arg import Arg, ArgAction
+from cappa.arg import Arg, ArgAction, Group
 from cappa.command import Command, Subcommand
-from cappa.help import generate_arg_groups
+from cappa.help import ArgGroup
 from cappa.invoke import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.parser import RawOption, Value
@@ -92,7 +92,7 @@ class ArgumentParser(argparse.ArgumentParser):
         raise Exit(message, code=status, prog=self.prog)
 
     def print_help(self, file: SupportsWrite[str] | None = None):
-        raise HelpExit(self.command.help_formatter(self.command, self.prog))
+        raise HelpExit(self.command.help_formatter.long(self.command, self.prog))
 
 
 def custom_action(arg: Arg[Any], action: Callable[..., Any]):
@@ -200,18 +200,34 @@ def add_arguments(
     output: Output,
     dest_prefix: str = "",
 ):
-    arg_groups = generate_arg_groups(command, include_hidden=True)
-    for (group_name, group_exclusive), args in arg_groups:
-        argparse_group = parser.add_argument_group(title=group_name)
-        if group_exclusive:
-            argparse_group = argparse_group.add_mutually_exclusive_group()
+    exclusive_groups: dict[str, Any] = {}
 
-        for arg in args:
-            if isinstance(arg, Arg):
-                add_argument(parser, argparse_group, arg, dest_prefix=dest_prefix)
+    arg_groups = ArgGroup.collect(command, include_hidden=True)
+    for group in arg_groups:
+        argparse_group = parser.add_argument_group(title=group.name)
+
+        for field_group in group.field_groups:
+            if field_group.args:
+                for arg in field_group.args:
+                    arg_group = cast(Group, arg.group)
+                    target_group: Any = argparse_group
+
+                    if arg_group.exclusive:
+                        target_group = exclusive_groups.get(arg_group.id)
+                        if target_group is None:
+                            target_group = exclusive_groups[arg_group.id] = (
+                                argparse_group.add_mutually_exclusive_group()
+                            )
+
+                    add_argument(parser, target_group, arg, dest_prefix=dest_prefix)
             else:
+                assert field_group.subcommand
                 add_subcommands(
-                    parser, group_name, arg, output=output, dest_prefix=dest_prefix
+                    parser,
+                    group.name,
+                    field_group.subcommand,
+                    output=output,
+                    dest_prefix=dest_prefix,
                 )
 
 

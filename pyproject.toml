@@ -95,7 +95,7 @@ doctest_optionflags = "NORMALIZE_WHITESPACE IGNORE_EXCEPTION_DETAIL ELLIPSIS"
 addopts = "--doctest-modules -vv --ff --strict-markers"
 norecursedirs = ".* build dist *.egg bin"
 pytester_example_dir = "examples"
-markers = ["help"]
+markers = ["help", "argparse"]
 
 [build-system]
 requires = ["hatchling"]

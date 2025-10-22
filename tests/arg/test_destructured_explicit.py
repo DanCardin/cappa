@@ -21,3 +21,13 @@ class Args:
 def test_destructured():
     test = parse(Args, "--color=red")
     assert test == Args(config=Config(color="red"))
+
+
+@dataclass
+class Args2:
+    config: Annotated[Config, cappa.Arg(destructure=True)]
+
+
+def test_destructured_alt():
+    test = parse(Args2, "--color=red")
+    assert test == Args2(config=Config(color="red"))
