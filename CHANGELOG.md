@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.30.4
+- fix: Stripped type aliases losing e.g. Dep metadata.
+
 ## 0.30.3
 
 - fix: Scenario where static defaults were not being shown in helptext.

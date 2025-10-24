@@ -1673,16 +1673,16 @@ wheels = [
 
 [[package]]
 name = "type-lens"
-version = "0.2.5"
+version = "0.2.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "eval-type-backport", marker = "python_full_version < '3.10'" },
     { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1b/49/cea2eeab4f0aa24379fb08aa99b099162ccb46df7b0ffca2b93f29404c3b/type_lens-0.2.5.tar.gz", hash = "sha256:6cd32d38845c574d244c979c89c955da6e13c4aad0dc5cd08d318ba31b9cabf1", size = 362158, upload-time = "2025-08-06T15:12:47.555Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/55/8846322acedf26cafb4a66dd23fdca6bc73cb3f8c0029040a9b96f5aa0dd/type_lens-0.2.6.tar.gz", hash = "sha256:5d46ab3bc2dfafc174cad702eccb4418c31e38e258e87945a19d86ebc204d08b", size = 362277, upload-time = "2025-10-20T20:08:28.07Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cc/93/7dfe3eab016fef8628b9a9970316ab1394979cbb50b3ebc08176e017d88d/type_lens-0.2.5-py3-none-any.whl", hash = "sha256:b0c307428c0f899d1b9bad381ff1c377e543d6227d8c16f48d1a8c47ff7e541b", size = 14404, upload-time = "2025-08-06T15:12:46.075Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/c5/30de077e06f7ffc3fe21d45ce26b8088816227b678a7157f6b9e080ff2db/type_lens-0.2.6-py3-none-any.whl", hash = "sha256:aade6beb3eca337c90d1b627b509768473bbd591e233ed6b57fb93ec2a01bca6", size = 14451, upload-time = "2025-10-20T20:08:26.936Z" },
 ]
 
 [[package]]

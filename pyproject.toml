@@ -22,8 +22,8 @@ dependencies = [
 [project.optional-dependencies]
 docstring = ["docstring-parser >= 0.15", "docstring-parser >= 0.17; python_version >= '3.14'"]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest >=8.1.1,<9",
     "coverage >= 7.3.0",
     "mypy >= 1.0.0",
