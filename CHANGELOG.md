@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.30.4
+- fix: Use of a synchronous context manager inside an `invoke_async` invoke context.
 - fix: Stripped type aliases losing e.g. Dep metadata.
 
 ## 0.30.3

@@ -20,7 +20,7 @@ from typing import (
     cast,
 )
 
-from typing_extensions import Annotated
+from typing_extensions import Annotated, TypeGuard
 
 from cappa.class_inspect import has_command
 from cappa.command import Command
@@ -49,7 +49,7 @@ class Dep(Generic[T]):
 
 DepTypes = Union[
     Sequence[InvokeCallableSpec[Any]],
-    Mapping[InvokeCallableSpec[Any], Union[Dep[Any], InvokeCallableSpec[Any], Any]],
+    Mapping[InvokeCallable[Any], Union[Dep[Any], InvokeCallableSpec[Any], Any]],
     None,
 ]
 Self = Annotated[T, SelfType]
@@ -61,7 +61,7 @@ class InvokeResolutionError(RuntimeError):
 
 @dataclass
 class Resolved(Generic[C]):
-    callable: InvokeCallableSpec[C]
+    callable: InvokeCallable[C]
     kwargs: dict[str, Any | Resolved[Any]] = field(default_factory=lambda: {})
     args: tuple[Any, ...] = field(default=())
     result: C | EmptyType = Empty
@@ -83,30 +83,18 @@ class Resolved(Generic[C]):
 
         with contextlib.ExitStack() as stack:
             # Non-resolved values are literal values that can be recorded directly.
-            finalized_kwargs = dict(self.iter_kwargs(is_resolved=False))
+            kwargs = dict(self.iter_kwargs(is_resolved=False))
 
             # Resolved values need to be recursed into. In order to handle the
             # wrapping context manager, we need to enter all contexts, and only
             # exit at the end.
             for k, v in self.iter_kwargs(is_resolved=True):
-                finalized_kwargs[k] = stack.enter_context(v.get(output=output))
+                kwargs[k] = stack.enter_context(v.get(output=output))
 
             with self.handle_exit(output):
-                callable = cast(Callable[..., Any], self.callable)
-                requires_management = inspect.isgeneratorfunction(callable)
-                if requires_management:
-                    # Yield functions are assumed to be context-maneger style generators
-                    # what we just need to wrap...
-                    callable = contextlib.contextmanager(callable)
-
-                result = callable(*args, *self.args, **finalized_kwargs)
-                is_context_manager = isinstance(
-                    result, contextlib.AbstractContextManager
+                result = self._get_result(
+                    stack, self.callable, *args, *self.args, **kwargs
                 )
-
-                # And then enter before producing the result.
-                if requires_management or is_context_manager:
-                    result = stack.enter_context(result)  # pyright: ignore
 
             self.result = result
             yield result
@@ -125,27 +113,14 @@ class Resolved(Generic[C]):
             return
 
         async with contextlib.AsyncExitStack() as stack:
-            finalized_kwargs = dict(self.iter_kwargs(is_resolved=False))
+            kwargs = dict(self.iter_kwargs(is_resolved=False))
             for k, v in self.iter_kwargs(is_resolved=True):
-                finalized_kwargs[k] = await stack.enter_async_context(
-                    v.get_async(output=output)
-                )
+                kwargs[k] = await stack.enter_async_context(v.get_async(output=output))
 
             with self.handle_exit(output):
-                callable = cast(Callable[..., Any], self.callable)
-                requires_management = inspect.isasyncgenfunction(callable)
-                if requires_management:
-                    callable = contextlib.asynccontextmanager(callable)
-
-                result: Any = callable(**finalized_kwargs)
-                is_context_manager = isinstance(
-                    result, contextlib.AbstractAsyncContextManager
+                result: Any = await self._get_result_async(
+                    stack, self.callable, *self.args, **kwargs
                 )
-
-                if requires_management or is_context_manager:
-                    result = await stack.enter_async_context(result)  # pyright: ignore
-                elif isinstance(result, Coroutine):
-                    result = await result  # pyright: ignore
 
             self.result = result
             yield result
@@ -154,6 +129,49 @@ class Resolved(Generic[C]):
         for k, v in self.kwargs.items():
             if is_resolved == isinstance(v, self.__class__):
                 yield k, v
+
+    @classmethod
+    async def _get_result_async(
+        cls,
+        stack: contextlib.AsyncExitStack,
+        callable: Callable[..., Any],
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        requires_management = is_implicit_async_context_manager(callable)
+        if requires_management:
+            callable = contextlib.asynccontextmanager(callable)
+
+        result: Any = cls._get_result(stack, callable, *args, **kwargs)
+
+        if requires_management or is_async_context_manager(result):
+            return await stack.enter_async_context(result)  # pyright: ignore
+
+        if isinstance(result, Coroutine):
+            return await result  # pyright: ignore
+
+        return result
+
+    @classmethod
+    def _get_result(
+        cls,
+        stack: contextlib._BaseExitStack,  # pyright: ignore[reportPrivateUsage]
+        callable: Callable[..., Any],
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        if is_implicit_context_manager(callable):
+            # Yield functions are assumed to be context-maneger style generators
+            # what we just need to wrap...
+            callable = contextlib.contextmanager(callable)
+
+        result: Any = callable(*args, **kwargs)
+
+        # And then enter before producing the result.
+        if is_context_manager(result):
+            result = stack.enter_context(result)
+
+        return result
 
     @classmethod
     @contextlib.contextmanager
@@ -206,7 +224,7 @@ def resolve_global_deps(
 
     # Coerce the sequence variant of input into the mapping equivalent.
     if isinstance(deps, Sequence):
-        deps = {d: Dep(d) for d in deps}
+        deps = {cast(InvokeCallable[Any], d): Dep(d) for d in deps}
 
     for source_function, dep in deps.items():
         # Deps need to be fulfilled, whereas raw values are taken directly.
@@ -374,3 +392,25 @@ def fulfill_deps(
             )
 
     return Resolved(fn, kwargs=result, args=tuple(args))
+
+
+def is_implicit_context_manager(
+    value: Any,
+) -> TypeGuard[Callable[..., Generator[Any, Any, Any]]]:
+    return inspect.isgeneratorfunction(value)
+
+
+def is_context_manager(value: Any) -> TypeGuard[contextlib.AbstractContextManager[Any]]:
+    return isinstance(value, contextlib.AbstractContextManager)
+
+
+def is_implicit_async_context_manager(
+    value: Any,
+) -> TypeGuard[Callable[..., AsyncGenerator[Any, Any]]]:
+    return inspect.isasyncgenfunction(value)
+
+
+def is_async_context_manager(
+    value: Any,
+) -> TypeGuard[contextlib.AbstractAsyncContextManager[Any]]:
+    return isinstance(value, contextlib.AbstractAsyncContextManager)

@@ -11,10 +11,6 @@ def foo(command: Command):
     print("called", command)
 
 
-def bar():
-    print("two")
-
-
 def command():
     return 1
 
@@ -25,10 +21,13 @@ class Command: ...
 
 
 @backends
-def test_invoke_global_dep(capsys: Any, backend: Backend):
-    result = invoke(Command, deps=[foo, bar], backend=backend)
+def test_invoke_global_dep_string_reference(capsys: Any, backend: Backend):
+    result = invoke(
+        Command,
+        deps=["tests.invoke.test_global_dep_string_reference.foo"],
+        backend=backend,
+    )
     assert result == 1
 
     out = capsys.readouterr().out
     assert "called Command()" in out
-    assert "two" in out
