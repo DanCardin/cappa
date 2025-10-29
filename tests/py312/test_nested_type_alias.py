@@ -7,12 +7,14 @@ from typing import Annotated
 import cappa
 from tests.utils import Backend, backends, invoke
 
+
 if sys.version_info >= (3, 12):
 
     def foo():
         return 45
 
-    type Number = Annotated[int, cappa.Dep(foo)]  # pyright: ignore
+    type Int = int  # pyright: ignore
+    type Number = Annotated[Int, cappa.Dep(foo)]  # pyright: ignore
 
     @dataclass
     class ArgTest:
