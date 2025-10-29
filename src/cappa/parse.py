@@ -284,7 +284,7 @@ def evaluate_parse(
     type_view: TypeView[T],
     state: State[S] | None = None,
 ) -> Callable[..., T]:
-    from cappa.invoke import fulfill_deps
+    from cappa.invoke.base import fulfill_deps
 
     state = State.ensure(state)  # type: ignore
 
