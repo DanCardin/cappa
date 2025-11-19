@@ -149,6 +149,7 @@ class Arg(Generic[T]):
             return the parsed value. This can be either a single function, or a sequence of functions.
             If a sequence is provided, they will be called (in order) with their return value
             chained into the next function in the sequence.
+        parse_inference: Whether to include the default inferred parser for the annotated.
 
         group: Optional group names for the argument. This affects how they're displayed
             in the backend's help text. Note this can also be a `Group` instance in order
@@ -192,6 +193,7 @@ class Arg(Generic[T]):
     default: T | EmptyType | None = Empty
     help: str | None = None
     parse: Callable[..., T] | Sequence[Callable[..., Any]] | None = None
+    parse_inference: bool = True
 
     group: str | tuple[int, str] | Group | EmptyType = Empty
 
@@ -627,22 +629,27 @@ def infer_num_args(
 def infer_parse(
     arg: Arg[Any], type_view: TypeView[Any], state: State[Any] | None = None
 ) -> Callable[..., Any]:
-    if arg.parse:
-        parse: Parser[Any] | Sequence[Parser[Any]] = arg.parse
-    else:
-        parse = parse_value(type_view)
+    parse: Parser[Any] | Sequence[Parser[Any]] = arg.parse  # type: ignore
+    default_parse = parse_value(type_view)
 
     # This is the original arg choices, e.g. explicitly provided. Inferred choices
     # need to be handled internally to the parsers.
-    if arg.choices:
-        if not isinstance(parse, Sequence):
-            parse = [parse]
+    parsers: Sequence[Parser[Any]] = []
+    if parse:
+        if isinstance(parse, Sequence):
+            parsers = [*cast(Sequence[Any], parse)]
+        else:
+            parsers = [parse]
 
+    if arg.choices:
         literal_type = Literal[tuple(arg.choices)]  # type: ignore
         literal_parse: Parser[Any] = parse_literal(literal_type)  # type: ignore
-        parse = cast(Sequence[Parser[Any]], [*parse, literal_parse])
+        parsers = cast(Sequence[Parser[Any]], [*parsers, literal_parse])
 
-    return evaluate_parse(parse, type_view, state=state)
+    if arg.parse_inference:
+        parsers = [*parsers, default_parse]
+
+    return evaluate_parse(parsers, type_view, state=state)
 
 
 def infer_help(arg: Arg[Any], fallback_help: str | None) -> str | None:

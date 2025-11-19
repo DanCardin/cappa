@@ -527,9 +527,14 @@ Note cappa itself contains a number of component `parse_*` functions inside the 
 module, which can be used in combination with your own custom `parse` functions.
 ```
 
-### `default_parse`
+### `default_parse`/`Arg.parse_inference
 
-A function [cappa.default_parse](cappa.default_parse) is exposed
+A function [cappa.default_parse](cappa.default_parse) is exposed and **can** be directly referenced
+in parse function sequences. However by default the `default_parse` function is applied automatically
+at the end of the user-provided parse function/sequence.
+
+With that said, if the default behavior is undesirable, one can set `Arg(parse_inference=False)` to
+**only** execute the user provided parser function(s).
 
 (parsing-json)=
 ### Parsing JSON

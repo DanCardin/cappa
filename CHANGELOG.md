@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.31.0
+- feat: Apply default parsing automatically, with Arg.parse_inference == False to disable.
+
 ## 0.30.4
 - fix: Use of a synchronous context manager inside an `invoke_async` invoke context.
 - fix: Stripped type aliases losing e.g. Dep metadata.
