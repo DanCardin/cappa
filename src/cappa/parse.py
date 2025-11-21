@@ -17,8 +17,6 @@ from typing import (
     cast,
 )
 
-from typing_extensions import Never
-
 from cappa.file_io import FileMode
 from cappa.state import S, State
 from cappa.type_view import TypeView
@@ -105,7 +103,7 @@ def parse_value(typ: MaybeTypeView[T]) -> Parser[T]:
         return type_view.annotation
 
     if type_view.is_none_type:
-        return parse_none
+        return parse_none  # type: ignore
 
     if type_view.is_subclass_of(enum.Enum):
         return parse_enum(type_view)
@@ -131,7 +129,17 @@ def parse_value(typ: MaybeTypeView[T]) -> Parser[T]:
     if type_view.is_subclass_of((TextIO, BinaryIO)):
         return parse_file_io(type_view)
 
-    return type_view.annotation
+    return parse_fallback(type_view.annotation)
+
+
+def parse_fallback(fallback: type[T]) -> Parser[T]:
+    def fallback_mapper(v: Any) -> T:
+        if isinstance(v, fallback):
+            return v
+
+        return fallback(v)  # type: ignore
+
+    return fallback_mapper
 
 
 def parse_literal(typ: MaybeTypeView[T]) -> Parser[T]:
@@ -252,11 +260,10 @@ def parse_union(typ: MaybeTypeView[T]) -> Parser[T]:
     return union_mapper
 
 
-def parse_none(value: Any) -> Never:
-    """Create a value parser for None.
-
-    Default values are not run through Arg.parse, so there's no way to arrive at a `None` value.
-    """
+def parse_none(value: Any) -> None:
+    """Create a value parser for None."""
+    if value is None:
+        return
     raise ValueError(value)
 
 
