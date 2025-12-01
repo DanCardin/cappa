@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.31.0
+- fix: Allow options accepting zero-length unbounded num_args.
 - feat: Apply default parsing automatically, with Arg.parse_inference == False to disable.
 
 ## 0.30.4
