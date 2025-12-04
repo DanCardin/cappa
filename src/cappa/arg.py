@@ -465,8 +465,10 @@ def infer_required(arg: Arg[Any], default: Default):
                 "supplied through type inference, `Arg(default=...)`, or through class-level default"
             )
 
-        return True
+        if arg.num_args is not None and arg.num_args < 0:
+            return False
 
+        return True
     return False
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from collections import deque
 from functools import cached_property
-from typing import Any, Callable, Generic, Hashable, List, Optional, cast
+from typing import Any, Callable, Generic, Hashable, Iterable, List, Optional, cast
 
 from cappa.arg import Arg, ArgAction, ArgActionType, Group
 from cappa.command import Command, Subcommand
@@ -542,6 +542,135 @@ def consume_subcommand(
     context.result[name] = nested_context.result
 
 
+def iter_arg_values(
+    parse_state: ParseState,
+    num_args: int,
+    option: RawOption | None,
+) -> Iterable[str]:
+    """Collect argument values from the parse state."""
+    # If option has explicit value (e.g., --opt=val), yield it and stop
+    if option and option.value:
+        yield option.value
+        return
+
+    # If option ends with --, don't collect more values
+    if option and option.end:
+        return
+
+    remaining = num_args
+    while remaining:
+        if isinstance(parse_state.peek_value(), RawOption):
+            break
+
+        try:
+            next_val = cast(RawArg, parse_state.next_value())
+        except IndexError:
+            break
+
+        yield next_val.raw
+
+        if next_val.end:
+            break
+
+        # num_args == -1 means unbounded, so remaining will always be truthy
+        remaining -= 1
+
+
+def arg_bypasses_action(
+    arg: Arg[Any],
+    values: list[str],
+    expected_count: int,
+    option: RawOption | None,
+    parse_state: ParseState,
+) -> bool:
+    """Check whether the current argument is in a state that bypasses action processing."""
+    is_option = bool(option)
+    is_positional = not is_option
+
+    is_option_collecting_values = option and not (option.value or option.end)
+
+    is_single_value = expected_count == 1
+    is_fixed_count = expected_count > 0
+    is_unbounded = expected_count < 0
+
+    has_value = bool(values)
+    has_expected_value = is_fixed_count and len(values) == expected_count
+    expects_value = option or arg.required
+
+    if has_expected_value:
+        return False
+
+    if is_single_value and not has_value and expects_value:
+        raise BadArgumentError(
+            f"Option '{arg.value_name}' requires an argument",
+            value="",
+            command=parse_state.current_command,
+            arg=arg,
+        )
+
+    if is_single_value:
+        return not has_value
+
+    is_unbounded_empty = is_unbounded and not has_value
+    if not is_fixed_count and not is_unbounded_empty:
+        return False
+
+    is_optional_positional_without_value = (
+        is_positional and not arg.required and not has_value
+    )
+
+    is_unbounded_optional_without_value = (
+        is_unbounded_empty and not arg.required and is_option_collecting_values
+    )
+
+    if (
+        not is_optional_positional_without_value
+        and not is_unbounded_optional_without_value
+    ):
+        names_str = arg.names_str("/")
+        count_desc = "at least one" if is_unbounded else expected_count
+        message = (
+            f"Argument '{names_str}' requires {count_desc} values, found {len(values)}"
+        )
+        if values:
+            quoted = [f"'{v}'" for v in values]
+            message += f" ({', '.join(quoted)} so far)"
+        raise BadArgumentError(
+            message,
+            value=values,
+            command=parse_state.current_command,
+            arg=arg,
+        )
+
+    return is_optional_positional_without_value
+
+
+def check_exclusive_group(
+    arg: Arg[Any],
+    context: ParseContext,
+    result: Any,
+    parse_state: ParseState,
+) -> None:
+    """Check if arg violates exclusive group constraints."""
+    group = cast(Optional[Group], arg.group)
+    if not group or not group.exclusive:
+        return
+
+    group_name = group.name
+    exclusive_arg = context.exclusive_args.get(group_name)
+
+    if exclusive_arg and exclusive_arg != arg:
+        raise BadArgumentError(
+            f"Argument '{arg.names_str('/')}' is not allowed with argument"
+            f" '{exclusive_arg.names_str('/')}'",
+            value=result,
+            command=parse_state.current_command,
+            arg=arg,
+        )
+
+    context.exclusive_args[group_name] = arg
+
+
 def consume_arg(
     parse_state: ParseState,
     context: ParseContext,
@@ -550,108 +679,32 @@ def consume_arg(
 ) -> Any:
     field_name = cast(str, arg.field_name)
 
-    orig_num_args = arg.num_args if arg.num_args is not None else 1
-    num_args = orig_num_args
-
+    # Determine how many values to collect
+    expected_count = arg.num_args if arg.num_args is not None else 1
     if ArgAction.is_non_value_consuming(arg.action):
-        orig_num_args = 0
-        num_args = 0
+        expected_count = 0
 
-    result: list[str] | str = []
-    requires_values = True
-    if option:
-        if option.value:
-            result = [option.value]
-            requires_values = False
+    values = list(iter_arg_values(parse_state, expected_count, option))
 
-        if option.end:
-            requires_values = False
+    if arg_bypasses_action(arg, values, expected_count, option, parse_state):
+        return
 
-    if requires_values:
-        result = []
-        while num_args:
-            if isinstance(parse_state.peek_value(), RawOption):
-                break
+    # Convert single-value args to scalar
+    result: str | list[str] = values[0] if expected_count == 1 else values
 
-            try:
-                next_val = cast(RawArg, parse_state.next_value())
-            except IndexError:
-                break
-
-            result.append(next_val.raw)
-
-            if next_val.end:
-                break
-
-            # If num-args starts at -1, then it will always be truthy when we subtract
-            # from it. I.e. it has unbounded length, like we want.
-            num_args -= 1
-
-    if orig_num_args == 1:
-        if result:
-            result = result[0]
-            if parse_state.provide_completions and not parse_state.has_values():
-                if arg.completion:
-                    completions: list[Completion] | list[FileCompletion] = (
-                        arg.completion(result)
-                    )
-                else:
-                    completions = [FileCompletion(result)]
-                raise CompletionAction(*completions)
+    # Handle completions for args with values
+    if parse_state.provide_completions and not parse_state.has_values() and values:
+        if arg.completion:
+            completions: list[Completion] | list[FileCompletion] = arg.completion(
+                result
+            )
         else:
-            if not option and not arg.required:
-                return
+            completions = [FileCompletion(values[-1])]
+        raise CompletionAction(*completions)
 
-            raise BadArgumentError(
-                f"Option '{arg.value_name}' requires an argument",
-                value="",
-                command=parse_state.current_command,
-                arg=arg,
-            )
-    else:
-        required_arg = arg.required
-        fixed_arg_mismatch = orig_num_args > 0 and len(result) != orig_num_args
-        unbounded_missing = orig_num_args < 0 and not result
-        if fixed_arg_mismatch or unbounded_missing:
-            option_requiring_values = option and requires_values
-            if not (required_arg or option_requiring_values or result):
-                # Lacking a consumed value for an optional positional arg should avoid
-                # hitting the argument's action, so as to apply it's default handling.
-                return
-
-            quoted_result = [f"'{r}'" for r in result]
-            names_str = arg.names_str("/")
-
-            num_args_value = "at least one" if orig_num_args < 0 else orig_num_args
-            message = f"Argument '{names_str}' requires {num_args_value} values, found {len(result)}"
-            if quoted_result:
-                message += f" ({', '.join(quoted_result)} so far)"
-            raise BadArgumentError(
-                message,
-                value=result,
-                command=parse_state.current_command,
-                arg=arg,
-            )
-
-    group = cast(Optional[Group], arg.group)
-    if group and group.exclusive:
-        group_name = group.name
-        exclusive_arg = context.exclusive_args.get(group_name)
-
-        if exclusive_arg and exclusive_arg != arg:
-            raise BadArgumentError(
-                f"Argument '{arg.names_str('/')}' is not allowed with argument"
-                f" '{exclusive_arg.names_str('/')}'",
-                value=result,
-                command=parse_state.current_command,
-                arg=arg,
-            )
-
-        context.exclusive_args[group_name] = arg
+    check_exclusive_group(arg, context, result, parse_state)
 
     action_handler = determine_action_handler(arg.action)
-
-    # Propagated arguments need to supply the correct parent context to their action handler.
     resolved_context = context.resolve_context(field_name, option)
 
     fulfilled_deps: dict[Hashable, Any] = {
