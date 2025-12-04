@@ -1,9 +1,19 @@
 from __future__ import annotations
 
 import dataclasses
+import re
 from collections import deque
 from functools import cached_property
-from typing import Any, Callable, Generic, Hashable, Iterable, List, Optional, cast
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Hashable,
+    Iterable,
+    List,
+    Optional,
+    cast,
+)
 
 from cappa.arg import Arg, ArgAction, ArgActionType, Group
 from cappa.command import Command, Subcommand
@@ -12,6 +22,8 @@ from cappa.help import format_arg, format_subcommand_names
 from cappa.invoke import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.typing import T, assert_type
+
+negative_number = re.compile(r"^-\d+$|^-\d*\.\d+$")
 
 
 class BadArgumentError(RuntimeError):
@@ -71,10 +83,10 @@ def backend(
     prog: str,
     provide_completions: bool = False,
 ) -> tuple[Any, Command[T], dict[str, Any]]:
+    context = ParseContext.from_command(command)
     parse_state = ParseState.from_command(
         argv, command, output=output, provide_completions=provide_completions
     )
-    context = ParseContext.from_command(parse_state.current_command)
 
     try:
         try:
@@ -112,7 +124,7 @@ def backend(
 class ParseState:
     """The overall state of the argument parse."""
 
-    remaining_args: deque[RawArg | RawOption]
+    args: ArgCollection
     command_stack: list[Command[Any]]
     output: Output
     provide_completions: bool = False
@@ -125,9 +137,9 @@ class ParseState:
         output: Output,
         provide_completions: bool = False,
     ):
-        args = RawArg.collect(argv, provide_completions=provide_completions)
+        arg_stream = ArgCollection(deque(argv), provide_completions=provide_completions)
         return cls(
-            args,
+            arg_stream,
             command_stack=[command],
             output=output,
             provide_completions=provide_completions,
@@ -143,20 +155,6 @@ class ParseState:
 
     def push_command(self, command: Command[Any]):
         self.command_stack.append(command)
-
-    def push_arg(self, arg: RawArg):
-        self.remaining_args.appendleft(arg)
-
-    def has_values(self) -> bool:
-        return bool(self.remaining_args)
-
-    def peek_value(self):
-        if not self.remaining_args:
-            return None
-        return self.remaining_args[0]
-
-    def next_value(self):
-        return self.remaining_args.popleft()
 
 
 @dataclasses.dataclass
@@ -271,35 +269,104 @@ class ParseContext:
 
 
 @dataclasses.dataclass
-class RawArg:
-    raw: str
-    end: bool = False
+class ArgCollection:
+    """Represent the pending parse state of remaining unparsed arguments.
 
-    @classmethod
-    def collect(
-        cls, argv: list[str], *, provide_completions: bool = False
-    ) -> deque[RawArg | RawOption]:
-        result: list[RawArg | RawOption] = []
+    Whether a given fragment to be parsed is considered an Option or an Argument
+    is context dependent (e.x. following `--`) and it simplifies code downstream
+    if that decision is being made on-demand rather than eagerly in a way that
+    needs to be corrected at the use-sites.
+    """
 
-        encountered_double_dash = False
-        for arg in argv:
-            if encountered_double_dash:
-                item: RawArg | RawOption | None = cls(arg)
+    argv: deque[str]
+    provide_completions: bool = False
+    encountered_double_dash: bool = False
+    pending_args: deque[RawOption | RawArg] = dataclasses.field(
+        default_factory=lambda: deque()
+    )
+
+    def has_values(self) -> bool:
+        return bool(self.argv) or bool(self.pending_args)
+
+    def peek_value(self, context: ParseContext) -> RawArg | RawOption | None:
+        next_value = self.next(context)
+        if next_value is None:
+            return None
+
+        self.pending_args.appendleft(next_value)
+        return next_value
+
+    def next(self, context: ParseContext) -> RawArg | RawOption | None:
+        if self.pending_args:
+            return self.pending_args.popleft()
+
+        if self.argv:
+            next_value = self.argv.popleft()
+
+            if self.encountered_double_dash:
+                item: RawArg | RawOption | None = RawArg(next_value)
             else:
-                item = RawArg.from_str(arg, provide_completions=provide_completions)
+                item = RawArg.from_str(
+                    next_value, provide_completions=self.provide_completions
+                )
 
             if item is None:
-                encountered_double_dash = True
+                self.encountered_double_dash = True
+                return None
 
-                # Indicate to the arg consumption loop that it should stop consuming the
-                # current argument. Irrelevant to options, whose name-argument is consumed
-                # ahead of the value.
-                if result:
-                    result[-1].end = True
-            else:
-                result.append(item)
+            if isinstance(item, RawOption) and not item.is_long:
+                item = self.generate_virtual_args(item, context.arguments_by_value_name)
+            return item
 
-        return deque(result)
+        return None
+
+    def generate_virtual_args(
+        self, arg: RawOption, options: dict[str, Any]
+    ) -> RawOption | RawArg:
+        """Produce "virtual" options from short (potentially concatenated) options.
+
+        Examples:
+            -abc -> -a, -b, -c
+            -c0 -> -c 0
+            -abc0 -> -a, -b, -c, 0
+        """
+        result: list[RawOption | RawArg] = []
+
+        partial_arg = ""
+        remaining_arg = arg.name[1:]
+        while remaining_arg:
+            partial_arg += remaining_arg[0]
+            remaining_arg = remaining_arg[1:]
+
+            option_name = f"-{partial_arg}"
+
+            option = options.get(option_name)
+            if option:
+                result.append(RawOption(option_name, value=arg.value))
+                partial_arg = ""
+
+                # An option which requires consuming further arguments should consume
+                # the rest of the concatenated character sequence as its value.
+                if option.num_args:
+                    partial_arg = remaining_arg
+                    break
+
+        if not result:
+            # i.e. -p, where -p is not a real short option. It will get skipped above.
+            option = RawOption(arg.name, value=arg.value)
+            return option.to_negative_number() or option
+
+        if partial_arg:
+            result.append(RawArg(partial_arg))
+
+        option, *virtual_args = result
+        self.pending_args.extend(virtual_args)
+        return option
+
+
+@dataclasses.dataclass
+class RawArg:
+    raw: str
 
     @classmethod
     def from_str(
@@ -320,9 +387,8 @@ class RawArg:
 @dataclasses.dataclass
 class RawOption:
     name: str
-    is_long: bool
+    is_long: bool = True
     value: str | None = None
-    end: bool = False
 
     @classmethod
     def from_str(cls, arg: str) -> RawOption:
@@ -335,20 +401,21 @@ class RawOption:
             name, value = arg.split("=", 1)
         return cls(name=name, is_long=is_long, value=value)
 
+    def to_negative_number(self) -> RawArg | None:
+        if re.match(negative_number, self.name):
+            return RawArg(self.name)
+        return None
+
 
 def parse(parse_state: ParseState, context: ParseContext) -> None:
     while True:
-        while isinstance(parse_state.peek_value(), RawOption):
-            arg = cast(RawOption, parse_state.next_value())
-
-            if arg.is_long:
-                parse_option(parse_state, context, arg)
-            else:
-                parse_short_option(parse_state, context, arg)
+        while isinstance(parse_state.args.peek_value(context), RawOption):
+            arg = cast(RawOption, parse_state.args.next(context))
+            parse_option(parse_state, context, arg)
 
         parse_args(parse_state, context)
 
-        if not parse_state.has_values():
+        if not parse_state.args.has_values():
             break
 
     # Options are not explicitly iterated over because they can occur multiple times non-contiguouesly.
@@ -407,72 +474,10 @@ def parse_option(
     consume_arg(parse_state, context, arg, raw)
 
 
-def parse_short_option(
-    parse_state: ParseState, context: ParseContext, arg: RawOption
-) -> None:
-    if arg.name == "-" and parse_state.provide_completions:
-        return parse_option(parse_state, context, arg)
-
-    virtual_options, virtual_arg = generate_virtual_args(
-        arg, context.arguments_by_value_name
-    )
-    *first_virtual_options, last_virtual_option = virtual_options
-
-    for opt in first_virtual_options:
-        parse_option(parse_state, context, opt)
-
-    if virtual_arg:
-        parse_state.push_arg(virtual_arg)
-
-    parse_option(parse_state, context, last_virtual_option)
-    return None
-
-
-def generate_virtual_args(
-    arg: RawOption, options: dict[str, Any]
-) -> tuple[list[RawOption], RawArg | None]:
-    """Produce "virtual" options from short (potentially concatenated) options.
-
-    Examples:
-        -abc -> -a, -b, -c
-        -c0 -> -c 0
-        -abc0 -> -a, -b, -c, 0
-    """
-    result: list[RawOption] = []
-
-    partial_arg = ""
-    remaining_arg = arg.name[1:]
-    while remaining_arg:
-        partial_arg += remaining_arg[0]
-        remaining_arg = remaining_arg[1:]
-
-        option_name = f"-{partial_arg}"
-
-        option = options.get(option_name)
-        if option:
-            result.append(RawOption(option_name, is_long=True, value=arg.value))
-            partial_arg = ""
-
-            # An option which requires consuming further arguments should consume
-            # the rest of the concatenated character sequence as its value.
-            if option.num_args:
-                partial_arg = remaining_arg
-                break
-
-    if not result:
-        # i.e. -p, where -p is not a real short option. It will get skipped above.
-        return ([RawOption(arg.name, is_long=True, value=arg.value)], None)
-
-    raw_arg = None
-    if partial_arg:
-        raw_arg = RawArg(partial_arg)
-
-    return (result, raw_arg)
-
-
 def parse_args(parse_state: ParseState, context: ParseContext) -> None:
     while context.arguments:
-        if isinstance(parse_state.peek_value(), RawOption):
+        peeked = parse_state.args.peek_value(context)
+        if isinstance(peeked, RawOption):
             break
 
         arg = context.next_argument()
@@ -482,15 +487,16 @@ def parse_args(parse_state: ParseState, context: ParseContext) -> None:
         else:
             consume_arg(parse_state, context, arg)
     else:
-        value = parse_state.peek_value()
+        value = parse_state.args.peek_value(context)
         if value is None or isinstance(value, RawOption):
             return
 
         raw_values: list[str] = []
-        while parse_state.peek_value():
-            next_val = parse_state.next_value()
+        while parse_state.args.peek_value(context):
+            next_val = parse_state.args.next(context)
             if not isinstance(next_val, RawArg):
                 break
+
             raw_values.append(next_val.raw)
 
         raise BadArgumentError(
@@ -503,9 +509,8 @@ def parse_args(parse_state: ParseState, context: ParseContext) -> None:
 def consume_subcommand(
     parse_state: ParseState, context: ParseContext, arg: Subcommand
 ) -> Any:
-    try:
-        value = parse_state.next_value()
-    except IndexError:
+    value = parse_state.args.next(context)
+    if value is None:
         if not arg.required:
             return
 
@@ -543,6 +548,7 @@ def consume_subcommand(
 
 
 def iter_arg_values(
+    context: ParseContext,
     parse_state: ParseState,
     num_args: int,
     option: RawOption | None,
@@ -553,24 +559,19 @@ def iter_arg_values(
         yield option.value
         return
 
-    # If option ends with --, don't collect more values
-    if option and option.end:
-        return
-
     remaining = num_args
     while remaining:
-        if isinstance(parse_state.peek_value(), RawOption):
+        peeked_value = parse_state.args.peek_value(context)
+        if peeked_value is None:
             break
 
-        try:
-            next_val = cast(RawArg, parse_state.next_value())
-        except IndexError:
+        if isinstance(peeked_value, RawOption):
             break
 
-        yield next_val.raw
+        next_value = peeked_value.raw
 
-        if next_val.end:
-            break
+        parse_state.args.next(context)
+        yield next_value
 
         # num_args == -1 means unbounded, so remaining will always be truthy
         remaining -= 1
@@ -583,11 +584,14 @@ def arg_bypasses_action(
     option: RawOption | None,
     parse_state: ParseState,
 ) -> bool:
-    """Check whether the current argument is in a state that bypasses action processing."""
-    is_option = bool(option)
-    is_positional = not is_option
+    """Check whether the current argument is in a state that bypasses action processing.
 
-    is_option_collecting_values = option and not (option.value or option.end)
+    This is mainly to handle falling back to the default value when an expected one is
+    missing.
+    """
+    is_positional = not option
+
+    is_option_collecting_values = option and not option.value
 
     is_single_value = expected_count == 1
     is_fixed_count = expected_count > 0
@@ -600,15 +604,15 @@ def arg_bypasses_action(
     if has_expected_value:
         return False
 
-    if is_single_value and not has_value and expects_value:
-        raise BadArgumentError(
-            f"Option '{arg.value_name}' requires an argument",
-            value="",
-            command=parse_state.current_command,
-            arg=arg,
-        )
-
     if is_single_value:
+        if not has_value and expects_value:
+            raise BadArgumentError(
+                f"Option '{arg.value_name}' requires an argument",
+                value="",
+                command=parse_state.current_command,
+                arg=arg,
+            )
+
         return not has_value
 
     is_unbounded_empty = is_unbounded and not has_value
@@ -684,7 +688,7 @@ def consume_arg(
     if ArgAction.is_non_value_consuming(arg.action):
         expected_count = 0
 
-    values = list(iter_arg_values(parse_state, expected_count, option))
+    values = list(iter_arg_values(context, parse_state, expected_count, option))
 
     if arg_bypasses_action(arg, values, expected_count, option, parse_state):
         return
@@ -693,7 +697,7 @@ def consume_arg(
     result: str | list[str] = values[0] if expected_count == 1 else values
 
     # Handle completions for args with values
-    if parse_state.provide_completions and not parse_state.has_values() and values:
+    if parse_state.provide_completions and not parse_state.args.has_values() and values:
         if arg.completion:
             completions: list[Completion] | list[FileCompletion] = arg.completion(
                 result
