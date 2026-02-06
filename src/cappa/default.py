@@ -288,7 +288,7 @@ class ValueFrom(DefaultType):
 @dataclass
 class DefaultFormatter:
     format: str = "{default}"
-    show: bool = True
+    show: bool | None = True
 
     @classmethod
     def disabled(cls) -> Self:
@@ -305,7 +305,7 @@ class DefaultFormatter:
         return cls(show=bool(value))
 
     def format_default(self, default: Default, default_format: str = "") -> str:
-        if not self.show:
+        if self.show is False:
             return ""
 
         default_raw_value = default.fallback_value

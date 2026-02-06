@@ -20,13 +20,7 @@ from typing_extensions import dataclass_transform
 from cappa import argparse, parser
 from cappa.class_inspect import detect
 from cappa.command import Command
-from cappa.help import (
-    HelpFormattable,
-    HelpFormatter,
-    create_completion_arg,
-    create_help_arg,
-    create_version_arg,
-)
+from cappa.help import HelpFormattable, HelpFormatter
 from cappa.invoke import DepTypes, InvokeCallable, InvokeCallableSpec, resolve_callable
 from cappa.output import Output
 from cappa.state import S, State
@@ -38,6 +32,77 @@ T = TypeVar("T")
 U = TypeVar("U")
 
 CappaCapable = Union[InvokeCallable[T], Type[T], Command[T]]
+
+
+def create_version_arg(version: str | Arg[Any] | None = None) -> Arg[Any] | None:
+    from dataclasses import replace
+
+    from cappa.arg import Arg, ArgAction, Empty, Group
+
+    if not version:
+        return None
+
+    if isinstance(version, str):
+        version = Arg(
+            value_name=version,
+            short=["-v"],
+            long=["--version"],
+            help="Show the version and exit.",
+            group=Group(1, "Help", section=2),
+            action=ArgAction.version,
+        )
+
+    if version.value_name is Empty:
+        raise ValueError(
+            "Expected explicit version `Arg` to supply version number as its name, like `Arg('1.2.3', ...)`"
+        )
+
+    if version.long is True:
+        version = replace(version, long="--version")
+
+    return version.normalize(
+        action=ArgAction.version, field_name="version", default=None
+    )
+
+
+def create_help_arg(help: bool | Arg[bool] | None = True) -> Arg[bool] | None:
+    from cappa.arg import Arg, ArgAction, Group
+
+    if not help:
+        return None
+
+    if isinstance(help, bool):
+        help = Arg(
+            short=["-h"],
+            long=["--help"],
+            help="Show this message and exit.",
+            group=Group(0, "Help", section=2),
+            action=ArgAction.help,
+        )
+
+    return help.normalize(action=ArgAction.help, field_name="help", default=None)
+
+
+def create_completion_arg(completion: bool | Arg[bool] = True) -> Arg[bool] | None:
+    from cappa.arg import Arg, ArgAction, Group
+
+    if not completion:
+        return None
+
+    if isinstance(completion, bool):
+        completion = Arg(
+            long=["--completion"],
+            choices=["generate", "complete"],
+            group=Group(2, "Help", section=2),
+            help="Use `--completion generate` to print shell-specific completion source.",
+            action=ArgAction.completion,
+        )
+
+    return completion.normalize(
+        field_name="completion",
+        action=ArgAction.completion,
+        default=None,
+    )
 
 
 class Backend(Protocol):

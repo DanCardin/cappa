@@ -1,6 +1,8 @@
 # Changelog
 
 ## 0.31.1
+- fix: Display Args with the same group identity as alternatives in helptext on the same line.
+- fix: Ensure automatic bool variants (--foo/--no-foo) are mutually exclusive.
 - fix: Allow negative number arguments and option values.
 
 ## 0.31.0

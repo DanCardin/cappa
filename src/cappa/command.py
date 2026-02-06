@@ -23,7 +23,7 @@ from cappa.class_inspect import fields as get_fields
 from cappa.class_inspect import get_command, get_command_capable_object
 from cappa.default import Default
 from cappa.docstring import ClassHelpText
-from cappa.help import HelpFormattable, HelpFormatter, format_short_help
+from cappa.help import HelpFormattable, HelpFormatter
 from cappa.output import Exit, Output
 from cappa.state import S, State
 from cappa.subcommand import Subcommand
@@ -258,8 +258,8 @@ class Command(Generic[T]):
                 command = e.command or command
                 prog = e.prog or prog
 
-            help = command.help_formatter(command, prog)
-            short_help = format_short_help(command, prog)
+            help = command.help_formatter.long(command, prog)
+            short_help = command.help_formatter.short(command, prog)
 
             if isinstance(e, ValueError):
                 exc = Exit(str(e), code=2, prog=prog, command=command)
@@ -402,12 +402,11 @@ def check_group_identity(args: list[Arg[Any]]):
     for arg in args:
         assert isinstance(arg.group, Group)
 
-        name = arg.group.name
-        identity = group_identity.get(name)
+        identity = group_identity.get(arg.group.id)
         if identity and identity != arg.group:
             raise ValueError(
-                f"Group details between `{identity}` and `{arg.group}` must match"
+                f"Group details do not match among arguments: {arg.group.diff(identity)}."
             )
 
         assert isinstance(arg.group, Group)
-        group_identity[name] = arg.group
+        group_identity[arg.group.id] = arg.group

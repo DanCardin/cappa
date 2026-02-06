@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import os
 from dataclasses import dataclass
 from typing import Any, Union
 from unittest.mock import patch
@@ -25,7 +26,13 @@ __all__ = [
     "runner",
 ]
 
-backends = pytest.mark.parametrize("backend", [None, argparse.backend])
+backends = pytest.mark.parametrize(
+    "backend",
+    [
+        None,
+        pytest.param(argparse.backend, marks=pytest.mark.argparse),
+    ],
+)
 
 runner: CommandRunner[Any] = CommandRunner(base_args=[])
 
@@ -81,6 +88,14 @@ def ignore_docstring_parser(monkeypatch: Any):
 
     with monkeypatch.context() as m:
         m.setattr(cappa_command, "docstring_parser", None)
+        yield
+
+
+@contextlib.contextmanager
+def terminal_width(width: int = 1000):
+    env = os.environ.copy()
+    env["COLUMNS"] = str(width)
+    with patch("os.environ", new=env), patch("rich.console.Console._environ", new=env):
         yield
 
 

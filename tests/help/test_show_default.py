@@ -53,9 +53,12 @@ def test_show_default_no_option_shows_for_false_default(backend: Backend, capsys
     with pytest.raises(cappa.HelpExit):
         parse(Command, "--help", backend=backend)
 
-    stdout = CapsysOutput.from_capsys(capsys).stdout.replace(" ", "")
-    assert "[--foo](Default:True)" not in stdout
-    assert "[--no-foo](Default:False)" in stdout
+    stdout = CapsysOutput.from_capsys(capsys).stdout
+    # Bool flags are combined into single brackets
+    assert "[--foo, --no-foo]" in stdout
+    # Should show default False but not True (flexible whitespace between columns)
+    assert re.search(r"\[--foo, --no-foo\]\s+\(Default:\s*False\)", stdout)
+    assert "(Default: True)" not in stdout
 
 
 @backends
@@ -69,9 +72,12 @@ def test_show_default_no_option_shows_for_true_default(backend: Backend, capsys:
     with pytest.raises(cappa.HelpExit):
         parse(Command, "--help", backend=backend)
 
-    stdout = CapsysOutput.from_capsys(capsys).stdout.replace(" ", "")
-    assert "[--foo](Default:True)" in stdout
-    assert "[--no-foo](Default:False)" not in stdout
+    stdout = CapsysOutput.from_capsys(capsys).stdout
+    # Bool flags with no value are combined into single brackets
+    assert "[--foo, --no-foo]" in stdout
+    # Should show default True but not False (flexible whitespace between columns)
+    assert re.search(r"\[--foo, --no-foo\]\s+\(Default:\s*True\)", stdout)
+    assert "(Default: False)" not in stdout
 
 
 @backends
@@ -83,8 +89,11 @@ def test_explicit_arg_default(backend: Backend, capsys: Any):
     with pytest.raises(cappa.HelpExit):
         parse(Command, "--help", backend=backend)
 
-    stdout = CapsysOutput.from_capsys(capsys).stdout.replace(" ", "")
-    assert "[--no-foo](Default:False)" in stdout
+    stdout = CapsysOutput.from_capsys(capsys).stdout
+    # Bool flags are combined into single brackets
+    assert "[--foo, --no-foo]" in stdout
+    # Flexible whitespace between columns
+    assert re.search(r"\[--foo, --no-foo\]\s+\(Default:\s*False\)", stdout)
 
 
 @backends
