@@ -8,6 +8,7 @@ from typing import (
     Any,
     ClassVar,
     Generic,
+    Hashable,
     Iterable,
     Protocol,
     TextIO,
@@ -47,6 +48,27 @@ class CommandArgs(TypedDict, total=False):
     hidden: bool
     default_short: bool
     default_long: bool
+
+
+@dataclasses.dataclass
+class ParseResult(Generic[T, S]):
+    """Result of parsing a command with all collected metadata.
+
+    Attributes:
+        command: The root command that was parsed.
+        parsed_command: The selected command (may be a subcommand if one was invoked).
+        instance: The instantiated command object.
+        implicit_deps: Mapping of command classes to their instances, collected during parsing.
+        output: The output handler for the command.
+        state: The state object for the command.
+    """
+
+    command: Command[T]
+    parsed_command: Command[T]
+    instance: T
+    implicit_deps: dict[Hashable, Any]
+    output: Output
+    state: State[S]
 
 
 @dataclasses.dataclass
@@ -238,19 +260,19 @@ class Command(Generic[T]):
         argv: list[str] | None = None,
         input: TextIO | None = None,
         state: State[S] | None = None,
-    ) -> tuple[Command[T], Command[T], T, State[S]]:
+    ) -> ParseResult[T, S]:
         if argv is None:  # pragma: no cover
             argv = sys.argv[1:]
 
         prog = command.real_name()
-        result_state = State.ensure(state)  # pyright: ignore
+        result_state: State[S] = State.ensure(state)  # type: ignore
 
         try:
             parser, parsed_command, parsed_args = backend(
                 command, argv, output=output, prog=prog
             )
             prog = parser.prog
-            result = command.map_result(
+            result, implicit_deps = command.map_result(
                 command, prog, parsed_args, state=state, input=input
             )
         except BaseException as e:
@@ -272,7 +294,14 @@ class Command(Generic[T]):
 
             raise
 
-        return command, parsed_command, result, result_state  # type: ignore
+        return ParseResult(
+            command=command,
+            parsed_command=parsed_command,
+            instance=result,
+            implicit_deps=implicit_deps,
+            output=output,
+            state=result_state,
+        )
 
     def map_result(
         self,
@@ -281,7 +310,7 @@ class Command(Generic[T]):
         parsed_args: dict[str, Any],
         state: State[Any] | None = None,
         input: TextIO | None = None,
-    ) -> T:
+    ) -> tuple[T, dict[Hashable, Any]]:
         state = State.ensure(state)  # pyright: ignore
 
         kwargs: dict[str, Any] = {}
@@ -311,15 +340,23 @@ class Command(Generic[T]):
 
             kwargs[field_name] = value
 
+        # Collect all subcommand instances during construction
+        subcommand_deps: dict[Hashable, Any] = {}
         subcommand = self.subcommand
         if subcommand:
             field_name = cast(str, subcommand.field_name)
             if field_name in parsed_args:
                 value = parsed_args[field_name]
-                value = subcommand.map_result(prog, value, state=state)
+                value, subcommand_deps = subcommand.map_result(prog, value, state=state)
                 kwargs[field_name] = value
 
-        return command.cmd_cls(**kwargs)
+        instance = command.cmd_cls(**kwargs)
+
+        # Add this command instance to deps
+        key = cast(Hashable, instance.__class__)
+        deps: dict[Hashable, Any] = {key: instance, **subcommand_deps}
+
+        return instance, deps
 
     @property
     def subcommand(self) -> Subcommand | None:

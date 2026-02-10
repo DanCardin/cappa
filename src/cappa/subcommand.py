@@ -101,7 +101,7 @@ class Subcommand:
         parsed_args: dict[str, Any],
         state: State[Any] | None = None,
         input: TextIO | None = None,
-    ):
+    ) -> tuple[Any, dict[Any, Any]]:
         option_name = parsed_args.pop("__name__")
         option = self.options[option_name]
         return option.map_result(option, prog, parsed_args, state=state, input=input)

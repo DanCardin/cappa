@@ -26,7 +26,6 @@ from cappa.class_inspect import has_command
 from cappa.command import Command
 from cappa.output import Exit, Output
 from cappa.state import State
-from cappa.subcommand import Subcommand
 from cappa.type_view import CallableView, Empty, EmptyType, TypeView
 from cappa.typing import find_annotations, get_method_class
 
@@ -189,12 +188,12 @@ def resolve_callable(
     parsed_command: Command[C],
     instance: C,
     *,
+    implicit_deps: dict[Hashable, Any],
     output: Output,
     state: State[Any],
     deps: DepTypes = None,
 ) -> tuple[Resolved[C], Sequence[Resolved[Any]]]:
     try:
-        implicit_deps = resolve_implicit_deps(command, instance)
         fn: Callable[..., Any] = resolve_invoke_handler(parsed_command, implicit_deps)
 
         implicit_deps[Output] = output
@@ -290,31 +289,6 @@ def resolve_callable_reference(fn: InvokeCallableSpec[C] | None) -> InvokeCallab
         raise InvokeResolutionError(f"`{fn}` does not reference a valid callable.")
 
     return cast(Callable[..., Any], fn)
-
-
-def resolve_implicit_deps(command: Command[T], instance: T) -> dict[Hashable, Any]:
-    key = cast(Hashable, instance.__class__)
-    deps: dict[Hashable, Any] = {key: instance}
-
-    for arg in command.arguments:
-        if not isinstance(arg, Subcommand):
-            # Args do not produce dependencies themselves.
-            continue
-
-        option_instance = getattr(instance, cast(str, arg.field_name))
-        if option_instance is None:
-            # None is a valid subcommand instance value, but it won't exist as a dependency
-            # where an actual command has been selected.
-            continue
-
-        # This **should** always end up producing a value (type). In order to have produced
-        # a subcommand instance value of a given type, it would need to exist in the options.
-        option = next(  # pragma: no branch
-            o for o in arg.options.values() if isinstance(option_instance, o.cmd_cls)
-        )
-        deps.update(resolve_implicit_deps(option, option_instance))
-
-    return deps
 
 
 def fulfill_deps(
