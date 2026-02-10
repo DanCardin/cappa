@@ -31,7 +31,6 @@ def detect(cls: type) -> bool:
 @dataclasses.dataclass
 class Field:
     name: str
-    annotation: type
     default: typing.Any | EmptyType = Empty
     default_factory: typing.Any | EmptyType = Empty
     metadata: dict[str, Any] = dataclasses.field(default_factory=lambda: {})
@@ -47,7 +46,6 @@ class DataclassField(Field):
                 continue
             field = cls(
                 name=f.name,
-                annotation=f.type,  # type: ignore
                 default=f.default if f.default is not dataclasses.MISSING else Empty,
                 default_factory=f.default_factory
                 if f.default_factory is not dataclasses.MISSING
@@ -72,7 +70,6 @@ class AttrsField(Field):
                 default_factory = None
             field = cls(
                 name=f.name,  # pyright: ignore
-                annotation=f.type,  # pyright: ignore
                 default=default or Empty,  # pyright: ignore
                 default_factory=default_factory or Empty,  # pyright: ignore
                 metadata=f.metadata,  # pyright: ignore
@@ -107,7 +104,6 @@ else:
                 )
                 field = cls(
                     name=f.name,
-                    annotation=f.type,
                     default=default,
                     default_factory=default_factory,
                 )
@@ -124,11 +120,9 @@ class PydanticV1Field(Field):
         for param in callable_view.parameters:
             name = param.name
             f = typ.__fields__[name]  # type: ignore
-            annotation = param.type_view.strip_optional().annotation
 
             field = cls(
                 name=name,
-                annotation=annotation,
                 default=f.default  # pyright: ignore
                 if f.default.__repr__() != "PydanticUndefined"  # pyright: ignore
                 else Empty,
@@ -146,7 +140,6 @@ class PydanticV2Field(Field):
         for name, f in typ.model_fields.items():  # type: ignore
             field = cls(
                 name=name,  # pyright: ignore
-                annotation=f.annotation,  # pyright: ignore
                 default=f.default  # pyright: ignore
                 if f.default.__repr__() != "PydanticUndefined"  # pyright: ignore
                 else Empty,
@@ -164,7 +157,6 @@ class PydanticV2DataclassField(Field):
         for name, f in typ.__pydantic_fields__.items():  # type: ignore
             field = cls(
                 name=name,  # pyright: ignore
-                annotation=f.annotation,  # pyright: ignore
                 default=f.default or Empty,  # pyright: ignore
                 default_factory=f.default_factory or Empty,  # pyright: ignore
             )
