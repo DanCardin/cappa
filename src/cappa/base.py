@@ -19,7 +19,7 @@ from typing_extensions import dataclass_transform
 
 from cappa import argparse, parser
 from cappa.class_inspect import detect
-from cappa.command import Command
+from cappa.command import Command, ParseResult
 from cappa.help import HelpFormattable, HelpFormatter
 from cappa.invoke import DepTypes, InvokeCallable, InvokeCallableSpec, resolve_callable
 from cappa.output import Output
@@ -162,7 +162,7 @@ def parse(
         help_formatter: Override the default help formatter.
         state: Optional initial State object.
     """
-    _, _, instance, _, _ = parse_command(
+    result = parse_command(
         obj=obj,
         argv=argv,
         input=input,
@@ -176,7 +176,7 @@ def parse(
         help_formatter=help_formatter,
         state=state,
     )
-    return instance
+    return result.instance
 
 
 def invoke(
@@ -228,7 +228,7 @@ def invoke(
         help_formatter: Override the default help formatter.
         state: Optional initial State object.
     """
-    command, parsed_command, instance, concrete_output, state = parse_command(
+    result = parse_command(
         obj=obj,
         argv=argv,
         input=input,
@@ -243,18 +243,19 @@ def invoke(
         state=state,
     )
     resolved, global_deps = resolve_callable(
-        command,
-        parsed_command,
-        instance,
-        output=concrete_output,
-        state=state,
+        result.command,
+        result.parsed_command,
+        result.instance,
+        implicit_deps=result.implicit_deps,
+        output=result.output,
+        state=result.state,
         deps=deps,
     )
     for dep in global_deps:
-        with dep.get(output=concrete_output):
+        with dep.get(output=result.output):
             pass
 
-    return resolved.call(output=concrete_output)
+    return resolved.call(output=result.output)
 
 
 async def invoke_async(
@@ -306,7 +307,7 @@ async def invoke_async(
         help_formatter: Override the default help formatter.
         state: Optional initial State object.
     """
-    command, parsed_command, instance, concrete_output, state = parse_command(
+    result = parse_command(
         obj=obj,
         argv=argv,
         input=input,
@@ -321,18 +322,19 @@ async def invoke_async(
         state=state,
     )
     resolved, global_deps = resolve_callable(
-        command,
-        parsed_command,
-        instance,
-        output=concrete_output,
-        state=state,
+        result.command,
+        result.parsed_command,
+        result.instance,
+        implicit_deps=result.implicit_deps,
+        output=result.output,
+        state=result.state,
         deps=deps,
     )
     for dep in global_deps:
-        async with dep.get_async(output=concrete_output):
+        async with dep.get_async(output=result.output):
             pass
 
-    async with resolved.get_async(output=concrete_output) as value:
+    async with resolved.get_async(output=result.output) as value:
         return value
 
 
@@ -350,7 +352,7 @@ def parse_command(
     output: Output | None = None,
     help_formatter: HelpFormattable | None = None,
     state: State[S] | None = None,
-) -> tuple[Command[T], Command[T], T, Output, State[Any]]:
+) -> ParseResult[T, S]:
     concrete_backend = _coalesce_backend(backend)
     concrete_output = _coalesce_output(output, theme, color)
     concrete_state: State[S] = State.ensure(state)  # type: ignore
@@ -364,7 +366,7 @@ def parse_command(
         help_formatter=help_formatter,
         state=concrete_state,
     )
-    command, parsed_command, instance, state = Command.parse_command(  # pyright: ignore
+    return Command.parse_command(  # pyright: ignore
         command,
         argv=argv,
         input=input,
@@ -372,7 +374,6 @@ def parse_command(
         output=concrete_output,
         state=concrete_state,
     )
-    return command, parsed_command, instance, concrete_output, concrete_state  # pyright: ignore
 
 
 class FuncOrClassDecorator(Protocol):

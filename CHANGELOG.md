@@ -4,6 +4,7 @@
 - fix: Display Args with the same group identity as alternatives in helptext on the same line.
 - fix: Ensure automatic bool variants (--foo/--no-foo) are mutually exclusive.
 - fix: Allow negative number arguments and option values.
+- fix: Precalculate implicit deps during class construction rather than traversing the output shape.
 
 ## 0.31.0
 - fix: Allow options accepting zero-length unbounded num_args.
