@@ -290,15 +290,17 @@ def evaluate_parse(
     parsers: Parser[T] | Sequence[Parser[Any]],
     type_view: TypeView[T],
     state: State[S] | None = None,
-) -> Callable[..., T]:
-    from cappa.invoke import fulfill_deps
+) -> Callable[..., Any]:
+    import inspect
+
+    from cappa.invoke.base import fulfill_deps
 
     state = State.ensure(state)  # type: ignore
 
     if callable(parsers):
         parsers = [parsers]
 
-    parsers = [
+    filled_parsers = [
         functools.partial(
             parser,
             **fulfill_deps(
@@ -311,11 +313,28 @@ def evaluate_parse(
     ]
 
     if len(parsers) == 1:
-        return parsers[0]
+        return filled_parsers[0]
+
+    # Check if any parser is async
+    has_async_parser = any(inspect.iscoroutinefunction(p.func) for p in filled_parsers)
+
+    if has_async_parser:
+
+        async def async_sequence_parsers(value: Any) -> T:
+            result = value
+            for parser in filled_parsers:
+                result = parser(result)
+                # If the result is a coroutine, await it
+                if inspect.iscoroutine(result):
+                    result = await result
+
+            return result  # pyright: ignore[reportReturnType]
+
+        return async_sequence_parsers
 
     def sequence_parsers(value: Any) -> T:
         result = value
-        for parser in parsers:
+        for parser in filled_parsers:
             result = parser(result)
 
         return result

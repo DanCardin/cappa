@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import contextlib
 import dataclasses
+import inspect
 import sys
 from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
+    Generator,
     Generic,
     Hashable,
     Iterable,
@@ -25,10 +28,12 @@ from cappa.class_inspect import get_command, get_command_capable_object
 from cappa.default import Default
 from cappa.docstring import ClassHelpText
 from cappa.help import HelpFormattable, HelpFormatter
+from cappa.invoke.types import Resolved
 from cappa.output import Exit, Output
 from cappa.state import S, State
 from cappa.subcommand import Subcommand
 from cappa.type_view import CallableView
+from cappa.types import ParseResult
 from cappa.typing import assert_type
 
 if TYPE_CHECKING:
@@ -48,27 +53,6 @@ class CommandArgs(TypedDict, total=False):
     hidden: bool
     default_short: bool
     default_long: bool
-
-
-@dataclasses.dataclass
-class ParseResult(Generic[T, S]):
-    """Result of parsing a command with all collected metadata.
-
-    Attributes:
-        command: The root command that was parsed.
-        parsed_command: The selected command (may be a subcommand if one was invoked).
-        instance: The instantiated command object.
-        implicit_deps: Mapping of command classes to their instances, collected during parsing.
-        output: The output handler for the command.
-        state: The state object for the command.
-    """
-
-    command: Command[T]
-    parsed_command: Command[T]
-    instance: T
-    implicit_deps: dict[Hashable, Any]
-    output: Output
-    state: State[S]
 
 
 @dataclasses.dataclass
@@ -267,35 +251,17 @@ class Command(Generic[T]):
         prog = command.real_name()
         result_state: State[S] = State.ensure(state)  # type: ignore
 
-        try:
+        with graceful_exit(command, prog, output):
             parser, parsed_command, parsed_args = backend(
                 command, argv, output=output, prog=prog
             )
             prog = parser.prog
             result, implicit_deps = command.map_result(
-                command, prog, parsed_args, state=state, input=input
+                command, prog, parsed_args, state=state, input=input, output=output
             )
-        except BaseException as e:
-            if isinstance(e, Exit):
-                command = e.command or command
-                prog = e.prog or prog
-
-            help = command.help_formatter.long(command, prog)
-            short_help = command.help_formatter.short(command, prog)
-
-            if isinstance(e, ValueError):
-                exc = Exit(str(e), code=2, prog=prog, command=command)
-                output.exit(exc, help=help, short_help=short_help)
-                raise exc
-
-            if isinstance(e, Exit):
-                output.exit(e, help=help, short_help=short_help)
-                raise
-
-            raise
 
         return ParseResult(
-            command=command,
+            root_command=command,
             parsed_command=parsed_command,
             instance=result,
             implicit_deps=implicit_deps,
@@ -308,37 +274,25 @@ class Command(Generic[T]):
         command: Command[T],
         prog: str,
         parsed_args: dict[str, Any],
+        output: Output,
         state: State[Any] | None = None,
         input: TextIO | None = None,
-    ) -> tuple[T, dict[Hashable, Any]]:
+    ) -> tuple[Resolved[T], dict[Hashable, Any]]:
         state = State.ensure(state)  # pyright: ignore
 
         kwargs: dict[str, Any] = {}
         for arg in self.value_arguments:
             field_name = cast(str, arg.field_name)
 
-            is_parsed = False
             if arg.field_name in parsed_args:
-                value = parsed_args[field_name]
+                is_parsed, value = (False, parsed_args[field_name])
             else:
                 assert isinstance(arg.default, Default), arg
                 is_parsed, value = arg.default(state=state, input=input)
 
-            if not is_parsed:
-                assert arg.parse
-                assert callable(arg.parse)
+            handler = parse_handler(arg, prog, value)
 
-                try:
-                    value = arg.parse(value)
-                except Exception as e:
-                    exception_reason = str(e)
-                    raise Exit(
-                        f"Invalid value for '{arg.names_str()}': {exception_reason}",
-                        code=2,
-                        prog=prog,
-                    )
-
-            kwargs[field_name] = value
+            kwargs[field_name] = Resolved(handler, args=(value, is_parsed))
 
         # Collect all subcommand instances during construction
         subcommand_deps: dict[Hashable, Any] = {}
@@ -347,16 +301,22 @@ class Command(Generic[T]):
             field_name = cast(str, subcommand.field_name)
             if field_name in parsed_args:
                 value = parsed_args[field_name]
-                value, subcommand_deps = subcommand.map_result(prog, value, state=state)
+                value, subcommand_deps = subcommand.map_result(
+                    prog, value, output=output, state=state
+                )
                 kwargs[field_name] = value
 
-        instance = command.cmd_cls(**kwargs)
+        def map_result(**kwargs: dict[str, Any]) -> T:
+            with graceful_exit(command, prog, output):
+                return command.cmd_cls(**kwargs)
+
+        resolved = Resolved(map_result, kwargs=kwargs)
 
         # Add this command instance to deps
-        key = cast(Hashable, instance.__class__)
-        deps: dict[Hashable, Any] = {key: instance, **subcommand_deps}
+        key = cast(Hashable, command.cmd_cls)
+        deps: dict[Hashable, Any] = {key: resolved, **subcommand_deps}
 
-        return instance, deps
+        return resolved, deps
 
     @property
     def subcommand(self) -> Subcommand | None:
@@ -447,3 +407,86 @@ def check_group_identity(args: list[Arg[Any]]):
 
         assert isinstance(arg.group, Group)
         group_identity[arg.group.id] = arg.group
+
+
+@contextlib.contextmanager
+def parse_value(
+    arg: Arg[T], prog: str, value: Any, is_parsed: bool
+) -> Generator[T, None, None]:
+    if not is_parsed:
+        assert arg.parse
+        assert callable(arg.parse)
+
+        try:
+            value = arg.parse(value)
+        except Exception as e:
+            exception_reason = str(e)
+            raise Exit(
+                f"Invalid value for '{arg.names_str()}': {exception_reason}",
+                code=2,
+                prog=prog,
+            )
+
+    yield value
+
+
+def parse_handler(arg: Arg[T], prog: str, value: Any) -> Callable[[Any, bool], Any]:
+    is_async_value = inspect.iscoroutine(value)
+    is_async_parse = arg.parse and (
+        inspect.iscoroutinefunction(arg.parse) or inspect.isasyncgenfunction(arg.parse)
+    )
+
+    if is_async_value or is_async_parse:
+
+        async def async_parse(raw_value: Any, is_parsed: bool) -> T:
+            # Await the value if it's a coroutine
+            if inspect.iscoroutine(raw_value):
+                raw_value = await raw_value
+
+            with parse_value(arg, prog, raw_value, is_parsed) as parsed:
+                # Check if the parse result is a coroutine and await it
+                if inspect.iscoroutine(parsed):
+                    try:
+                        return await parsed
+                    except Exception as e:
+                        exception_reason = str(e)
+                        raise Exit(
+                            f"Invalid value for '{arg.names_str()}': {exception_reason}",
+                            code=2,
+                            prog=prog,
+                        )
+                return parsed
+
+        return async_parse
+
+    def sync_parse(raw_value: Any, is_parsed: bool) -> T:
+        with parse_value(arg, prog, raw_value, is_parsed) as parsed:
+            return parsed
+
+    return sync_parse
+
+
+@contextlib.contextmanager
+def graceful_exit(
+    command: Command[T], prog: str, output: Output
+) -> Generator[None, None, None]:
+    try:
+        yield
+    except BaseException as e:
+        if isinstance(e, Exit):
+            command = e.command or command
+            prog = e.prog or prog
+
+        help = command.help_formatter.long(command, prog)
+        short_help = command.help_formatter.short(command, prog)
+
+        if isinstance(e, ValueError):
+            exc = Exit(str(e), code=2, prog=prog, command=command)
+            output.exit(exc, help=help, short_help=short_help)
+            raise exc
+
+        if isinstance(e, Exit):
+            output.exit(e, help=help, short_help=short_help)
+            raise
+
+        raise

@@ -3,184 +3,35 @@ from __future__ import annotations
 import contextlib
 import importlib
 import inspect
-from dataclasses import dataclass, field
 from typing import (
     Any,
     AsyncGenerator,
     Callable,
-    Coroutine,
     Generator,
-    Generic,
     Hashable,
     List,
-    Mapping,
     Sequence,
-    TypeVar,
-    Union,
     cast,
 )
 
-from typing_extensions import Annotated, TypeGuard
+from typing_extensions import TypeGuard
 
 from cappa.class_inspect import has_command
 from cappa.command import Command
-from cappa.output import Exit, Output
+from cappa.invoke.types import (
+    C,
+    Dep,
+    DepTypes,
+    InvokeCallable,
+    InvokeCallableSpec,
+    InvokeResolutionError,
+    Resolved,
+    SelfType,
+)
+from cappa.output import Output
 from cappa.state import State
-from cappa.type_view import CallableView, Empty, EmptyType, TypeView
+from cappa.type_view import CallableView, TypeView
 from cappa.typing import find_annotations, get_method_class
-
-
-class SelfType: ...
-
-
-C = TypeVar("C")
-T = TypeVar("T")
-InvokeCallable = Callable[..., T]
-InvokeCallableSpec = Union[InvokeCallable[T], str]
-
-
-@dataclass(frozen=True)
-class Dep(Generic[T]):
-    """Describes the callable required to fulfill a given dependency."""
-
-    callable: InvokeCallableSpec[T]
-
-
-DepTypes = Union[
-    Sequence[InvokeCallableSpec[Any]],
-    Mapping[InvokeCallable[Any], Union[Dep[Any], InvokeCallableSpec[Any], Any]],
-    None,
-]
-Self = Annotated[T, SelfType]
-
-
-class InvokeResolutionError(RuntimeError):
-    """Raised for errors encountered during evaluation of invoke dependencies."""
-
-
-@dataclass
-class Resolved(Generic[C]):
-    callable: InvokeCallable[C]
-    kwargs: dict[str, Any | Resolved[Any]] = field(default_factory=lambda: {})
-    args: tuple[Any, ...] = field(default=())
-    result: C | EmptyType = Empty
-
-    def call(self, *args: Any, output: Output | None = None):
-        with self.get(*args, output=output) as value:
-            return value
-
-    @contextlib.contextmanager
-    def get(self, *args: Any, output: Output | None = None) -> Generator[C, None, None]:
-        """Get the resolved value.
-
-        The value itself is cached in the event it's used as a dependency to more
-        than one dependency.
-        """
-        if self.result is not Empty:
-            yield self.result
-            return
-
-        with contextlib.ExitStack() as stack:
-            # Non-resolved values are literal values that can be recorded directly.
-            kwargs = dict(self.iter_kwargs(is_resolved=False))
-
-            # Resolved values need to be recursed into. In order to handle the
-            # wrapping context manager, we need to enter all contexts, and only
-            # exit at the end.
-            for k, v in self.iter_kwargs(is_resolved=True):
-                kwargs[k] = stack.enter_context(v.get(output=output))
-
-            with self.handle_exit(output):
-                result = self._get_result(
-                    stack, self.callable, *args, *self.args, **kwargs
-                )
-
-            self.result = result
-            yield result
-
-    @contextlib.asynccontextmanager
-    async def get_async(self, output: Output | None = None) -> AsyncGenerator[C, None]:
-        """Get the resolved value, in an async context.
-
-        Note, this is the exact same process as in `get`, except with `await`,
-        `enter_async_context` and `async with`. There seems to be no way to
-        share the logic between the two methods, so they just need to be kept
-        in sync :shrug:.
-        """
-        if self.result is not Empty:
-            yield self.result
-            return
-
-        async with contextlib.AsyncExitStack() as stack:
-            kwargs = dict(self.iter_kwargs(is_resolved=False))
-            for k, v in self.iter_kwargs(is_resolved=True):
-                kwargs[k] = await stack.enter_async_context(v.get_async(output=output))
-
-            with self.handle_exit(output):
-                result: Any = await self._get_result_async(
-                    stack, self.callable, *self.args, **kwargs
-                )
-
-            self.result = result
-            yield result
-
-    def iter_kwargs(self, *, is_resolved: bool):
-        for k, v in self.kwargs.items():
-            if is_resolved == isinstance(v, self.__class__):
-                yield k, v
-
-    @classmethod
-    async def _get_result_async(
-        cls,
-        stack: contextlib.AsyncExitStack,
-        callable: Callable[..., Any],
-        *args: Any,
-        **kwargs: Any,
-    ) -> Any:
-        requires_management = is_implicit_async_context_manager(callable)
-        if requires_management:
-            callable = contextlib.asynccontextmanager(callable)
-
-        result: Any = cls._get_result(stack, callable, *args, **kwargs)
-
-        if requires_management or is_async_context_manager(result):
-            return await stack.enter_async_context(result)  # pyright: ignore
-
-        if isinstance(result, Coroutine):
-            return await result  # pyright: ignore
-
-        return result
-
-    @classmethod
-    def _get_result(
-        cls,
-        stack: contextlib._BaseExitStack,  # pyright: ignore[reportPrivateUsage]
-        callable: Callable[..., Any],
-        *args: Any,
-        **kwargs: Any,
-    ) -> Any:
-        if is_implicit_context_manager(callable):
-            # Yield functions are assumed to be context-maneger style generators
-            # what we just need to wrap...
-            callable = contextlib.contextmanager(callable)
-
-        result: Any = callable(*args, **kwargs)
-
-        # And then enter before producing the result.
-        if is_context_manager(result):
-            result = stack.enter_context(result)
-
-        return result
-
-    @classmethod
-    @contextlib.contextmanager
-    def handle_exit(cls, output: Output | None = None):
-        try:
-            yield
-        except Exit as e:
-            if output:  # pragma: no cover
-                output.exit(e)
-            raise e
 
 
 def resolve_callable(
