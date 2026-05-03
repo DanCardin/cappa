@@ -166,8 +166,10 @@ def parse(
         state=state,
     )
     if exit_stack is not None:
-        return exit_stack.enter_context(parse_result.instance.get(managed=True))
-    return parse_result.instance.call(managed=False)
+        return exit_stack.enter_context(
+            parse_result.instance.get(output=parse_result.output, managed=True)
+        )
+    return parse_result.instance.call(output=parse_result.output, managed=False)
 
 
 async def parse_async(
@@ -239,9 +241,11 @@ async def parse_async(
     )
     if exit_stack is not None:
         return await exit_stack.enter_async_context(
-            parse_result.instance.get_async(managed=True)
+            parse_result.instance.get_async(output=parse_result.output, managed=True)
         )
-    return await parse_result.instance.call_async(managed=False)
+    return await parse_result.instance.call_async(
+        output=parse_result.output, managed=False
+    )
 
 
 def invoke(
@@ -313,7 +317,9 @@ def invoke(
     )
 
     def _invoke_with_stack(stack: contextlib.ExitStack):
-        instance = stack.enter_context(parse_result.instance.get())
+        instance = stack.enter_context(
+            parse_result.instance.get(output=parse_result.output)
+        )
 
         # Resolve all implicit deps
         resolved_implicit_deps: dict[Hashable, Any] = {}
@@ -412,7 +418,9 @@ async def invoke_async(
     )
 
     async def _invoke_async_with_stack(stack: contextlib.AsyncExitStack):
-        instance = await stack.enter_async_context(parse_result.instance.get_async())
+        instance = await stack.enter_async_context(
+            parse_result.instance.get_async(output=parse_result.output)
+        )
 
         # Resolve all implicit deps
         resolved_implicit_deps: dict[Hashable, Any] = {}
