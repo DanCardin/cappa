@@ -17,7 +17,7 @@ from typing_extensions import dataclass_transform
 
 from cappa import argparse, parser
 from cappa.class_inspect import detect
-from cappa.command import Command
+from cappa.command import Alias, Command
 from cappa.help import HelpFormattable, HelpFormatter
 from cappa.invoke.base import resolve_callable
 from cappa.invoke.types import DepTypes, InvokeCallableSpec
@@ -495,6 +495,7 @@ def command(
     _cls: type[T],
     *,
     name: str | None = None,
+    aliases: list[str | Alias] | None = None,
     help: str | None = None,
     description: str | None = None,
     invoke: InvokeCallableSpec[Any] | None = None,
@@ -508,6 +509,7 @@ def command(
 def command(
     *,
     name: str | None = None,
+    aliases: list[str | Alias] | None = None,
     help: str | None = None,
     description: str | None = None,
     invoke: InvokeCallableSpec[Any] | None = None,
@@ -522,6 +524,7 @@ def command(
     _cls: T,
     *,
     name: str | None = None,
+    aliases: list[str | Alias] | None = None,
     help: str | None = None,
     description: str | None = None,
     invoke: InvokeCallableSpec[Any] | None = None,
@@ -538,6 +541,7 @@ def command(
     _cls: type[T] | T | None = None,
     *,
     name: str | None = None,
+    aliases: list[str | Alias] | None = None,
     help: str | None = None,
     description: str | None = None,
     invoke: InvokeCallableSpec[Any] | None = None,
@@ -552,6 +556,11 @@ def command(
     Args:
         name: The name of the command. If omitted, the name of the command
             will be the name of the `cls`, converted to dash-case.
+        aliases: Alternate names that may be used to invoke this command as a
+            subcommand. Each entry is either a plain string (visible alias) or
+            an :class:`Alias` instance (which can be marked `hidden=True` or
+            `deprecated=...`). Only meaningful when the class is used as a
+            subcommand.
         help: Optional help text. If omitted, the `cls` docstring will be parsed,
             and the headline section will be used to document the command
             itself, and the arguments section will become the default help text for
@@ -582,6 +591,7 @@ def command(
             command,
             invoke=invoke,
             name=name,
+            aliases=list(aliases) if aliases is not None else command.aliases,
             help=help,
             description=description,
             hidden=hidden,

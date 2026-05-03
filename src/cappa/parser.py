@@ -522,9 +522,12 @@ def consume_subcommand(
         )
 
     assert isinstance(value, RawArg), value
-    if value.raw not in arg.options:
+    canonical = arg.resolve_name(value.raw)
+    if canonical is None:
         message = f"Invalid command '{value.raw}'"
-        possible_values = [name for name in arg.names() if name.startswith(value.raw)]
+        possible_values = [
+            name for name in arg.all_visible_names() if name.startswith(value.raw)
+        ]
         if possible_values:
             message += f" (Did you mean: {format_subcommand_names(possible_values)})"
 
@@ -535,11 +538,13 @@ def consume_subcommand(
             arg=arg,
         )
 
-    command = arg.options[value.raw]
+    command = arg.options[canonical]
     check_deprecated(parse_state, command)
 
     parse_state.push_command(command)
-    nested_context = context.push(command, value.raw)
+    nested_context = context.push(command, canonical)
+    if value.raw != canonical:
+        nested_context.result["__typed_name__"] = value.raw
 
     parse(parse_state, nested_context)
 

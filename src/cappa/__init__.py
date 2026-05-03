@@ -1,5 +1,5 @@
 from cappa.base import collect, command, invoke, invoke_async, parse, parse_async
-from cappa.command import Command
+from cappa.command import Alias, Command
 from cappa.completion.types import Completion
 from cappa.default import Confirm, Default, Env, Prompt, ValueFrom
 from cappa.file_io import FileMode
@@ -20,6 +20,7 @@ from cappa import argparse
 from cappa.parser import backend
 
 __all__ = [
+    "Alias",
     "Arg",
     "ArgAction",
     "Command",

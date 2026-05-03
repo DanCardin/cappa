@@ -288,18 +288,26 @@ def add_subcommands(
     dest_prefix: str = "",
 ):
     subcommand_dest = subcommands.field_name
+    typed_name_dest = f"{dest_prefix}{subcommand_dest}.__typed_name__"
+    visible_metavar = "{" + ",".join(subcommands.names()) + "}"
     subparsers = parser.add_subparsers(
         title=group,
         required=assert_type(subcommands.required, bool),
         parser_class=ArgumentParser,
+        dest=typed_name_dest,
+        metavar=visible_metavar,
     )
 
     for name, subcommand in subcommands.options.items():
         deprecated_kwarg = add_deprecated_kwarg(subcommand)
 
         nested_dest_prefix = f"{dest_prefix}{subcommand_dest}."
+        visible_aliases = [
+            a.name for a in subcommand.resolved_aliases() if not a.hidden
+        ]
         subparser = subparsers.add_parser(
             name=subcommand.real_name(),
+            aliases=visible_aliases,
             help=subcommand.help,
             description=subcommand.description,
             formatter_class=parser.formatter_class,
@@ -312,6 +320,13 @@ def add_subcommands(
         subparser.set_defaults(
             __command__=subcommand, **{nested_dest_prefix + "__name__": name}
         )
+
+        # Hidden aliases must dispatch to the same subparser without showing up
+        # in argparse's choices/help. We add them to the internal name map
+        # directly (post-construction so help has already been bound).
+        hidden_aliases = [a for a in subcommand.resolved_aliases() if a.hidden]
+        for alias in hidden_aliases:
+            subparsers._name_parser_map[alias.name] = subparser  # type: ignore[attr-defined]
 
         add_arguments(
             subparser,
@@ -338,6 +353,12 @@ def to_dict(value: argparse.Namespace):
     for k, v in value.__dict__.items():
         if isinstance(v, argparse.Namespace):
             v = to_dict(v)
+            # When `add_subparsers(dest=...)` was set but no subcommand was
+            # selected, argparse leaves the dest as None. In that case the
+            # subcommand wasn't invoked at all — drop it so downstream code
+            # doesn't think there's a result to dispatch.
+            if v == {"__typed_name__": None}:
+                continue
         result[k] = v
 
     return result

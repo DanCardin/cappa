@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- feat: Add `aliases=` support for subcommands. Each entry is either a string (visible alias) or a `cappa.Alias(name, hidden=..., deprecated=...)` for finer control. Hidden aliases dispatch but are omitted from help and completion; deprecated aliases emit a runtime warning when used. Collisions are detected at construction time.
+
 ## 0.31.1
 - fix: Display Args with the same group identity as alternatives in helptext on the same line.
 - fix: Ensure automatic bool variants (--foo/--no-foo) are mutually exclusive.
