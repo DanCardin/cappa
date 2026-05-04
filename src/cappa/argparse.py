@@ -326,7 +326,7 @@ def add_subcommands(
         # directly (post-construction so help has already been bound).
         hidden_aliases = [a for a in subcommand.resolved_aliases() if a.hidden]
         for alias in hidden_aliases:
-            subparsers._name_parser_map[alias.name] = subparser  # type: ignore[attr-defined]
+            subparsers._name_parser_map[alias.name] = subparser
 
         add_arguments(
             subparser,
