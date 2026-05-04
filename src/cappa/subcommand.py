@@ -136,10 +136,7 @@ class Subcommand:
         )
 
     def _warn_deprecated_alias(self, output: Output, typed_name: str) -> None:
-        entry = self.alias_map.get(typed_name)
-        if entry is None:
-            return
-        _, alias = entry
+        _, alias = self.alias_map[typed_name]
         if not alias.deprecated:
             return
 

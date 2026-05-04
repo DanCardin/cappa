@@ -251,16 +251,6 @@ def test_visible_aliases_for_unknown_canonical_returns_empty():
     assert sub.visible_aliases_for("not-a-subcommand") == []
 
 
-def test_warn_deprecated_alias_no_op_for_unknown_name(capsys: Any):
-    """`_warn_deprecated_alias` is a no-op when the typed name isn't an alias."""
-    from cappa.output import Output
-
-    sub = cappa.Subcommand(field_name="cmd", options={})
-    sub._warn_deprecated_alias(Output(), "ghost-alias")
-    err = capsys.readouterr().err
-    assert err == ""
-
-
 def test_format_subcommand_without_subcommand_arg():
     """`format_subcommand` works with the default `subcommand=None`."""
     from cappa.help import HelpFormatter, format_subcommand
