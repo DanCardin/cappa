@@ -5,7 +5,7 @@ import sys
 from typing import TYPE_CHECKING, Any, Callable, Hashable, List, TypeVar, cast
 
 from cappa.arg import Arg, ArgAction, Group
-from cappa.command import Command, Subcommand
+from cappa.command import Alias, Command, Subcommand
 from cappa.help import ArgGroup
 from cappa.invoke.base import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
@@ -288,13 +288,11 @@ def add_subcommands(
     dest_prefix: str = "",
 ):
     subcommand_dest = subcommands.field_name
-    typed_name_dest = f"{dest_prefix}{subcommand_dest}.__typed_name__"
     visible_metavar = "{" + ",".join(subcommands.names()) + "}"
     subparsers = parser.add_subparsers(
         title=group,
         required=assert_type(subcommands.required, bool),
         parser_class=ArgumentParser,
-        dest=typed_name_dest,
         metavar=visible_metavar,
     )
 
@@ -302,12 +300,14 @@ def add_subcommands(
         deprecated_kwarg = add_deprecated_kwarg(subcommand)
 
         nested_dest_prefix = f"{dest_prefix}{subcommand_dest}."
-        visible_aliases = [
-            a.name for a in subcommand.resolved_aliases() if not a.hidden
+        non_deprecated_visible_aliases = [
+            a.name
+            for a in subcommand.resolved_aliases()
+            if not a.hidden and not a.deprecated
         ]
         subparser = subparsers.add_parser(
             name=subcommand.real_name(),
-            aliases=visible_aliases,
+            aliases=non_deprecated_visible_aliases,
             help=subcommand.help,
             description=subcommand.description,
             formatter_class=parser.formatter_class,
@@ -321,12 +321,18 @@ def add_subcommands(
             __command__=subcommand, **{nested_dest_prefix + "__name__": name}
         )
 
-        # Hidden aliases must dispatch to the same subparser without showing up
-        # in argparse's choices/help. We add them to the internal name map
-        # directly (post-construction so help has already been bound).
-        hidden_aliases = [a for a in subcommand.resolved_aliases() if a.hidden]
-        for alias in hidden_aliases:
-            subparsers._name_parser_map[alias.name] = subparser
+        # Aliases not registered via `aliases=` (hidden, or deprecated) get spliced
+        # into the internal name map. Deprecated aliases get a wrapper that emits
+        # the warning at dispatch time, then delegates parsing to the real subparser.
+        for alias in subcommand.resolved_aliases():
+            if alias.name in non_deprecated_visible_aliases:
+                continue
+            if alias.deprecated:
+                subparsers._name_parser_map[alias.name] = _DeprecatedAliasParser(
+                    subparser, alias, output
+                )
+            else:
+                subparsers._name_parser_map[alias.name] = subparser
 
         add_arguments(
             subparser,
@@ -348,17 +354,43 @@ def backend_num_args(num_args: int | None, required: bool) -> int | str | None:
     return num_args
 
 
+class _DeprecatedAliasParser(ArgumentParser):
+    """Stand-in subparser used when a user invokes a deprecated alias.
+
+    argparse dispatches into here via `_name_parser_map[alias_name]`. We emit
+    the deprecation warning, then delegate parsing to the real subparser so the
+    canonical `__name__` and arguments are populated as usual.
+    """
+
+    def __init__(
+        self, real_parser: ArgumentParser, alias: Alias, output: Output
+    ) -> None:
+        super().__init__(
+            command=real_parser.command,
+            output=output,
+            add_help=False,
+            allow_abbrev=False,
+        )
+        self._real_parser = real_parser
+        self._alias = alias
+
+    def parse_known_args(  # type: ignore[override]
+        self,
+        args: Any = None,
+        namespace: Any = None,
+    ) -> tuple[argparse.Namespace, list[str]]:
+        message = f"Command alias `{self._alias.name}` is deprecated"
+        if isinstance(self._alias.deprecated, str):
+            message += f": {self._alias.deprecated}"
+        self.output.error(message)
+        return self._real_parser.parse_known_args(args, namespace)
+
+
 def to_dict(value: argparse.Namespace):
     result: dict[str, Any] = {}
     for k, v in value.__dict__.items():
         if isinstance(v, argparse.Namespace):
             v = to_dict(v)
-            # When `add_subparsers(dest=...)` was set but no subcommand was
-            # selected, argparse leaves the dest as None. In that case the
-            # subcommand wasn't invoked at all — drop it so downstream code
-            # doesn't think there's a result to dispatch.
-            if v == {"__typed_name__": None}:
-                continue
         result[k] = v
 
     return result

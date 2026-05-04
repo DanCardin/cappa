@@ -125,25 +125,11 @@ class Subcommand:
         state: State[Any] | None = None,
         input: TextIO | None = None,
     ) -> tuple[Resolved[Any], dict[Any, Any]]:
-        option_name = parsed_args.pop("__name__")
-        typed_name = parsed_args.pop("__typed_name__", None)
-        canonical = self.resolve_name(option_name) or option_name
-        if typed_name is not None and typed_name != canonical:
-            self._warn_deprecated_alias(output, typed_name)
+        canonical = parsed_args.pop("__name__")
         option = self.options[canonical]
         return option.map_result(
             option, prog, parsed_args, output=output, state=state, input=input
         )
-
-    def _warn_deprecated_alias(self, output: Output, typed_name: str) -> None:
-        _, alias = self.alias_map[typed_name]
-        if not alias.deprecated:
-            return
-
-        message = f"Command alias `{typed_name}` is deprecated"
-        if isinstance(alias.deprecated, str):
-            message += f": {alias.deprecated}"
-        output.error(message)
 
     def available_options(self) -> list[Command[Any]]:
         return [o for o in self.options.values() if not o.hidden]
