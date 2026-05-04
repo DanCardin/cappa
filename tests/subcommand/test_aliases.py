@@ -59,6 +59,28 @@ def test_canonical_does_not_warn(backend: Backend, capsys: Any):
     assert "deprecated" not in err
 
 
+@cappa.command(aliases=[cappa.Alias("del", deprecated=True)])
+@dataclass
+class DeleteBool:
+    pass
+
+
+@dataclass
+class DeleteBoolRoot:
+    cmd: cappa.Subcommands[DeleteBool]
+
+
+@backends
+def test_deprecated_alias_bool_warns_without_suffix(backend: Backend, capsys: Any):
+    """`deprecated=True` (bool) emits the default message with no `:` suffix."""
+    result = parse(DeleteBoolRoot, "del", backend=backend)
+    assert isinstance(result.cmd, DeleteBool)
+
+    err = capsys.readouterr().err
+    assert "Command alias `del` is deprecated" in err
+    assert "Command alias `del` is deprecated:" not in err
+
+
 # --- Hidden alias ---
 
 
@@ -218,3 +240,34 @@ class CollideABRoot:
 def test_alias_collides_with_other_alias():
     with pytest.raises(ValueError, match="declared on both"):
         cappa.collect(CollideABRoot)
+
+
+# --- Defensive helpers (direct unit calls) ---
+
+
+def test_visible_aliases_for_unknown_canonical_returns_empty():
+    """`visible_aliases_for` returns [] when given a name that isn't a subcommand."""
+    sub = cappa.Subcommand(field_name="cmd", options={})
+    assert sub.visible_aliases_for("not-a-subcommand") == []
+
+
+def test_warn_deprecated_alias_no_op_for_unknown_name(capsys: Any):
+    """`_warn_deprecated_alias` is a no-op when the typed name isn't an alias."""
+    from cappa.output import Output
+
+    sub = cappa.Subcommand(field_name="cmd", options={})
+    sub._warn_deprecated_alias(Output(), "ghost-alias")
+    err = capsys.readouterr().err
+    assert err == ""
+
+
+def test_format_subcommand_without_subcommand_arg():
+    """`format_subcommand` works with the default `subcommand=None`."""
+    from cappa.help import HelpFormatter, format_subcommand
+
+    cmd = cappa.Command(List)
+    padding, help_text = format_subcommand(HelpFormatter(), cmd)
+    rendered = str(padding.renderable)
+    assert "list" in rendered
+    assert "ls" not in rendered  # aliases only appear when subcommand is provided
+    assert help_text == cmd.help
