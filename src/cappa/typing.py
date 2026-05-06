@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import enum
-import inspect
 from dataclasses import dataclass
-from types import MethodType
 from typing import Any, Protocol, TypeVar
 
 from typing_extensions import assert_never
@@ -76,7 +74,3 @@ def detect_choices(type_view: TypeView[Any]) -> list[str] | None:
         return [str(t) for t in type_view.args]
 
     return None
-
-
-def get_method_class(fn: MethodType) -> type:
-    return inspect._findclass(fn)  # type: ignore

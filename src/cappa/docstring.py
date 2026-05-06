@@ -4,6 +4,7 @@ import ast
 import inspect
 import textwrap
 import typing
+from collections.abc import Callable
 from dataclasses import dataclass
 from inspect import cleandoc
 from types import ModuleType
@@ -25,7 +26,7 @@ class ClassHelpText:
     args: dict[str, str]
 
     @classmethod
-    def collect(cls, command: type) -> Self:
+    def collect(cls, command: type | Callable[..., typing.Any]) -> Self:
         args: dict[str, str] = {}
 
         doc = get_doc(command)
@@ -54,7 +55,7 @@ class ClassHelpText:
         return cls(summary=summary, body=body, args=args)
 
 
-def get_doc(cls: type):
+def get_doc(cls: type | Callable[..., typing.Any]):
     """Lifted from dataclasses source."""
     doc = cls.__doc__ or ""
 
@@ -68,14 +69,16 @@ def get_doc(cls: type):
     except (TypeError, ValueError):  # pragma: no cover
         text_sig = ""
 
-    dataclasses_docstring = cls.__name__ + text_sig
+    dataclasses_docstring = cls.__name__ + text_sig  # pyright: ignore
 
     if doc == dataclasses_docstring:
         return ""
     return doc
 
 
-def get_attribute_docstrings(command: type) -> dict[str, str]:
+def get_attribute_docstrings(
+    command: type | Callable[..., typing.Any],
+) -> dict[str, str]:
     result: dict[str, str] = {}
 
     raw_source = inspect.getsource(command)

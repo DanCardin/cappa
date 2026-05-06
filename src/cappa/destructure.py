@@ -10,7 +10,7 @@ from cappa.arg import FinalArg
 from cappa.default import Default
 from cappa.invoke.types import Resolved
 from cappa.output import Output
-from cappa.registry import Registry
+from cappa.registry import Registry, default_registry
 from cappa.state import State
 
 
@@ -89,13 +89,14 @@ class FinalDestructure(Destructure, Generic[T]):
         output: Output,
         state: State[Any] | None = None,
         input: TextIO | None = None,
+        registry: Registry = default_registry,
     ) -> Resolved[T]:
         if self.is_optional and not parsed_args:
             _, value = self.default(state=state, input=input)
             return Resolved(lambda: value)
 
         return self.command.map_result(
-            self.command, prog, parsed_args, output, state, input
+            self.command, prog, parsed_args, output, state, input, registry
         )[0]
 
     def explode_args(self) -> list[FinalArg[Any] | FinalDestructure[Any]]:

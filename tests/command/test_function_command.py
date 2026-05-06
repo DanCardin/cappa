@@ -11,6 +11,18 @@ from cappa.state import State
 from tests.utils import Backend, CapsysOutput, backends, invoke, parse
 
 
+@cappa.command
+def decorated_top_level_fn(foo: str) -> str:
+    return foo
+
+
+@backends
+def test_decorated_top_level_function(backend: Backend):
+    """@cappa.command on a top-level function triggers register_method with no '.' in qualname."""
+    result = invoke(decorated_top_level_fn, "meow", backend=backend)
+    assert result == "meow"
+
+
 @backends
 def test_no_op(backend: Backend):
     """Base case, this doesnt really serve any purpose."""
@@ -32,7 +44,7 @@ def test_parse_one_arg(backend: Backend):
         return foo
 
     result = parse(function, "meow", backend=backend)
-    assert result.foo == "meow"  # pyright: ignore
+    assert result() == "meow"  # pyright: ignore
 
 
 @backends

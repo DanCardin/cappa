@@ -1,20 +1,16 @@
 from __future__ import annotations
 
-import contextlib
 import importlib
 import inspect
 from typing import (
+    TYPE_CHECKING,
     Any,
-    AsyncGenerator,
     Callable,
-    Generator,
     Hashable,
     List,
     Sequence,
     cast,
 )
-
-from typing_extensions import TypeGuard
 
 from cappa.command import Command
 from cappa.invoke.types import (
@@ -28,10 +24,12 @@ from cappa.invoke.types import (
     SelfType,
 )
 from cappa.output import Output
-from cappa.registry import Registry
 from cappa.state import State
 from cappa.type_view import CallableView, TypeView
-from cappa.typing import find_annotations, get_method_class
+from cappa.typing import find_annotations
+
+if TYPE_CHECKING:
+    from cappa.registry import Registry
 
 
 def resolve_callable(
@@ -105,6 +103,8 @@ def resolve_invoke_handler(
     if not fn:
         command_type = cast(Hashable, command.cmd_cls)
         instance = implicit_deps.get(command_type)
+        if inspect.isfunction(instance):
+            return instance
         if callable(instance):
             return instance.__call__  # pyright: ignore
 
@@ -169,7 +169,7 @@ def fulfill_deps(
         # handle this.
         return Resolved(fn, result)
 
-    for index, param_view in enumerate(callable_view.parameters):
+    for param_view in callable_view.parameters:
         type_view: TypeView[Any] = param_view.type_view  # pyright: ignore
 
         # Unwrap TypeAliasType instances like `type Foo = Annotated[int, Dep(foo)]`
@@ -198,15 +198,6 @@ def fulfill_deps(
 
             result[param_view.name] = fulfilled_deps[dep]
 
-        # Method `self` arguments can be assumed to be typed as the literal class they reside inside,
-        # These classes should always be already fulfilled by the root command structure.
-        elif index == 0 and inspect.ismethod(fn):
-            cls = get_method_class(fn)
-
-            if registry is not None and cls in registry:
-                value = fulfilled_deps[cls]
-                args.append(value)
-
         # If there's a default, we can just skip it and let the default fulfill the value.
         # Alternatively, `allow_empty` might be True to indicate we shouldn't error.
         elif param_view.has_default or allow_empty:
@@ -229,23 +220,17 @@ def fulfill_deps(
     return Resolved(fn, kwargs=result, args=tuple(args))
 
 
-def is_implicit_context_manager(
-    value: Any,
-) -> TypeGuard[Callable[..., Generator[Any, Any, Any]]]:
-    return inspect.isgeneratorfunction(value)
-
-
-def is_context_manager(value: Any) -> TypeGuard[contextlib.AbstractContextManager[Any]]:
-    return isinstance(value, contextlib.AbstractContextManager)
-
-
-def is_implicit_async_context_manager(
-    value: Any,
-) -> TypeGuard[Callable[..., AsyncGenerator[Any, Any]]]:
-    return inspect.isasyncgenfunction(value)
-
-
-def is_async_context_manager(
-    value: Any,
-) -> TypeGuard[contextlib.AbstractAsyncContextManager[Any]]:
-    return isinstance(value, contextlib.AbstractAsyncContextManager)
+def is_invoke_dependency(
+    type_view: TypeView[Any] | None, registry: Registry | None = None
+) -> bool:
+    if type_view is None:
+        return False
+    if find_annotations(type_view, Dep):
+        return True
+    if type_view.is_subclass_of((Output, State)):
+        return True
+    if registry is not None and not type_view.is_annotated:
+        origin = type_view.fallback_origin
+        if isinstance(origin, type) and origin in registry:
+            return True
+    return False
