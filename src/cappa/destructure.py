@@ -32,11 +32,6 @@ def destructure(arg: Arg[Any], type_view: TypeView[Any]) -> list[Arg[Any]]:
     command: Command[Any] = Command.collect(Command.get(annotation))  # pyright: ignore
     virtual_args = command.arguments
 
-    def _parse_destructured(value: dict[str, Any]):
-        return command.cmd_cls(**value)
-
-    arg = replace(arg, parse=_parse_destructured)
-
     result = [arg]
     for virtual_arg in virtual_args:
         if isinstance(virtual_arg, Subcommand):
@@ -76,9 +71,7 @@ def restructure(root_arg: Arg[Any], action: ArgActionType):
         deps = fulfill_deps(action_handler, fulfilled_deps)
         action_result = action_handler(**deps.kwargs)
 
-        assert arg.parse
-        assert callable(arg.parse)
-        result[arg.field_name] = arg.parse(action_result)
+        result[arg.field_name] = action_result
         return result
 
     return restructure_action

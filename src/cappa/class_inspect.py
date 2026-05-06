@@ -164,6 +164,22 @@ class PydanticV2DataclassField(Field):
         return fields
 
 
+@dataclasses.dataclass
+class FunctionField(Field):
+    @classmethod
+    def collect(cls, typ: type) -> list[Self]:
+        fields: list[Self] = []
+        for name, param in inspect.signature(typ).parameters.items():
+            field = cls(
+                name=name,
+                # annotation=f.annotation,  # pyright: ignore
+                default=param.default or Empty,
+                default_factory=None,
+            )
+            fields.append(field)
+        return fields
+
+
 def fields(cls: type):
     class_type = ClassTypes.from_cls(cls)
     if class_type is None:
@@ -182,9 +198,13 @@ class ClassTypes(Enum):
     pydantic_v2 = PydanticV2Field
     pydantic_v2_dataclass = PydanticV2DataclassField
     msgspec = MsgspecField
+    function = FunctionField
 
     @classmethod
     def from_cls(cls, obj: type) -> ClassTypes | None:
+        if inspect.isfunction(obj):
+            return cls.function
+
         if hasattr(obj, "__pydantic_fields__"):
             return cls.pydantic_v2_dataclass
 
@@ -235,6 +255,7 @@ def get_command_capable_object(obj: Any) -> type:
     the arguments to the dataclass into the original callable.
     """
     if inspect.isfunction(obj):
+        return obj
         from cappa import Dep
         from cappa.command import Command
 
@@ -264,17 +285,15 @@ def get_command_capable_object(obj: Any) -> type:
                 continue
 
             sig_params.pop(param_view.name, None)
-            function_args.append(
-                (
-                    param_view.name,
-                    param_view.type_view.raw,
-                    dataclasses.field(
-                        default=param_view.default
-                        if param_view.has_default
-                        else dataclasses.MISSING
-                    ),
-                )
-            )
+            function_args.append((
+                param_view.name,
+                param_view.type_view.raw,
+                dataclasses.field(
+                    default=param_view.default
+                    if param_view.has_default
+                    else dataclasses.MISSING
+                ),
+            ))
 
         result = dataclasses.make_dataclass(
             obj.__name__,
@@ -326,4 +345,13 @@ def has_command(obj: object) -> bool:
 
 
 def get_command(obj: type) -> Command[Any] | None:
-    return getattr(obj, "__cappa__", None)
+    command = getattr(obj, "__cappa__", None)
+    if command:
+        if command.source is obj:
+            return command
+        else:
+            print(obj)
+            print(command.cmd_cls, command.cmd_cls is obj)
+            print(command.source, command.source is obj)
+            print()
+    return None

@@ -104,28 +104,32 @@ class Command(Generic[T]):
 
     help_formatter: HelpFormattable = HelpFormatter.default
 
+    source: Any | None = None
     _collected: bool = False
 
     @classmethod
     def get(
-        cls, obj: CappaCapable[T], help_formatter: HelpFormattable | None = None
+        cls, value: CappaCapable[T], help_formatter: HelpFormattable | None = None
     ) -> Command[T]:
         help_formatter = help_formatter or HelpFormatter.default
 
         instance = None
-        if isinstance(obj, cls):
-            instance = obj
+        if isinstance(value, cls):
+            obj = value
+            instance = value
         else:
-            obj = get_command_capable_object(obj)
+            obj = get_command_capable_object(value)
             instance = get_command(obj)
 
         if instance:
+            print("instance")
             return dataclasses.replace(instance, help_formatter=help_formatter)
 
         assert not isinstance(obj, Command)
         return cls(
             obj,  # pyright: ignore
             help_formatter=help_formatter,
+            source=value,
         )
 
     def real_name(self) -> str:
@@ -164,13 +168,17 @@ class Command(Generic[T]):
         if command.arguments:
             param_by_name = {p.name: p for p in function_view.parameters}
             for arg in command.arguments:
+                type_view = (
+                    param_by_name[cast(str, arg.field_name)].type_view
+                    if arg.field_name in param_by_name
+                    else None
+                )
+
+                if is_invoke_dependency(type_view):
+                    continue
+
                 arg_help = help_text.args.get(assert_type(arg.field_name, str))
                 if isinstance(arg, Arg):
-                    type_view = (
-                        param_by_name[cast(str, arg.field_name)].type_view
-                        if arg.field_name in param_by_name
-                        else None
-                    )
                     arguments.append(
                         arg.normalize(
                             type_view=type_view,
@@ -192,13 +200,11 @@ class Command(Generic[T]):
                     param_view.type_view,
                 )
                 if maybe_subcommand:
-                    raw_subcommands.append(
-                        (
-                            maybe_subcommand,
-                            param_view.type_view,
-                            field.name,
-                        )
-                    )
+                    raw_subcommands.append((
+                        maybe_subcommand,
+                        param_view.type_view,
+                        field.name,
+                    ))
                 else:
                     arg_defs: list[Arg[Any]] = Arg.collect(
                         field,
@@ -490,3 +496,6 @@ def graceful_exit(
             raise
 
         raise
+
+
+from cappa.invoke import is_invoke_dependency  # noqa: E402
