@@ -42,10 +42,36 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
+@dataclasses.dataclass(frozen=True)
+class Alias:
+    """Describe an alternate name for a subcommand.
+
+    Arguments:
+        name: The alternate name a user may type to invoke the subcommand.
+        hidden: If `True`, the alias is accepted but omitted from help output and
+            from shell completion. Useful for supporting old names without
+            advertising them.
+        deprecated: If supplied, invoking the subcommand via this alias will emit
+            a deprecation warning. If `True`, a default message is used; a string
+            value is used as the deprecation message verbatim.
+    """
+
+    name: str
+    hidden: bool = False
+    deprecated: bool | str = False
+
+    @classmethod
+    def coerce(cls, value: str | Alias) -> Alias:
+        if isinstance(value, Alias):
+            return value
+        return cls(name=value)
+
+
 class CommandArgs(TypedDict, total=False):
     cmd_cls: type
     arguments: list[Arg[Any] | Subcommand]
     name: str | None
+    aliases: list[str | Alias]
     help: str | None
     description: str | None
     invoke: Callable[..., Any] | str | None
@@ -93,6 +119,7 @@ class Command(Generic[T]):
     propagated_arguments: list[Arg[Any]] = dataclasses.field(default_factory=lambda: [])
 
     name: str | None = None
+    aliases: list[str | Alias] = dataclasses.field(default_factory=lambda: [])
     help: str | None = None
     description: str | None = None
     invoke: Callable[..., Any] | str | None = None
@@ -136,6 +163,9 @@ class Command(Generic[T]):
 
         cls_name = self.cmd_cls.__name__
         return re.sub(r"(?<!^)(?=[A-Z])", "-", cls_name).lower()
+
+    def resolved_aliases(self) -> list[Alias]:
+        return [Alias.coerce(a) for a in self.aliases]
 
     @classmethod
     def collect(

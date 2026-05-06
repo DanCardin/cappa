@@ -15,7 +15,7 @@ from cappa.typing import T, assert_type, find_annotations
 
 if TYPE_CHECKING:
     from cappa.arg import Arg
-    from cappa.command import Command
+    from cappa.command import Alias, Command
     from cappa.help import HelpFormattable
     from cappa.output import Output
 
@@ -50,6 +50,12 @@ class Subcommand:
 
     options: dict[str, Command[Any]] = dataclasses.field(default_factory=lambda: {})
     types: Iterable[type] | EmptyType = Empty
+
+    # Mapping of alias name -> (canonical name in `options`, Alias metadata).
+    # Populated during `normalize` from each Command's `aliases` field; collisions raise.
+    alias_map: dict[str, tuple[str, Alias]] = dataclasses.field(
+        default_factory=lambda: {}
+    )
 
     @classmethod
     def detect(cls, field: Field, type_view: TypeView[Any]) -> Subcommand | None:
@@ -86,6 +92,7 @@ class Subcommand:
             propagated_arguments=propagated_arguments,
             state=state,
         )
+        alias_map = build_alias_map(options)
         group = infer_group(self)
 
         return dataclasses.replace(
@@ -94,8 +101,20 @@ class Subcommand:
             types=types,
             required=required,
             options=options,
+            alias_map=alias_map,
             group=group,
         )
+
+    def resolve_name(self, name: str) -> str | None:
+        """Return the canonical name for a typed-in name (canonical or alias).
+
+        Returns `None` when `name` matches neither.
+        """
+        if name in self.options:
+            return name
+        if name in self.alias_map:
+            return self.alias_map[name][0]
+        return None
 
     def map_result(
         self,
@@ -106,8 +125,8 @@ class Subcommand:
         state: State[Any] | None = None,
         input: TextIO | None = None,
     ) -> tuple[Resolved[Any], dict[Any, Any]]:
-        option_name = parsed_args.pop("__name__")
-        option = self.options[option_name]
+        canonical = parsed_args.pop("__name__")
+        option = self.options[canonical]
         return option.map_result(
             option, prog, parsed_args, output=output, state=state, input=input
         )
@@ -118,11 +137,27 @@ class Subcommand:
     def names(self) -> list[str]:
         return [n for n, o in self.options.items() if not o.hidden]
 
+    def visible_aliases_for(self, canonical: str) -> list[Alias]:
+        """Visible (non-hidden) aliases for the given canonical subcommand name."""
+        command = self.options.get(canonical)
+        if command is None:
+            return []
+        return [a for a in command.resolved_aliases() if not a.hidden]
+
+    def all_visible_names(self) -> list[str]:
+        """Canonical names plus visible aliases, in declaration order."""
+        result: list[str] = []
+        for name in self.names():
+            result.append(name)
+            for alias in self.visible_aliases_for(name):
+                result.append(alias.name)
+        return result
+
     def names_str(self, delimiter: str = ", ") -> str:
         return f"{delimiter.join(self.names())}"
 
     def completion(self, partial: str):
-        return [Completion(o) for o in self.options if partial in o]
+        return [Completion(o) for o in self.all_visible_names() if partial in o]
 
 
 def infer_types(arg: Subcommand, type_view: TypeView[Any]) -> Iterable[type]:
@@ -170,6 +205,37 @@ def infer_options(
         )
 
     return options
+
+
+def build_alias_map(
+    options: dict[str, Command[Any]],
+) -> dict[str, tuple[str, Alias]]:
+    """Build alias name -> (canonical, Alias) for a set of subcommand options.
+
+    Raises `ValueError` on collisions: an alias matching another command's
+    canonical name, an alias colliding with another alias, or an alias that
+    duplicates its own canonical name.
+    """
+    alias_map: dict[str, tuple[str, Alias]] = {}
+    for canonical, command in options.items():
+        for alias in command.resolved_aliases():
+            if alias.name == canonical:
+                raise ValueError(
+                    f"Subcommand '{canonical}' has an alias matching its own name."
+                )
+            if alias.name in options:
+                raise ValueError(
+                    f"Subcommand alias '{alias.name}' (for '{canonical}') "
+                    f"collides with another subcommand's name."
+                )
+            if alias.name in alias_map:
+                other_canonical, _ = alias_map[alias.name]
+                raise ValueError(
+                    f"Subcommand alias '{alias.name}' is declared on both "
+                    f"'{other_canonical}' and '{canonical}'."
+                )
+            alias_map[alias.name] = (canonical, alias)
+    return alias_map
 
 
 def infer_group(arg: Subcommand) -> Group:

@@ -16,7 +16,7 @@ from typing import (
 )
 
 from cappa.arg import Arg, ArgAction, ArgActionType, Group
-from cappa.command import Command, Subcommand
+from cappa.command import Alias, Command, Subcommand
 from cappa.completion.types import Completion, FileCompletion
 from cappa.help import format_args, format_subcommand_names
 from cappa.invoke.base import fulfill_deps
@@ -522,9 +522,12 @@ def consume_subcommand(
         )
 
     assert isinstance(value, RawArg), value
-    if value.raw not in arg.options:
+    canonical = arg.resolve_name(value.raw)
+    if canonical is None:
         message = f"Invalid command '{value.raw}'"
-        possible_values = [name for name in arg.names() if name.startswith(value.raw)]
+        possible_values = [
+            name for name in arg.all_visible_names() if name.startswith(value.raw)
+        ]
         if possible_values:
             message += f" (Did you mean: {format_subcommand_names(possible_values)})"
 
@@ -535,11 +538,15 @@ def consume_subcommand(
             arg=arg,
         )
 
-    command = arg.options[value.raw]
+    command = arg.options[canonical]
     check_deprecated(parse_state, command)
 
+    if value.raw != canonical:
+        _, alias = arg.alias_map[value.raw]
+        _warn_deprecated_alias(parse_state, alias)
+
     parse_state.push_command(command)
-    nested_context = context.push(command, value.raw)
+    nested_context = context.push(command, canonical)
 
     parse(parse_state, nested_context)
 
@@ -754,6 +761,17 @@ def check_deprecated(
     message = f"{kind} `{name}` is deprecated"
     if isinstance(arg.deprecated, str):
         message += f": {arg.deprecated}"
+
+    parse_state.output.error(message)
+
+
+def _warn_deprecated_alias(parse_state: ParseState, alias: Alias) -> None:
+    if not alias.deprecated:
+        return
+
+    message = f"Command alias `{alias.name}` is deprecated"
+    if isinstance(alias.deprecated, str):
+        message += f": {alias.deprecated}"
 
     parse_state.output.error(message)
 

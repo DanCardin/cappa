@@ -207,8 +207,11 @@ def add_long_args(
 
             else:
                 assert field_group.subcommand
-                for option in field_group.subcommand.available_options():
-                    table.add_row(*format_subcommand(help_formatter, option))
+                subcommand = field_group.subcommand
+                for option in subcommand.available_options():
+                    table.add_row(
+                        *format_subcommand(help_formatter, option, subcommand)
+                    )
 
         table.add_row()
 
@@ -323,12 +326,21 @@ def _replace_rich_text_component(c: TextComponent, text: str) -> TextComponent:
     return text
 
 
-def format_subcommand(help_formatter: HelpFormatter, command: Command[Any]):
+def format_subcommand(
+    help_formatter: HelpFormatter,
+    command: Command[Any],
+    subcommand: Subcommand | None = None,
+):
+    canonical = command.real_name()
+    parts = [f"[cappa.subcommand]{canonical}[/cappa.subcommand]"]
+    if subcommand is not None:
+        for alias in subcommand.visible_aliases_for(canonical):
+            label = alias.name
+            if alias.deprecated:
+                label = f"{label} (deprecated)"
+            parts.append(f"[cappa.subcommand]{label}[/cappa.subcommand]")
     return (
-        Padding(
-            f"[cappa.subcommand]{command.real_name()}[/cappa.subcommand]",
-            help_formatter.left_padding,
-        ),
+        Padding(", ".join(parts), help_formatter.left_padding),
         command.help,
     )
 

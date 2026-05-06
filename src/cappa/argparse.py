@@ -5,7 +5,7 @@ import sys
 from typing import TYPE_CHECKING, Any, Callable, Hashable, List, TypeVar, cast
 
 from cappa.arg import Arg, ArgAction, Group
-from cappa.command import Command, Subcommand
+from cappa.command import Alias, Command, Subcommand
 from cappa.help import ArgGroup
 from cappa.invoke.base import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
@@ -288,18 +288,26 @@ def add_subcommands(
     dest_prefix: str = "",
 ):
     subcommand_dest = subcommands.field_name
+    visible_metavar = "{" + ",".join(subcommands.names()) + "}"
     subparsers = parser.add_subparsers(
         title=group,
         required=assert_type(subcommands.required, bool),
         parser_class=ArgumentParser,
+        metavar=visible_metavar,
     )
 
     for name, subcommand in subcommands.options.items():
         deprecated_kwarg = add_deprecated_kwarg(subcommand)
 
         nested_dest_prefix = f"{dest_prefix}{subcommand_dest}."
+        non_deprecated_visible_aliases = [
+            a.name
+            for a in subcommand.resolved_aliases()
+            if not a.hidden and not a.deprecated
+        ]
         subparser = subparsers.add_parser(
             name=subcommand.real_name(),
+            aliases=non_deprecated_visible_aliases,
             help=subcommand.help,
             description=subcommand.description,
             formatter_class=parser.formatter_class,
@@ -312,6 +320,19 @@ def add_subcommands(
         subparser.set_defaults(
             __command__=subcommand, **{nested_dest_prefix + "__name__": name}
         )
+
+        # Aliases not registered via `aliases=` (hidden, or deprecated) get spliced
+        # into the internal name map. Deprecated aliases get a wrapper that emits
+        # the warning at dispatch time, then delegates parsing to the real subparser.
+        for alias in subcommand.resolved_aliases():
+            if alias.name in non_deprecated_visible_aliases:
+                continue
+            if alias.deprecated:
+                subparsers._name_parser_map[alias.name] = _DeprecatedAliasParser(
+                    subparser, alias, output
+                )
+            else:
+                subparsers._name_parser_map[alias.name] = subparser
 
         add_arguments(
             subparser,
@@ -331,6 +352,38 @@ def backend_num_args(num_args: int | None, required: bool) -> int | str | None:
         return "*"
 
     return num_args
+
+
+class _DeprecatedAliasParser(ArgumentParser):
+    """Stand-in subparser used when a user invokes a deprecated alias.
+
+    argparse dispatches into here via `_name_parser_map[alias_name]`. We emit
+    the deprecation warning, then delegate parsing to the real subparser so the
+    canonical `__name__` and arguments are populated as usual.
+    """
+
+    def __init__(
+        self, real_parser: ArgumentParser, alias: Alias, output: Output
+    ) -> None:
+        super().__init__(
+            command=real_parser.command,
+            output=output,
+            add_help=False,
+            allow_abbrev=False,
+        )
+        self._real_parser = real_parser
+        self._alias = alias
+
+    def parse_known_args(  # type: ignore[override]
+        self,
+        args: Any = None,
+        namespace: Any = None,
+    ) -> tuple[argparse.Namespace, list[str]]:
+        message = f"Command alias `{self._alias.name}` is deprecated"
+        if isinstance(self._alias.deprecated, str):
+            message += f": {self._alias.deprecated}"
+        self.output.error(message)
+        return self._real_parser.parse_known_args(args, namespace)
 
 
 def to_dict(value: argparse.Namespace):
