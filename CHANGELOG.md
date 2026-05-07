@@ -1,28 +1,33 @@
 # Changelog
 
-## Unreleased
-- feat: Add `aliases=` support for subcommands. Each entry is either a string (visible alias) or a `cappa.Alias(name, hidden=..., deprecated=...)` for finer control. Hidden aliases dispatch but are omitted from help and completion; deprecated aliases emit a runtime warning when used. Collisions are detected at construction time.
+## 0.32
 
-## 0.31.1
+### 0.32.0
+- feat: Add support for fixed size optional-value num_args arguments (e.g. --foo / --foo 4).
+- feat: Add `aliases=` support for subcommands. Each entry is either a string (visible alias) or a `cappa.Alias(name, hidden=..., deprecated=...)` for finer control. Hidden aliases dispatch but are omitted from help and completion; deprecated aliases emit a runtime warning when used. Collisions are detected at construction time.
 - fix: Display Args with the same group identity as alternatives in helptext on the same line.
 - fix: Ensure automatic bool variants (--foo/--no-foo) are mutually exclusive.
 - fix: Allow negative number arguments and option values.
 - fix: Precalculate implicit deps during class construction rather than traversing the output shape.
 - fix: Thread `output` into `parse_result.instance` resolution in `parse`/`parse_async`/`invoke`/`invoke_async`, so `cappa.Exit` raised from `Arg(parse=...)` callbacks renders an error message instead of silently exiting non-zero.
 
-## 0.31.0
+## 0.31
+
+### 0.31.0
 - fix: Allow options accepting zero-length unbounded num_args.
 - feat: Apply default parsing automatically, with Arg.parse_inference == False to disable.
 
-## 0.30.4
+## 0.30
+
+### 0.30.4
 - fix: Use of a synchronous context manager inside an `invoke_async` invoke context.
 - fix: Stripped type aliases losing e.g. Dep metadata.
 
-## 0.30.3
+### 0.30.3
 
 - fix: Scenario where static defaults were not being shown in helptext.
 
-## 0.30.2
+### 0.30.2
 
 - fix: Prioritize Arg.default over dataclass-level default.
 
@@ -39,11 +44,11 @@
   use the `Arg.default` distinctly from the class level default outside the context
   of use with cappa.
 
-## 0.30.1
+### 0.30.1
 
 - fix: Infer class constructor as default for `Destructured` class.
 
-## 0.30.0
+### 0.30.0
 
 - fix: BREAKING CHANGE: Provide simpler `Destructured[T]` annotation.
 
@@ -62,13 +67,15 @@
 - fix: Add support for explicit type alias `Dep`s.
 - fix: Propagation of mutually exclusive options that map to the same `Arg.field_name`.
 
-## 0.29.1
+## 0.29
+
+### 0.29.1
 
 - fix: Lower bounds of dependency versions and test for them.
 - feat: Handle python 3.12 syntax for explicit `type <Type>` aliases.
 - fix: Explicit choice sequence runtime error.
 
-## 0.29.0
+### 0.29.0
 
 - fix: Undocumented completions.
 - docs: Add argument validation documentation.

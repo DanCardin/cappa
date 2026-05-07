@@ -32,6 +32,7 @@ from cappa.typing import (
     Doc,
     DocType,
     T,
+    assert_type,
     detect_choices,
     find_annotations,
 )
@@ -91,6 +92,118 @@ class ArgAction(enum.Enum):
 
 
 ArgActionType: TypeAlias = Union[ArgAction, Callable[..., Any]]
+
+
+@dataclasses.dataclass(frozen=True)
+class NumArgs:
+    """Control the number of values consumed for an argument, with optional-value support.
+
+    Note: The vast majority of uses of `Arg.num_args` should be covered by supplying an integer value,
+    or `NumArgs.unbounded()`.
+
+    When `required=False`, the argument can be supplied without a value (e.g. `--foo`
+    with no following value), yielding the `NumArgs.default` rather than the Arg's overall default.
+    This maps to argparse's `nargs='?'` / `const` behaviour or click' s `is_flag=True` / `flag_value` behavior.
+
+    Args:
+        n: Number of values to consume. ``-1`` means unbounded. Defaults to ``1``.
+        required: Whether a value is required when the option flag is present.
+            When ``False``, ``--foo`` (no value) yields ``default`` and ``--foo VAL``
+            yields the parsed ``VAL``. Defaults to ``True``.
+        default: Value used when the flag is present but no value follows.
+            Only meaningful when ``required=False``. Defaults to ``None``.
+
+    Example::
+
+        @dataclass
+        class Args:
+            # test.py          -> Args(foo=5)    (class default, flag not given)
+            # test.py --foo    -> Args(foo=None) (flag given, no value → NumArgs.default)
+            # test.py --foo 4  -> Args(foo=4)    (flag given with value)
+            foo: Annotated[
+                int | None, Arg(long=True, num_args=NumArgs(required=False))
+            ] = 5
+    """
+
+    n: int = 1
+    required: bool = True
+    default: Any = None
+
+    @classmethod
+    def unbounded(cls):
+        return cls(n=-1)
+
+    @classmethod
+    def infer(
+        cls,
+        type_view: TypeView[Any],
+        field_name: str,
+        arg: Arg[Any] | None = None,
+        action: ArgActionType | None = None,
+        long: list[str] | Literal[False] = False,
+    ) -> NumArgs:
+        if arg:
+            if arg.num_args is not None:
+                if isinstance(arg.num_args, NumArgs):
+                    return arg.num_args
+                return cls(n=arg.num_args)
+
+            if arg.parse:
+                return cls()
+
+            if ArgAction.is_non_value_consuming(action):
+                return cls(n=0)
+
+        if type_view.is_union:
+            # Recursively determine the `n` for each variant.  Accept the
+            # result only if all non-None variants agree on the same count.
+            distinct_n: set[int] = set()
+            n_variants: list[tuple[Any, int]] = []
+            for type_arg in type_view.inner_types:
+                if type_arg.is_none_type:
+                    continue
+                inferred = cls.infer(
+                    type_arg, field_name, arg=arg, action=action, long=long
+                )
+                distinct_n.add(inferred.n)
+                n_variants.append((type_arg.raw, inferred.n))
+
+            if len(distinct_n) == 1:
+                return cls(n=distinct_n.pop())
+
+            invalid_kinds = ", ".join(
+                [f"`{t}` produces `num_args={n}`" for t, n in n_variants]
+            )
+            raise ValueError(
+                f"On field '{field_name}', mismatch of arity between union variants. {invalid_kinds}."
+            )
+
+        if type_view.is_tuple and not type_view.is_variadic_tuple:
+            return cls(n=len(type_view.args))
+
+        is_positional = arg is None or (not arg.short and not long)
+        is_sequence = type_view.is_variadic_tuple or type_view.is_subclass_of(
+            (list, set)
+        )
+        if is_positional and is_sequence:
+            return cls.unbounded()
+
+        # Options whose outer type is a sequence derive count from the inner type.
+        if type_view.is_subclass_of((list, set, tuple)):
+            inner = cls.infer(type_view.inner_types[0], field_name)
+            return cls(n=inner.n)
+
+        return cls()
+
+    @staticmethod
+    def raw_n(num_args: int | NumArgs | None) -> int | None:
+        """Extract the integer count from a raw (pre-normalization) num_args value."""
+        if isinstance(num_args, NumArgs):
+            return num_args.n
+        return num_args
+
+    def __str__(self) -> str:
+        return str(self.n)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -284,7 +397,7 @@ class Arg(Generic[T]):
 
     hidden: bool = False
     action: ArgActionType | None = None
-    num_args: int | None = None
+    num_args: int | NumArgs | None = None
     choices: list[str] | None = None
     completion: Callable[..., list[Completion]] | None = None
     required: bool | None = None
@@ -375,15 +488,15 @@ class Arg(Generic[T]):
 
         field_name = cast(str, field_name or self.field_name)
 
-        verify_type_compatibility(self, field_name, type_view)
         short = infer_short(self, field_name, default_short)
         long = infer_long(self, type_view, field_name, default_long)
         choices = infer_choices(self, type_view)
         action = action or infer_action(self, type_view, long, default)
-        num_args = infer_num_args(
+        num_args = NumArgs.infer(
             type_view, field_name, arg=self, action=action, long=long
         )
-        required = infer_required(self, default)
+
+        required = infer_required(self.required, num_args, self.num_args, default)
 
         parse = infer_parse(self, type_view, state=state)
         help = infer_help(self, fallback_help)
@@ -407,7 +520,7 @@ class Arg(Generic[T]):
         if destructure is True:
             destructure = Destructure()
 
-        return dataclasses.replace(
+        result = dataclasses.replace(
             self,
             default=default,
             field_name=field_name,
@@ -427,6 +540,10 @@ class Arg(Generic[T]):
             show_default=default_formatter,
             destructure=destructure,
         )
+        verify_type_compatibility(
+            result, field_name, type_view, has_custom_parse=bool(self.parse)
+        )
+        return result
 
     @classmethod
     def destructured(cls):
@@ -452,7 +569,13 @@ class Arg(Generic[T]):
         return bool(self.short or self.long)
 
 
-def verify_type_compatibility(arg: Arg[Any], field_name: str, type_view: TypeView[Any]):
+def verify_type_compatibility(
+    arg: Arg[Any],
+    field_name: str,
+    type_view: TypeView[Any],
+    *,
+    has_custom_parse: bool = False,
+):
     """Verify classes of annotations are compatible with one another.
 
     Thus far:
@@ -462,10 +585,19 @@ def verify_type_compatibility(arg: Arg[Any], field_name: str, type_view: TypeVie
 
         * num_args!=1 should only be used with sequence types.
         * ArgAction.append should only be used with sequence types.
+        * Non-required argument values with a None default must be Optional in the type annotation.
     """
     action = arg.action
-    if arg.parse or ArgAction.is_custom(action):
+    if has_custom_parse or ArgAction.is_custom(action):
         return
+
+    num_args = assert_type(arg.num_args, NumArgs)
+    if not num_args.required and num_args.default is None and not type_view.is_optional:
+        raise ValueError(
+            f"On field '{field_name}', `NumArgs(required=False, default=None)` requires the "
+            f"annotated type to include `None` (e.g. `{type_view.repr_type} | None`), "
+            "since the absent-value default of `None` is not assignable to the field type."
+        )
 
     if type_view.is_union:
         all_same_arity = {
@@ -481,16 +613,15 @@ def verify_type_compatibility(arg: Arg[Any], field_name: str, type_view: TypeVie
             )
         return
 
-    num_args = arg.num_args
     if type_view.is_subclass_of((list, tuple, set)):
-        if num_args in {0, 1} and action not in {ArgAction.append, None}:
+        if num_args.n in {0, 1} and action not in {ArgAction.append, None}:
             raise ValueError(
                 f"On field '{field_name}', apparent mismatch of annotated type with `Arg` options. "
                 f"'{type_view.repr_type}' type produces a sequence, whereas `num_args=1`/`action={action}` do not. "
                 "See [documentation](https://cappa.readthedocs.io/en/latest/annotation.html) for more details."
             )
     else:
-        if num_args not in {None, 0, 1} or action is ArgAction.append:
+        if num_args.n not in {None, 0, 1} or action is ArgAction.append:
             raise ValueError(
                 f"On field '{field_name}', apparent mismatch of annotated type with `Arg` options. "
                 f"'{type_view.repr_type}' type produces a scalar, whereas `num_args={num_args}`/`action={action}` do not. "
@@ -540,8 +671,12 @@ def infer_default(
     return Default()
 
 
-def infer_required(arg: Arg[Any], default: Default):
-    required = arg.required
+def infer_required(
+    required: bool | None,
+    num_args: NumArgs,
+    raw_num_args: int | NumArgs | None,
+    default: Default,
+):
     if required is True:
         return True
 
@@ -552,7 +687,11 @@ def infer_required(arg: Arg[Any], default: Default):
                 "supplied through type inference, `Arg(default=...)`, or through class-level default"
             )
 
-        if arg.num_args is not None and arg.num_args < 0:
+        # Only yield to "unbounded = optional" when the user *explicitly* set a negative
+        # num_args (e.g. Arg(num_args=-1) or Arg(num_args=NumArgs(n=-1))).  An inferred
+        # -1 (e.g. from list[str]) keeps the arg required (at-least-one semantics).
+        raw_n = NumArgs.raw_n(raw_num_args)
+        if raw_n is not None and raw_n < 0:
             return False
 
         return True
@@ -633,15 +772,18 @@ def infer_action(
 
         return ArgAction.store_true
 
+    has_custom_parse = arg.parse is not None
+    has_custom_num_args = arg.num_args is not None
+
     is_positional = not arg.short and not long
-    has_specific_num_args = arg.num_args is not None
-    unbounded_num_args = arg.num_args == -1
+    raw_n = NumArgs.raw_n(arg.num_args)
+    is_unbounded = raw_n == -1
 
     if (
-        arg.parse
-        or unbounded_num_args
-        or (is_positional and not has_specific_num_args)
-        or (has_specific_num_args and arg.num_args != 1)
+        has_custom_parse
+        or is_unbounded
+        or (is_positional and not has_custom_num_args)
+        or (has_custom_num_args and raw_n != 1)
     ):
         return ArgAction.set
 
@@ -652,67 +794,6 @@ def infer_action(
         return ArgAction.append
 
     return ArgAction.set
-
-
-def infer_num_args(
-    type_view: TypeView[Any],
-    field_name: str,
-    arg: Arg[Any] | None = None,
-    action: ArgActionType | None = None,
-    long: list[str] | Literal[False] = False,
-) -> int:
-    if arg:
-        if arg.num_args is not None:
-            return arg.num_args
-
-        if arg.parse:
-            return 1
-
-        if ArgAction.is_non_value_consuming(action):
-            return 0
-
-    if type_view.is_union:
-        # Recursively determine the `num_args` value of each variant. Use the value
-        # only if they all result in the same value.
-        distinct_num_args: set[int] = set()
-        num_args_variants: list[tuple[Arg[Any], int]] = []
-        for type_arg in type_view.inner_types:
-            if type_arg.is_none_type:
-                continue
-
-            num_args = infer_num_args(
-                type_arg, field_name, arg=arg, action=action, long=long
-            )
-
-            distinct_num_args.add(num_args)
-            num_args_variants.append((type_arg.raw, num_args))
-
-        # The ideal case, where all union variants have the same arity and can be unioned amongst.
-        if len(distinct_num_args) == 1:
-            return distinct_num_args.pop()
-
-        invalid_kinds = ", ".join(
-            [
-                f"`{type_arg}` produces `num_args={n}`"
-                for type_arg, n in num_args_variants
-            ]
-        )
-        raise ValueError(
-            f"On field '{field_name}', mismatch of arity between union variants. {invalid_kinds}."
-        )
-
-    if type_view.is_tuple and not type_view.is_variadic_tuple:
-        return len(type_view.args)
-
-    is_positional = arg is None or (not arg.short and not long)
-    is_sequence = type_view.is_variadic_tuple or type_view.is_subclass_of((list, set))
-    if is_positional and is_sequence:
-        return -1
-
-    # Options with outer-types as sequences should determine the num_args from the inner type.
-    if type_view.is_subclass_of((list, set, tuple)):
-        return infer_num_args(type_view.inner_types[0], field_name)
-    return 1
 
 
 def infer_parse(
@@ -761,12 +842,12 @@ def infer_completion(
     return None
 
 
-def infer_value_name(arg: Arg[Any], field_name: str, num_args: int | None) -> str:
+def infer_value_name(arg: Arg[Any], field_name: str, num_args: NumArgs) -> str:
     if arg.value_name is not Empty:
         return arg.value_name
 
-    if num_args and num_args > 1:
-        return " ".join([field_name] * num_args)
+    if num_args.n > 1:
+        return " ".join([field_name] * num_args.n)
 
     return field_name
 

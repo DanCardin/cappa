@@ -4,7 +4,7 @@ import argparse
 import sys
 from typing import TYPE_CHECKING, Any, Callable, Hashable, List, TypeVar, cast
 
-from cappa.arg import Arg, ArgAction, Group
+from cappa.arg import Arg, ArgAction, Group, NumArgs
 from cappa.command import Alias, Command, Subcommand
 from cappa.help import ArgGroup
 from cappa.invoke.base import fulfill_deps
@@ -252,7 +252,8 @@ def add_argument(
 
     is_positional = not names
 
-    num_args = backend_num_args(arg.num_args, assert_type(arg.required, bool))
+    normalized_num_args = assert_type(arg.num_args, NumArgs)
+    num_args = backend_num_args(normalized_num_args, assert_type(arg.required, bool))
 
     kwargs: dict[str, Any] = {
         "dest": dest_prefix + assert_type(arg.field_name, str),
@@ -262,11 +263,16 @@ def add_argument(
         "default": argparse.SUPPRESS,
     }
 
-    if not is_positional and arg.required and assert_type(arg.num_args, int) >= 0:
+    if not is_positional and arg.required and normalized_num_args.n >= 0:
         kwargs["required"] = arg.required
+
+    is_optional_value = not is_positional and not normalized_num_args.required
 
     if num_args is not None and not ArgAction.is_non_value_consuming(arg.action):
         kwargs["nargs"] = num_args
+    elif is_optional_value:
+        kwargs["nargs"] = "?"
+        kwargs["const"] = normalized_num_args.default
     elif is_positional and not arg.required:
         kwargs["nargs"] = "?"
 
@@ -342,16 +348,16 @@ def add_subcommands(
         )
 
 
-def backend_num_args(num_args: int | None, required: bool) -> int | str | None:
-    if num_args is None or num_args == 1:
+def backend_num_args(num_args: NumArgs, required: bool) -> int | str | None:
+    if num_args.n == 1:
         return None
 
-    if num_args == -1:
+    if num_args.n == -1:
         if required:
             return "+"
         return "*"
 
-    return num_args
+    return num_args.n
 
 
 class _DeprecatedAliasParser(ArgumentParser):

@@ -13,7 +13,7 @@ from rich.table import Table
 from rich.text import Text
 from typing_extensions import Self, TypeAlias
 
-from cappa.arg import Arg, ArgAction, Group
+from cappa.arg import Arg, ArgAction, Group, NumArgs
 from cappa.default import Default, DefaultFormatter
 from cappa.output import Displayable
 from cappa.subcommand import Subcommand
@@ -363,23 +363,23 @@ def format_arg_name(item: FieldGroup, delimiter: str, *, n: int = 0) -> str:
     if item.args:
         parts: list[str] = []
         for arg in item.args:
+            num_args = cast(NumArgs, arg.num_args)
             has_value = (
-                not ArgAction.is_non_value_consuming(arg.action) and arg.num_args != 0
+                not ArgAction.is_non_value_consuming(arg.action) and num_args.n != 0
             )
 
             arg_names = arg.names_str(delimiter, n=n)
             if not arg.is_option:
                 arg_names = arg_names.upper()
 
-                if arg.num_args == -1:
+                if num_args.n == -1:
                     arg_names = f"{arg_names} ..."
 
             text = f"[cappa.arg]{arg_names}[/cappa.arg]"
 
-            # if arg.is_option and arg.num_args != 0:
             if arg.is_option and has_value:
                 name = cast(str, arg.value_name).upper()
-                if arg.num_args == -1:
+                if num_args.n == -1:
                     name = f"{name} ..."
 
                 text = f"{text} [cappa.arg.name]{name}[/cappa.arg.name]"

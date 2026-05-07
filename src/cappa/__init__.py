@@ -12,7 +12,7 @@ from cappa.subcommand import Subcommand, Subcommands
 from cappa.type_view import Empty, EmptyType
 
 # isort: split
-from cappa.arg import Arg, ArgAction, Group
+from cappa.arg import Arg, ArgAction, Group, NumArgs
 from cappa.destructure import Destructured
 
 # isort: split
@@ -38,6 +38,7 @@ __all__ = [
     "HelpExit",
     "HelpFormattable",
     "HelpFormatter",
+    "NumArgs",
     "Output",
     "Prompt",
     "Self",

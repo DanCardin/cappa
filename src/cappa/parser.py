@@ -15,7 +15,7 @@ from typing import (
     cast,
 )
 
-from cappa.arg import Arg, ArgAction, ArgActionType, Group
+from cappa.arg import Arg, ArgAction, ArgActionType, Group, NumArgs
 from cappa.command import Alias, Command, Subcommand
 from cappa.completion.types import Completion, FileCompletion
 from cappa.help import format_args, format_subcommand_names
@@ -347,7 +347,7 @@ class ArgCollection:
 
                 # An option which requires consuming further arguments should consume
                 # the rest of the concatenated character sequence as its value.
-                if option.num_args:
+                if assert_type(option.num_args, NumArgs).n:
                     partial_arg = remaining_arg
                     break
 
@@ -690,11 +690,26 @@ def consume_arg(
     field_name = cast(str, arg.field_name)
 
     # Determine how many values to collect
-    expected_count = arg.num_args if arg.num_args is not None else 1
+    normalized_num_args = assert_type(arg.num_args, NumArgs)
+    expected_count = normalized_num_args.n
     if ArgAction.is_non_value_consuming(arg.action):
         expected_count = 0
 
     values = list(iter_arg_values(context, parse_state, expected_count, option))
+
+    # Argument whose value is optional, without a value: falls back to NumArgs.default. Distinct from
+    # an optional argument, who's value would be unrecorded and apply the default during mapping.
+    if option is not None and not normalized_num_args.required and not values:
+        check_exclusive_group(arg, context, normalized_num_args.default, parse_state)
+        resolved_context = context.resolve_context(field_name, option)
+        resolved_context.set_result(
+            field_name,
+            normalized_num_args.default,
+            option,
+            assert_type(arg.has_value, bool),
+        )
+        check_deprecated(parse_state, arg, option)
+        return
 
     if arg_bypasses_action(arg, values, expected_count, option, parse_state):
         return

@@ -58,3 +58,27 @@ def test_num_args_list(backend: Backend):
         assert str(e.value.message).lower() == "argument -f: expected 2 arguments"
     else:
         assert e.value.message == "Argument '-f' requires 2 values, found 0"
+
+
+@backends
+def test_num_args_optional_value(backend: Backend):
+    """NumArgs(required=False) distinguishes absent flag, flag-no-value, flag-with-value."""
+
+    @dataclass
+    class Args:
+        foo: Annotated[
+            int | None,
+            cappa.Arg(long=True, num_args=cappa.NumArgs(required=False, default=None)),
+        ] = 5
+
+    # Flag not given → class default
+    args = parse(Args, backend=backend)
+    assert args == Args(foo=5)
+
+    # Flag given with no value → NumArgs.default (None)
+    args = parse(Args, "--foo", backend=backend)
+    assert args == Args(foo=None)
+
+    # Flag given with value → parsed value
+    args = parse(Args, "--foo", "4", backend=backend)
+    assert args == Args(foo=4)
