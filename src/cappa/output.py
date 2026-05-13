@@ -11,7 +11,7 @@ from rich.theme import Theme
 from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
-    from cappa.command import Command
+    from cappa.command import FinalCommand
 
 __all__ = [
     "Displayable",
@@ -34,7 +34,7 @@ class Exit(SystemExit):
         self,
         message: list[Displayable] | Displayable | None = None,
         *,
-        command: Command[Any] | None = None,
+        command: FinalCommand[Any] | None = None,
         code: str | int | None = 0,
         prog: str | None = None,
     ):

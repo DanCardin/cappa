@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, Any, Iterable, TextIO
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, TextIO
 
-from typing_extensions import Annotated, Self, TypeAlias
+from typing_extensions import Annotated, TypeAlias
 
 from cappa.arg import Group
 from cappa.class_inspect import Field, extract_dataclass_metadata
@@ -14,8 +14,8 @@ from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import T, assert_type, find_annotations
 
 if TYPE_CHECKING:
-    from cappa.arg import Arg
-    from cappa.command import Alias, Command
+    from cappa.arg import FinalArg
+    from cappa.command import Alias, Command, FinalCommand
     from cappa.help import HelpFormattable
     from cappa.output import Output
 
@@ -48,7 +48,7 @@ class Subcommand:
     group: str | tuple[int, str] | Group = DEFAULT_SUBCOMMAND_GROUP
     hidden: bool = False
 
-    options: dict[str, Command[Any]] = dataclasses.field(default_factory=lambda: {})
+    options: Mapping[str, Command[Any]] = dataclasses.field(default_factory=lambda: {})
     types: Iterable[type] | EmptyType = Empty
 
     # Mapping of alias name -> (canonical name in `options`, Alias metadata).
@@ -76,9 +76,9 @@ class Subcommand:
         type_view: TypeView[Any] | None = None,
         field_name: str | None = None,
         help_formatter: HelpFormattable | None = None,
-        propagated_arguments: list[Arg[Any]] | None = None,
+        propagated_arguments: list[FinalArg[Any]] | None = None,
         state: State[Any] | None = None,
-    ) -> Self:
+    ) -> FinalSubcommand:
         if type_view is None:
             type_view = TypeView(Any)
 
@@ -95,8 +95,8 @@ class Subcommand:
         alias_map = build_alias_map(options)
         group = infer_group(self)
 
-        return dataclasses.replace(
-            self,
+        return FinalSubcommand(
+            hidden=self.hidden,
             field_name=field_name,
             types=types,
             required=required,
@@ -104,6 +104,22 @@ class Subcommand:
             alias_map=alias_map,
             group=group,
         )
+
+
+@dataclasses.dataclass
+class FinalSubcommand(Subcommand):
+    """Post-normalization form of :class:`Subcommand` with narrowed field types.
+
+    Produced exclusively by :meth:`Subcommand.normalize`.
+    """
+
+    field_name: str = ""  # pyright: ignore
+    required: bool = False  # pyright: ignore
+    group: Group = dataclasses.field(default_factory=lambda: DEFAULT_SUBCOMMAND_GROUP)  # pyright: ignore
+    types: Iterable[type] = dataclasses.field(default_factory=tuple)  # pyright: ignore
+    options: Mapping[str, FinalCommand[Any]] = dataclasses.field(  # pyright: ignore
+        default_factory=dict
+    )
 
     def resolve_name(self, name: str) -> str | None:
         """Return the canonical name for a typed-in name (canonical or alias).
@@ -131,7 +147,7 @@ class Subcommand:
             option, prog, parsed_args, output=output, state=state, input=input
         )
 
-    def available_options(self) -> list[Command[Any]]:
+    def available_options(self) -> list[FinalCommand[Any]]:
         return [o for o in self.options.values() if not o.hidden]
 
     def names(self) -> list[str]:
@@ -154,7 +170,7 @@ class Subcommand:
         return result
 
     def names_str(self, delimiter: str = ", ") -> str:
-        return f"{delimiter.join(self.names())}"
+        return delimiter.join(self.names())
 
     def completion(self, partial: str):
         return [Completion(o) for o in self.all_visible_names() if partial in o]
@@ -181,34 +197,33 @@ def infer_options(
     arg: Subcommand,
     types: Iterable[type],
     help_formatter: HelpFormattable | None = None,
-    propagated_arguments: list[Arg[Any]] | None = None,
+    propagated_arguments: list[FinalArg[Any]] | None = None,
     state: State[Any] | None = None,
-) -> dict[str, Command[Any]]:
+) -> dict[str, FinalCommand[Any]]:
     from cappa.command import Command
 
     if arg.options:
         return {
-            name: Command.collect(  # pyright: ignore
-                type_command,
+            name: type_command.collect(
                 propagated_arguments=propagated_arguments,
                 state=state,
             )
             for name, type_command in arg.options.items()
         }
 
-    options: dict[str, Command[Any]] = {}
+    options: dict[str, FinalCommand[Any]] = {}
     for type_ in types:
         type_command: Command[Any] = Command.get(type_, help_formatter=help_formatter)  # pyright: ignore
         type_name = type_command.real_name()
-        options[type_name] = Command.collect(  # pyright: ignore
-            type_command, propagated_arguments=propagated_arguments
+        options[type_name] = type_command.collect(
+            propagated_arguments=propagated_arguments
         )
 
     return options
 
 
 def build_alias_map(
-    options: dict[str, Command[Any]],
+    options: dict[str, FinalCommand[Any]],
 ) -> dict[str, tuple[str, Alias]]:
     """Build alias name -> (canonical, Alias) for a set of subcommand options.
 

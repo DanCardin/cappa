@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import TYPE_CHECKING, Any, Callable, Hashable, List, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, Hashable, TypeVar, cast
 
-from cappa.arg import Arg, ArgAction, Group, NumArgs
-from cappa.command import Alias, Command, Subcommand
+from cappa.arg import Arg, ArgAction, FinalArg, NumArgs
+from cappa.command import Alias, Command, FinalCommand
 from cappa.help import ArgGroup
 from cappa.invoke.base import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
 from cappa.parser import RawOption, Value
-from cappa.typing import assert_type
+from cappa.subcommand import FinalSubcommand
 
 if TYPE_CHECKING:
     from _typeshed import SupportsWrite
@@ -69,7 +69,7 @@ class _CountAction(argparse._CountAction):  # pyright: ignore
 
 class ArgumentParser(argparse.ArgumentParser):
     def __init__(
-        self, *args: Any, command: Command[Any], output: Output, **kwargs: Any
+        self, *args: Any, command: FinalCommand[Any], output: Output, **kwargs: Any
     ):
         super().__init__(*args, **kwargs)
         self.command = command
@@ -141,7 +141,7 @@ class Nestedspace(argparse.Namespace):
 
 
 def backend(
-    command: Command[T],
+    command: FinalCommand[T],
     argv: list[str],
     output: Output,
     prog: str,
@@ -173,7 +173,7 @@ def backend(
 
 
 def create_parser(
-    command: Command[Any], output: Output, prog: str
+    command: FinalCommand[Any], output: Output, prog: str
 ) -> argparse.ArgumentParser:
     kwargs: dict[str, Any] = {}
     if sys.version_info >= (3, 9):  # pragma: no cover
@@ -196,7 +196,7 @@ def create_parser(
 
 def add_arguments(
     parser: ArgumentParser,
-    command: Command[Any],
+    command: FinalCommand[Any],
     output: Output,
     dest_prefix: str = "",
 ):
@@ -209,13 +209,12 @@ def add_arguments(
         for field_group in group.field_groups:
             if field_group.args:
                 for arg in field_group.args:
-                    arg_group = cast(Group, arg.group)
                     target_group: Any = argparse_group
 
-                    if arg_group.exclusive:
-                        target_group = exclusive_groups.get(arg_group.id)
+                    if arg.group.exclusive:
+                        target_group = exclusive_groups.get(arg.group.id)
                         if target_group is None:
-                            target_group = exclusive_groups[arg_group.id] = (
+                            target_group = exclusive_groups[arg.group.id] = (
                                 argparse_group.add_mutually_exclusive_group()
                             )
 
@@ -234,7 +233,7 @@ def add_arguments(
 def add_argument(
     parser: ArgumentParser,  # pyright: ignore
     subparser: argparse.ArgumentParser | argparse._ArgumentGroup,  # pyright: ignore
-    arg: Arg[Any],
+    arg: FinalArg[Any],
     dest_prefix: str = "",
     **extra_kwargs: Any,
 ):
@@ -243,36 +242,33 @@ def add_argument(
 
     names: list[str] = []
     if arg.short:
-        short = cast(List[str], arg.short)
-        names.extend(short)
+        names.extend(arg.short)
 
     if arg.long:
-        long = cast(List[str], arg.long)
-        names.extend(long)
+        names.extend(arg.long)
 
     is_positional = not names
 
-    normalized_num_args = assert_type(arg.num_args, NumArgs)
-    num_args = backend_num_args(normalized_num_args, assert_type(arg.required, bool))
+    num_args = backend_num_args(arg.num_args, arg.required)
 
     kwargs: dict[str, Any] = {
-        "dest": dest_prefix + assert_type(arg.field_name, str),
+        "dest": dest_prefix + arg.field_name,
         "help": arg.help,
         "metavar": arg.value_name,
         "action": get_action(arg),
         "default": argparse.SUPPRESS,
     }
 
-    if not is_positional and arg.required and normalized_num_args.n >= 0:
+    if not is_positional and arg.required and arg.num_args.n >= 0:
         kwargs["required"] = arg.required
 
-    is_optional_value = not is_positional and not normalized_num_args.required
+    is_optional_value = not is_positional and not arg.num_args.required
 
     if num_args is not None and not ArgAction.is_non_value_consuming(arg.action):
         kwargs["nargs"] = num_args
     elif is_optional_value:
         kwargs["nargs"] = "?"
-        kwargs["const"] = normalized_num_args.default
+        kwargs["const"] = arg.num_args.default
     elif is_positional and not arg.required:
         kwargs["nargs"] = "?"
 
@@ -289,7 +285,7 @@ def add_argument(
 def add_subcommands(
     parser: argparse.ArgumentParser,
     group: str,
-    subcommands: Subcommand,
+    subcommands: FinalSubcommand,
     output: Output,
     dest_prefix: str = "",
 ):
@@ -297,7 +293,7 @@ def add_subcommands(
     visible_metavar = "{" + ",".join(subcommands.names()) + "}"
     subparsers = parser.add_subparsers(
         title=group,
-        required=assert_type(subcommands.required, bool),
+        required=subcommands.required,
         parser_class=ArgumentParser,
         metavar=visible_metavar,
     )

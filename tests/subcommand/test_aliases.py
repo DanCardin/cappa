@@ -6,6 +6,8 @@ from typing import Any, Union
 import pytest
 
 import cappa
+from cappa.help import HelpFormatter, format_subcommand
+from cappa.subcommand import FinalSubcommand
 from tests.utils import Backend, backends, parse, parse_completion
 
 
@@ -247,15 +249,13 @@ def test_alias_collides_with_other_alias():
 
 def test_visible_aliases_for_unknown_canonical_returns_empty():
     """`visible_aliases_for` returns [] when given a name that isn't a subcommand."""
-    sub = cappa.Subcommand(field_name="cmd", options={})
+    sub = FinalSubcommand(field_name="cmd", options={})
     assert sub.visible_aliases_for("not-a-subcommand") == []
 
 
 def test_format_subcommand_without_subcommand_arg():
     """`format_subcommand` works with the default `subcommand=None`."""
-    from cappa.help import HelpFormatter, format_subcommand
-
-    cmd = cappa.Command(List)
+    cmd = cappa.Command(List).collect()
     padding, help_text = format_subcommand(HelpFormatter(), cmd)
     rendered = str(padding.renderable)
     assert "list" in rendered

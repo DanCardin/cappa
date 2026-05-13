@@ -17,7 +17,7 @@ from typing_extensions import dataclass_transform
 
 from cappa import argparse, parser
 from cappa.class_inspect import detect
-from cappa.command import Alias, Command
+from cappa.command import Alias, Command, FinalCommand
 from cappa.help import HelpFormattable, HelpFormatter
 from cappa.invoke.base import resolve_callable
 from cappa.invoke.types import DepTypes, InvokeCallableSpec
@@ -26,10 +26,12 @@ from cappa.state import S, State
 from cappa.types import Backend, CappaCapable, FuncOrClassDecorator, ParseResult, T, U
 
 if TYPE_CHECKING:
-    from cappa.arg import Arg
+    from cappa.arg import Arg, FinalArg
 
 
-def create_version_arg(version: str | Arg[Any] | None = None) -> Arg[Any] | None:
+def create_version_arg(
+    version: str | Arg[Any] | None = None,
+) -> FinalArg[Any] | None:
     from dataclasses import replace
 
     from cappa.arg import Arg, ArgAction, Empty, Group
@@ -60,7 +62,7 @@ def create_version_arg(version: str | Arg[Any] | None = None) -> Arg[Any] | None
     )
 
 
-def create_help_arg(help: bool | Arg[bool] | None = True) -> Arg[bool] | None:
+def create_help_arg(help: bool | Arg[bool] | None = True) -> FinalArg[bool] | None:
     from cappa.arg import Arg, ArgAction, Group
 
     if not help:
@@ -78,7 +80,9 @@ def create_help_arg(help: bool | Arg[bool] | None = True) -> Arg[bool] | None:
     return help.normalize(action=ArgAction.help, field_name="help", default=None)
 
 
-def create_completion_arg(completion: bool | Arg[bool] = True) -> Arg[bool] | None:
+def create_completion_arg(
+    completion: bool | Arg[bool] = True,
+) -> FinalArg[bool] | None:
     from cappa.arg import Arg, ArgAction, Group
 
     if not completion:
@@ -471,7 +475,7 @@ def parse_command(
     concrete_output = _coalesce_output(output, theme, color)
     concrete_state: State[S] = State.ensure(state)  # type: ignore
 
-    command: Command[T] = collect(
+    command: FinalCommand[T] = collect(
         obj,
         help=help,
         version=version,
@@ -480,8 +484,7 @@ def parse_command(
         help_formatter=help_formatter,
         state=concrete_state,
     )
-    return Command.parse_command(  # pyright: ignore
-        command,
+    return command.parse_command(
         argv=argv,
         input=input,
         backend=concrete_backend,
@@ -625,7 +628,7 @@ def collect(
     completion: bool | Arg[bool] = True,
     help_formatter: HelpFormattable | None = None,
     state: State[Any] | None = None,
-) -> Command[T]:
+) -> FinalCommand[T]:
     """Retrieve the `Command` object from a cappa-capable source class.
 
     Arguments:
@@ -647,8 +650,9 @@ def collect(
     """
     state = State.ensure(state)  # pyright: ignore
 
-    command: Command[T] = Command.get(obj, help_formatter=help_formatter)  # pyright: ignore
-    command = Command.collect(command, state=state)  # pyright: ignore
+    command: FinalCommand[T] = Command.get(  # pyright: ignore
+        obj, help_formatter=help_formatter
+    ).collect(state=state)
 
     concrete_backend = _coalesce_backend(backend)
     if concrete_backend is argparse.backend:  # pyright: ignore
