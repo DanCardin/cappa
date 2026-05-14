@@ -16,7 +16,7 @@ from typing import (
 from cappa.state import S, State
 
 if TYPE_CHECKING:
-    from cappa.command import Command
+    from cappa.command import Command, FinalCommand
     from cappa.invoke.types import InvokeCallable, Resolved
     from cappa.output import Output
 
@@ -30,7 +30,7 @@ CappaCapable = Union["InvokeCallable[T]", Type[T], "Command[T]"]
 class Backend(Protocol):
     def __call__(
         self,
-        command: Command[T],
+        command: FinalCommand[T],
         argv: list[str],
         output: Output,
         prog: str,

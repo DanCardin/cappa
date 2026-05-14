@@ -1,5 +1,5 @@
 from cappa.base import collect, command, invoke, invoke_async, parse, parse_async
-from cappa.command import Alias, Command
+from cappa.command import Alias, Command, FinalCommand
 from cappa.completion.types import Completion
 from cappa.default import Confirm, Default, Env, Prompt, ValueFrom
 from cappa.file_io import FileMode
@@ -8,11 +8,11 @@ from cappa.invoke.types import Dep, Self
 from cappa.output import Exit, HelpExit, Output
 from cappa.parse import default_parse, unpack_arguments
 from cappa.state import State
-from cappa.subcommand import Subcommand, Subcommands
+from cappa.subcommand import FinalSubcommand, Subcommand, Subcommands
 from cappa.type_view import Empty, EmptyType
 
 # isort: split
-from cappa.arg import Arg, ArgAction, Group, NumArgs
+from cappa.arg import Arg, ArgAction, FinalArg, Group, NumArgs
 from cappa.destructure import Destructured
 
 # isort: split
@@ -34,6 +34,9 @@ __all__ = [
     "Env",
     "Exit",
     "FileMode",
+    "FinalArg",
+    "FinalCommand",
+    "FinalSubcommand",
     "Group",
     "HelpExit",
     "HelpFormattable",
