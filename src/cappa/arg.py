@@ -11,7 +11,6 @@ from typing import (
     Callable,
     Generic,
     Iterable,
-    List,
     Literal,
     Sequence,
     Set,
@@ -32,7 +31,6 @@ from cappa.typing import (
     Doc,
     DocType,
     T,
-    assert_type,
     detect_choices,
     find_annotations,
 )
@@ -388,7 +386,7 @@ class Arg(Generic[T]):
     short: bool | str | list[str] | None = False
     long: bool | str | list[str] | None = False
     count: bool = False
-    default: T | EmptyType | None = Empty
+    default: Default | T | EmptyType | None = Empty
     help: str | None = None
     parse: Callable[..., T] | Sequence[Callable[..., Any]] | None = None
     parse_inference: bool = True
@@ -420,7 +418,7 @@ class Arg(Generic[T]):
         default_short: bool = False,
         default_long: bool = False,
         state: State[Any] | None = None,
-    ) -> list[Arg[Any]]:
+    ) -> list[FinalArg[Any]]:
         args: list[Arg[Any]] = find_annotations(type_view, cls) or [Arg()]
 
         exclusive = field.name if len(args) > 1 else False
@@ -438,7 +436,7 @@ class Arg(Generic[T]):
         if field_metadata:
             args = field_metadata
 
-        result: list[Arg[Any]] = []
+        result: list[FinalArg[Any]] = []
         for i, arg in enumerate(args, start=1):
             # field_name and default are evaluated outside `normalize` because they can
             # potentially depend on the type's dataclass-like field information, whereas
@@ -480,7 +478,7 @@ class Arg(Generic[T]):
         state: State[Any] | None = None,
         destructure: Destructure | bool | None = None,
         show_default: bool | str | DefaultFormatter | None = None,
-    ) -> Arg[Any]:
+    ) -> FinalArg[Any]:
         if type_view is None:
             type_view = TypeView(Any)
 
@@ -517,28 +515,36 @@ class Arg(Generic[T]):
         )
 
         destructure = destructure or self.destructure
+        if not destructure:
+            destructure = None
         if destructure is True:
             destructure = Destructure()
 
-        result = dataclasses.replace(
-            self,
-            default=default,
-            field_name=field_name,
+        result: FinalArg[Any] = FinalArg(
+            # preserved from self
+            count=self.count,
+            hidden=self.hidden,
+            deprecated=self.deprecated,
+            propagate=self.propagate,
+            parse_inference=self.parse_inference,
+            # computed/narrowed
             value_name=value_name,
-            required=required,
             short=short,
             long=long,
-            choices=choices,
+            default=default,
+            help=help,
+            parse=parse,
+            group=group,
             action=action,
             num_args=num_args,
-            parse=parse,
-            help=help,
+            choices=choices,
             completion=completion,
-            group=group,
-            has_value=has_value,
-            type_view=type_view,
+            required=required,
+            field_name=field_name,
             show_default=default_formatter,
             destructure=destructure,
+            has_value=has_value,
+            type_view=type_view,
         )
         verify_type_compatibility(
             result, field_name, type_view, has_custom_parse=bool(self.parse)
@@ -550,19 +556,38 @@ class Arg(Generic[T]):
         """Mark a an argument as destructured. See also the shorter `Destructured` alias."""
         return cls(destructure=Destructure())
 
+
+@dataclasses.dataclass(frozen=True)
+class FinalArg(Arg[T]):
+    """Post-normalization form of :class:`Arg` with narrowed field types.
+
+    Produced exclusively by :meth:`Arg.normalize`. After normalization all
+    previously-optional/Empty fields are guaranteed to be concrete values.
+    """
+
+    value_name: str = ""
+    short: list[str] | Literal[False] = False
+    long: list[str] | Literal[False] = False
+    default: Default = dataclasses.field(default_factory=Default)
+    group: Group = dataclasses.field(default_factory=Group)
+    action: ArgActionType = ArgAction.set
+    num_args: NumArgs = dataclasses.field(default_factory=NumArgs)
+    required: bool = False
+    field_name: str = ""
+    has_value: bool = True
+    type_view: TypeView[Any] = dataclasses.field(default_factory=lambda: TypeView(Any))
+    parse: Callable[..., Any] = dataclasses.field(default=parse_value)
+    show_default: DefaultFormatter = dataclasses.field(default_factory=DefaultFormatter)
+    destructure: Destructure | None = None
+
     def names(self, *, n: int = 0) -> list[str]:
-        short_names = cast(List[str], self.short or [])
-        long_names = cast(List[str], self.long or [])
-        result = short_names + long_names
-        if n:
-            return result[:n]
-        return result
+        result = (self.short or []) + (self.long or [])
+        return result[:n] if n else result
 
     def names_str(self, delimiter: str = ", ", *, n: int = 0) -> str:
-        if self.long or self.short:
+        if self.short or self.long:
             return delimiter.join(self.names(n=n))
-
-        return cast(str, self.value_name)
+        return self.value_name
 
     @cached_property
     def is_option(self) -> bool:
@@ -570,7 +595,7 @@ class Arg(Generic[T]):
 
 
 def verify_type_compatibility(
-    arg: Arg[Any],
+    arg: FinalArg[Any],
     field_name: str,
     type_view: TypeView[Any],
     *,
@@ -591,7 +616,7 @@ def verify_type_compatibility(
     if has_custom_parse or ArgAction.is_custom(action):
         return
 
-    num_args = assert_type(arg.num_args, NumArgs)
+    num_args = arg.num_args
     if not num_args.required and num_args.default is None and not type_view.is_optional:
         raise ValueError(
             f"On field '{field_name}', `NumArgs(required=False, default=None)` requires the "
@@ -852,7 +877,9 @@ def infer_value_name(arg: Arg[Any], field_name: str, num_args: NumArgs) -> str:
     return field_name
 
 
-def explode_negated_bool_args(args: Sequence[Arg[Any]]) -> Iterable[Arg[Any]]:
+def explode_negated_bool_args(
+    args: Sequence[FinalArg[Any]],
+) -> Iterable[FinalArg[Any]]:
     """Expand `--foo/--no-foo` solo arguments into dual-arguments.
 
     Acts as a transform from `Arg(long='--foo/--no-foo')` to
@@ -861,7 +888,7 @@ def explode_negated_bool_args(args: Sequence[Arg[Any]]) -> Iterable[Arg[Any]]:
     for arg in args:
         yielded = False
         if isinstance(arg.action, ArgAction) and arg.action.is_bool_action and arg.long:
-            long = cast(List[str], arg.long)
+            long = arg.long
 
             negatives = [item for item in long if "--no-" in item]
             positives = [item for item in long if "--no-" not in item]
@@ -874,9 +901,9 @@ def explode_negated_bool_args(args: Sequence[Arg[Any]]) -> Iterable[Arg[Any]]:
                 default_is_false = arg.default.fallback_value is False and not_required
                 disabled: DefaultFormatter = DefaultFormatter.disabled()
                 group = dataclasses.replace(
-                    cast(Group, arg.group),
+                    arg.group,
                     exclusive=True,
-                    id=cast(str, arg.field_name),
+                    id=arg.field_name,
                 )
 
                 positive_arg = dataclasses.replace(

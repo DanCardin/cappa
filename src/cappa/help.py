@@ -13,15 +13,12 @@ from rich.table import Table
 from rich.text import Text
 from typing_extensions import Self, TypeAlias
 
-from cappa.arg import Arg, ArgAction, Group, NumArgs
-from cappa.default import Default, DefaultFormatter
+from cappa.arg import Arg, ArgAction, FinalArg
 from cappa.output import Displayable
-from cappa.subcommand import Subcommand
-from cappa.type_view import Empty
-from cappa.typing import assert_type
+from cappa.subcommand import FinalSubcommand
 
 if typing.TYPE_CHECKING:
-    from cappa.command import Command
+    from cappa.command import FinalCommand
 
 Dimension: TypeAlias = typing.Tuple[int, int, int, int]
 
@@ -35,8 +32,8 @@ class FieldGroup:
 
     field_name: str | None
     required: bool
-    args: list[Arg[Any]] | None = None
-    subcommand: Subcommand | None = None
+    args: list[FinalArg[Any]] | None = None
+    subcommand: FinalSubcommand | None = None
 
 
 @dataclass(frozen=True)
@@ -47,16 +44,18 @@ class ArgGroup:
     field_groups: list[FieldGroup]
 
     @staticmethod
-    def _by_group_key(arg: Arg[Any] | Subcommand) -> tuple[int, int, str, bool]:
-        return assert_type(arg.group, Group).key
+    def _by_group_key(
+        arg: FinalArg[Any] | FinalSubcommand,
+    ) -> tuple[int, int, str, bool]:
+        return arg.group.key
 
     @staticmethod
-    def _by_group(arg: Arg[Any] | Subcommand) -> str:
-        return assert_type(arg.group, Group).name
+    def _by_group(arg: FinalArg[Any] | FinalSubcommand) -> str:
+        return arg.group.name
 
     @classmethod
     def collect(
-        cls, command: Command[Any], include_hidden: bool = False
+        cls, command: FinalCommand[Any], include_hidden: bool = False
     ) -> list[ArgGroup]:
         """Collect and group arguments from a command by their Group."""
         sorted_args = sorted(command.all_arguments, key=cls._by_group_key)
@@ -65,9 +64,9 @@ class ArgGroup:
         for name, args in groupby(sorted_args, key=cls._by_group):
             items = [a for a in args if include_hidden or not a.hidden]
 
-            field_grouped: dict[str | None, list[Arg[Any] | Subcommand]] = {}
+            field_grouped: dict[str | None, list[FinalArg[Any] | FinalSubcommand]] = {}
             for item in items:
-                field_name = item.field_name if item.field_name is not Empty else None
+                field_name = item.field_name or None
                 if field_name not in field_grouped:
                     field_grouped[field_name] = []
                 field_grouped[field_name].append(item)
@@ -76,14 +75,14 @@ class ArgGroup:
             for field_name, items in field_grouped.items():
                 # Validate that items are all Args or all Subcommands
                 first_item = items[0]
-                if isinstance(first_item, Arg):
+                if isinstance(first_item, FinalArg):
                     # Validate all are Args
-                    if not all(isinstance(item, Arg) for item in items):
+                    if not all(isinstance(item, FinalArg) for item in items):
                         raise ValueError(  # pragma: no cover
                             f"FieldGroup with field_name={field_name!r} contains mixed types: "
                             f"Args and Subcommands cannot share the same field_name"
                         )
-                    group_args = cast(List[Arg[Any]], items)
+                    group_args = cast(List[FinalArg[Any]], items)
 
                     # All items must have the same requiredness
                     required_values = {arg.required for arg in group_args}
@@ -91,16 +90,17 @@ class ArgGroup:
                         f"All items with field_name={field_name!r} must have the same "
                         f"required value, got: {required_values}"
                     )
-                    required = cast(bool, required_values.pop())
+                    required = required_values.pop()
                     field_groups.append(
                         FieldGroup(field_name, required, args=group_args)
                     )
                 else:
                     assert len(items) == 1
+                    assert isinstance(first_item, FinalSubcommand)
                     field_groups.append(
                         FieldGroup(
                             field_name,
-                            cast(bool, first_item.required),
+                            first_item.required,
                             subcommand=first_item,
                         )
                     )
@@ -124,11 +124,11 @@ class HelpFormattable(typing.Protocol):
     default_format: str
 
     def long(
-        self, command: Command[Any], prog: str
+        self, command: FinalCommand[Any], prog: str
     ) -> list[Displayable]: ...  # pragma: no cover
 
     def short(
-        self, command: Command[Any], prog: str
+        self, command: FinalCommand[Any], prog: str
     ) -> Displayable: ...  # pragma: no cover
 
 
@@ -144,7 +144,7 @@ class HelpFormatter(HelpFormattable):
 
     default: typing.ClassVar[HelpFormatter]
 
-    def long(self, command: Command[Any], prog: str) -> list[Displayable]:
+    def long(self, command: FinalCommand[Any], prog: str) -> list[Displayable]:
         arg_groups = ArgGroup.collect(command)
 
         lines: list[Displayable] = []
@@ -161,7 +161,7 @@ class HelpFormatter(HelpFormattable):
         lines.extend(add_long_args(console, self, arg_groups))
         return lines
 
-    def short(self, command: Command[Any], prog: str) -> Displayable:
+    def short(self, command: FinalCommand[Any], prog: str) -> Displayable:
         arg_groups = ArgGroup.collect(command)
         return add_short_args(prog, arg_groups)
 
@@ -219,15 +219,12 @@ def add_long_args(
 
 
 def format_args(
-    console: Console, help_formatter: HelpFormattable, *args: Arg[Any]
+    console: Console, help_formatter: HelpFormattable, *args: FinalArg[Any]
 ) -> Displayable:
     """Format multiple args with the same field_name by concatenating their help texts."""
     segments: list[TextComponent] = []
 
     for arg in args:
-        assert isinstance(arg.default, Default)
-        assert isinstance(arg.show_default, DefaultFormatter)
-
         unknown_arg_format = help_formatter.arg_format
         if isinstance(unknown_arg_format, Iterable) and not isinstance(
             unknown_arg_format, str
@@ -328,8 +325,8 @@ def _replace_rich_text_component(c: TextComponent, text: str) -> TextComponent:
 
 def format_subcommand(
     help_formatter: HelpFormatter,
-    command: Command[Any],
-    subcommand: Subcommand | None = None,
+    command: FinalCommand[Any],
+    subcommand: FinalSubcommand | None = None,
 ):
     canonical = command.real_name()
     parts = [f"[cappa.subcommand]{canonical}[/cappa.subcommand]"]
@@ -363,7 +360,7 @@ def format_arg_name(item: FieldGroup, delimiter: str, *, n: int = 0) -> str:
     if item.args:
         parts: list[str] = []
         for arg in item.args:
-            num_args = cast(NumArgs, arg.num_args)
+            num_args = arg.num_args
             has_value = (
                 not ArgAction.is_non_value_consuming(arg.action) and num_args.n != 0
             )
@@ -378,7 +375,7 @@ def format_arg_name(item: FieldGroup, delimiter: str, *, n: int = 0) -> str:
             text = f"[cappa.arg]{arg_names}[/cappa.arg]"
 
             if arg.is_option and has_value:
-                name = cast(str, arg.value_name).upper()
+                name = arg.value_name.upper()
                 if num_args.n == -1:
                     name = f"{name} ..."
 

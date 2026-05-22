@@ -10,18 +10,17 @@ from typing import (
     Generic,
     Hashable,
     Iterable,
-    List,
-    Optional,
     cast,
 )
 
-from cappa.arg import Arg, ArgAction, ArgActionType, Group, NumArgs
-from cappa.command import Alias, Command, Subcommand
+from cappa.arg import Arg, ArgAction, ArgActionType, FinalArg
+from cappa.command import Alias, Command, FinalCommand
 from cappa.completion.types import Completion, FileCompletion
 from cappa.help import format_args, format_subcommand_names
 from cappa.invoke.base import fulfill_deps
 from cappa.output import Exit, HelpExit, Output
-from cappa.typing import T, assert_type
+from cappa.subcommand import FinalSubcommand
+from cappa.typing import T
 
 negative_number = re.compile(r"^-\d+$|^-\d*\.\d+$")
 
@@ -32,8 +31,8 @@ class BadArgumentError(RuntimeError):
         message: str,
         *,
         value: Any,
-        command: Command[Any],
-        arg: Arg[Any] | Subcommand | None = None,
+        command: FinalCommand[Any],
+        arg: Arg[Any] | FinalSubcommand | None = None,
     ) -> None:
         super().__init__(message)
         self.value = value
@@ -43,11 +42,11 @@ class BadArgumentError(RuntimeError):
 
 @dataclasses.dataclass
 class HelpAction(RuntimeError):
-    command: Command[Any]
+    command: FinalCommand[Any]
     command_name: str
 
     @classmethod
-    def from_parse_state(cls, parse_state: ParseState, command: Command[Any]):
+    def from_parse_state(cls, parse_state: ParseState, command: FinalCommand[Any]):
         raise cls(command, parse_state.prog)
 
 
@@ -77,12 +76,12 @@ class CompletionAction(RuntimeError):
 
 
 def backend(
-    command: Command[T],
+    command: FinalCommand[T],
     argv: list[str],
     output: Output,
     prog: str,
     provide_completions: bool = False,
-) -> tuple[Any, Command[T], dict[str, Any]]:
+) -> tuple[Any, FinalCommand[T], dict[str, Any]]:
     context = ParseContext.from_command(command)
     parse_state = ParseState.from_command(
         argv, command, output=output, provide_completions=provide_completions
@@ -125,7 +124,7 @@ class ParseState:
     """The overall state of the argument parse."""
 
     args: ArgCollection
-    command_stack: list[Command[Any]]
+    command_stack: list[FinalCommand[Any]]
     output: Output
     provide_completions: bool = False
 
@@ -133,7 +132,7 @@ class ParseState:
     def from_command(
         cls,
         argv: list[str],
-        command: Command[Any],
+        command: FinalCommand[Any],
         output: Output,
         provide_completions: bool = False,
     ):
@@ -153,7 +152,7 @@ class ParseState:
     def prog(self):
         return " ".join(c.real_name() for c in self.command_stack)
 
-    def push_command(self, command: Command[Any]):
+    def push_command(self, command: FinalCommand[Any]):
         self.command_stack.append(command)
 
 
@@ -161,34 +160,36 @@ class ParseState:
 class ParseContext:
     """The parsing context specific to a command."""
 
-    command: Command[Any]
-    arguments: deque[Arg[Any] | Subcommand]
+    command: FinalCommand[Any]
+    arguments: deque[FinalArg[Any] | FinalSubcommand]
     missing_options: set[str]
-    arguments_by_field_name: dict[str, list[Arg[Any]]]
-    arguments_by_value_name: dict[str, Arg[Any]]
+    arguments_by_field_name: dict[str, list[FinalArg[Any]]]
+    arguments_by_value_name: dict[str, FinalArg[Any]]
     propagated_options: set[str]
     parent_context: ParseContext | None = None
-    exclusive_args: dict[str, Arg[Any]] = dataclasses.field(default_factory=lambda: {})
+    exclusive_args: dict[str, FinalArg[Any]] = dataclasses.field(
+        default_factory=lambda: {}
+    )
 
     result: dict[str, Any] = dataclasses.field(default_factory=lambda: {})
 
     @classmethod
     def from_command(
         cls,
-        command: Command[Any],
+        command: FinalCommand[Any],
         parent_context: ParseContext | None = None,
     ) -> ParseContext:
-        arguments_by_field_name: dict[str, list[Arg[Any]]] = {}
-        arguments_by_value_name: dict[str, Arg[Any]] = {}
+        arguments_by_field_name: dict[str, list[FinalArg[Any]]] = {}
+        arguments_by_value_name: dict[str, FinalArg[Any]] = {}
         propagated_options: set[str] = set()
         unique_field_names: set[str] = set()
 
-        def add_option_names(arg: Arg[Any]):
+        def add_option_names(arg: FinalArg[Any]):
             for opts in (arg.short, arg.long):
                 if not opts:
                     continue
 
-                for key in cast(List[str], opts):
+                for key in opts:
                     if key in arguments_by_value_name:
                         raise ValueError(f"Conflicting option string: {key}")
 
@@ -196,7 +197,7 @@ class ParseContext:
 
         native_command_field_names: set[str] = set()
         for arg in command.options:
-            field_name = cast(str, arg.field_name)
+            field_name = arg.field_name
 
             if arg.action not in ArgAction.meta_actions():
                 unique_field_names.add(field_name)
@@ -206,7 +207,7 @@ class ParseContext:
             add_option_names(arg)
 
         for arg in command.propagated_arguments:
-            field_name = cast(str, arg.field_name)
+            field_name = arg.field_name
 
             if field_name in native_command_field_names:
                 continue
@@ -232,11 +233,7 @@ class ParseContext:
         parent_context = (
             self.parent_context.propagated_context if self.parent_context else {}
         )
-        self_options = {
-            assert_type(o.field_name, str): o
-            for o in self.command.options
-            if o.propagate
-        }
+        self_options = {o.field_name: o for o in self.command.options if o.propagate}
         self_context: dict[str, ParseContext] = dict.fromkeys(self_options, self)
         return {**parent_context, **self_context}
 
@@ -262,7 +259,7 @@ class ParseContext:
         if has_value:
             self.result[field_name] = value
 
-    def push(self, command: Command[Any], name: str) -> ParseContext:
+    def push(self, command: FinalCommand[Any], name: str) -> ParseContext:
         nested_context = ParseContext.from_command(command, parent_context=self)
         nested_context.result["__name__"] = name
         return nested_context
@@ -347,7 +344,7 @@ class ArgCollection:
 
                 # An option which requires consuming further arguments should consume
                 # the rest of the concatenated character sequence as its value.
-                if assert_type(option.num_args, NumArgs).n:
+                if option.num_args.n:
                     partial_arg = remaining_arg
                     break
 
@@ -440,7 +437,7 @@ def parse_option(
     parse_state: ParseState, context: ParseContext, raw: RawOption
 ) -> None:
     if raw.name not in context.arguments_by_value_name:
-        possible_options: dict[str, Arg[Any]] = {
+        possible_options: dict[str, FinalArg[Any]] = {
             name: arg
             for name, arg in context.arguments_by_value_name.items()
             if name.startswith(raw.name)
@@ -482,7 +479,7 @@ def parse_args(parse_state: ParseState, context: ParseContext) -> None:
 
         arg = context.next_argument()
 
-        if isinstance(arg, Subcommand):
+        if isinstance(arg, FinalSubcommand):
             consume_subcommand(parse_state, context, arg)
         else:
             consume_arg(parse_state, context, arg)
@@ -507,7 +504,7 @@ def parse_args(parse_state: ParseState, context: ParseContext) -> None:
 
 
 def consume_subcommand(
-    parse_state: ParseState, context: ParseContext, arg: Subcommand
+    parse_state: ParseState, context: ParseContext, arg: FinalSubcommand
 ) -> Any:
     value = parse_state.args.next(context)
     if value is None:
@@ -550,8 +547,7 @@ def consume_subcommand(
 
     parse(parse_state, nested_context)
 
-    name = cast(str, arg.field_name)
-    context.result[name] = nested_context.result
+    context.result[arg.field_name] = nested_context.result
 
 
 def iter_arg_values(
@@ -585,7 +581,7 @@ def iter_arg_values(
 
 
 def arg_bypasses_action(
-    arg: Arg[Any],
+    arg: FinalArg[Any],
     values: list[str],
     expected_count: int,
     option: RawOption | None,
@@ -657,14 +653,14 @@ def arg_bypasses_action(
 
 
 def check_exclusive_group(
-    arg: Arg[Any],
+    arg: FinalArg[Any],
     context: ParseContext,
     result: Any,
     parse_state: ParseState,
 ) -> None:
     """Check if arg violates exclusive group constraints."""
-    group = cast(Optional[Group], arg.group)
-    if not group or not group.exclusive:
+    group = arg.group
+    if not group.exclusive:
         return
 
     exclusive_arg = context.exclusive_args.get(group.id)
@@ -684,13 +680,13 @@ def check_exclusive_group(
 def consume_arg(
     parse_state: ParseState,
     context: ParseContext,
-    arg: Arg[Any],
+    arg: FinalArg[Any],
     option: RawOption | None = None,
 ) -> Any:
-    field_name = cast(str, arg.field_name)
+    field_name = arg.field_name
 
     # Determine how many values to collect
-    normalized_num_args = assert_type(arg.num_args, NumArgs)
+    normalized_num_args = arg.num_args
     expected_count = normalized_num_args.n
     if ArgAction.is_non_value_consuming(arg.action):
         expected_count = 0
@@ -706,7 +702,7 @@ def consume_arg(
             field_name,
             normalized_num_args.default,
             option,
-            assert_type(arg.has_value, bool),
+            arg.has_value,
         )
         check_deprecated(parse_state, arg, option)
         return
@@ -733,11 +729,13 @@ def consume_arg(
     resolved_context = context.resolve_context(field_name, option)
 
     fulfilled_deps: dict[Hashable, Any] = {
+        FinalCommand: parse_state.current_command,
         Command: parse_state.current_command,
         Output: parse_state.output,
         ParseContext: resolved_context,
         ParseState: parse_state,
         Arg: arg,
+        FinalArg: arg,
         Value: Value(result),
         Any: result,
     }
@@ -747,16 +745,14 @@ def consume_arg(
     kwargs = fulfill_deps(action_handler, fulfilled_deps).kwargs
     result = action_handler(**kwargs)
 
-    resolved_context.set_result(
-        field_name, result, option, assert_type(arg.has_value, bool)
-    )
+    resolved_context.set_result(field_name, result, option, arg.has_value)
 
     check_deprecated(parse_state, arg, option)
 
 
 def check_deprecated(
     parse_state: ParseState,
-    arg: Arg[Any] | Command[Any],
+    arg: FinalArg[Any] | FinalCommand[Any],
     option: RawOption | None = None,
 ) -> None:
     if not arg.deprecated:

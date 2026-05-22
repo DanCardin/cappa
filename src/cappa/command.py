@@ -14,6 +14,7 @@ from typing import (
     Hashable,
     Iterable,
     Protocol,
+    Sequence,
     TextIO,
     TypedDict,
     TypeVar,
@@ -22,7 +23,7 @@ from typing import (
 
 from type_lens.type_view import TypeView
 
-from cappa.arg import Arg, Group
+from cappa.arg import Arg, FinalArg, Group
 from cappa.class_inspect import fields as get_fields
 from cappa.class_inspect import get_command, get_command_capable_object
 from cappa.default import Default
@@ -31,7 +32,7 @@ from cappa.help import HelpFormattable, HelpFormatter
 from cappa.invoke.types import Resolved
 from cappa.output import Exit, Output
 from cappa.state import S, State
-from cappa.subcommand import Subcommand
+from cappa.subcommand import FinalSubcommand, Subcommand
 from cappa.type_view import CallableView
 from cappa.types import ParseResult
 from cappa.typing import assert_type
@@ -113,10 +114,12 @@ class Command(Generic[T]):
     """
 
     cmd_cls: type[T]
-    arguments: list[Arg[Any] | Subcommand] = dataclasses.field(
+    arguments: Sequence[Arg[Any] | Subcommand] = dataclasses.field(
         default_factory=lambda: []
     )
-    propagated_arguments: list[Arg[Any]] = dataclasses.field(default_factory=lambda: [])
+    propagated_arguments: list[FinalArg[Any]] = dataclasses.field(
+        default_factory=lambda: []
+    )
 
     name: str | None = None
     aliases: list[str | Alias] = dataclasses.field(default_factory=lambda: [])
@@ -167,33 +170,31 @@ class Command(Generic[T]):
     def resolved_aliases(self) -> list[Alias]:
         return [Alias.coerce(a) for a in self.aliases]
 
-    @classmethod
     def collect(
-        cls,
-        command: Command[T],
-        propagated_arguments: list[Arg[Any]] | None = None,
+        self,
+        propagated_arguments: list[FinalArg[Any]] | None = None,
         state: State[Any] | None = None,
-    ) -> Command[T]:
+    ) -> FinalCommand[T]:
         kwargs: CommandArgs = CommandArgs()
 
-        help_text = ClassHelpText.collect(command.cmd_cls)
+        help_text = ClassHelpText.collect(self.cmd_cls)
 
-        if not command.help:
+        if not self.help:
             kwargs["help"] = help_text.summary
 
-        if not command.description:
+        if not self.description:
             kwargs["description"] = help_text.body
 
-        fields = get_fields(command.cmd_cls)
-        function_view = CallableView.from_callable(command.cmd_cls, include_extras=True)
+        fields = get_fields(self.cmd_cls)
+        function_view = CallableView.from_callable(self.cmd_cls, include_extras=True)
 
         propagated_arguments = propagated_arguments or []
 
-        arguments: list[Arg[Any]] = []
+        arguments: list[FinalArg[Any]] = []
         raw_subcommands: list[tuple[Subcommand, TypeView[Any] | None, str | None]] = []
-        if command.arguments:
+        if self.arguments:
             param_by_name = {p.name: p for p in function_view.parameters}
-            for arg in command.arguments:
+            for arg in self.arguments:
                 arg_help = help_text.args.get(assert_type(arg.field_name, str))
                 if isinstance(arg, Arg):
                     type_view = (
@@ -204,8 +205,8 @@ class Command(Generic[T]):
                     arguments.append(
                         arg.normalize(
                             type_view=type_view,
-                            default_short=command.default_short,
-                            default_long=command.default_long,
+                            default_short=self.default_short,
+                            default_long=self.default_long,
                             fallback_help=arg_help,
                             state=state,
                         )
@@ -230,12 +231,12 @@ class Command(Generic[T]):
                         )
                     )
                 else:
-                    arg_defs: list[Arg[Any]] = Arg.collect(
+                    arg_defs: list[FinalArg[Any]] = Arg.collect(
                         field,
                         param_view.type_view,
                         fallback_help=arg_help,
-                        default_short=command.default_short,
-                        default_long=command.default_long,
+                        default_short=self.default_short,
+                        default_long=self.default_long,
                         state=state,
                     )
                     arguments.extend(arg_defs)
@@ -248,7 +249,7 @@ class Command(Generic[T]):
             subcommand.normalize(
                 type_view,
                 field_name,
-                help_formatter=command.help_formatter,
+                help_formatter=self.help_formatter,
                 propagated_arguments=propagating_arguments,
                 state=state,
             )
@@ -256,140 +257,87 @@ class Command(Generic[T]):
         ]
 
         check_group_identity(arguments)
-        kwargs["arguments"] = [*arguments, *subcommands]
+        final_arguments: list[FinalArg[Any] | FinalSubcommand] = [
+            *arguments,
+            *subcommands,
+        ]
 
-        return dataclasses.replace(
-            command,
-            **kwargs,
+        return FinalCommand(
+            cmd_cls=self.cmd_cls,
+            arguments=final_arguments,
             propagated_arguments=propagated_arguments,
+            name=self.name,
+            aliases=self.aliases,
+            help=kwargs.get("help", self.help),
+            description=kwargs.get("description", self.description),
+            invoke=self.invoke,
+            hidden=self.hidden,
+            default_short=self.default_short,
+            default_long=self.default_long,
+            deprecated=self.deprecated,
+            help_formatter=self.help_formatter,
+            _collected=self._collected,
         )
 
-    @classmethod
-    def parse_command(
-        cls,
-        command: Command[T],
-        *,
-        output: Output,
-        backend: Backend,
-        argv: list[str] | None = None,
-        input: TextIO | None = None,
-        state: State[S] | None = None,
-    ) -> ParseResult[T, S]:
-        if argv is None:  # pragma: no cover
-            argv = sys.argv[1:]
 
-        prog = command.real_name()
-        result_state: State[S] = State.ensure(state)  # type: ignore
+@dataclasses.dataclass
+class FinalCommand(Command[T]):
+    """Post-normalization form of :class:`Command` with narrowed field types.
 
-        with graceful_exit(command, prog, output):
-            parser, parsed_command, parsed_args = backend(
-                command, argv, output=output, prog=prog
-            )
-            prog = parser.prog
-            result, implicit_deps = command.map_result(
-                command, prog, parsed_args, state=state, input=input, output=output
-            )
+    Produced exclusively by :meth:`Command.collect`.
+    """
 
-        return ParseResult(
-            root_command=command,
-            parsed_command=parsed_command,
-            instance=result,
-            implicit_deps=implicit_deps,
-            output=output,
-            state=result_state,
-        )
-
-    def map_result(
-        self,
-        command: Command[T],
-        prog: str,
-        parsed_args: dict[str, Any],
-        output: Output,
-        state: State[Any] | None = None,
-        input: TextIO | None = None,
-    ) -> tuple[Resolved[T], dict[Hashable, Any]]:
-        state = State.ensure(state)  # pyright: ignore
-
-        kwargs: dict[str, Any] = {}
-        for arg in self.value_arguments:
-            field_name = cast(str, arg.field_name)
-
-            if arg.field_name in parsed_args:
-                is_parsed, value = (False, parsed_args[field_name])
-            else:
-                assert isinstance(arg.default, Default), arg
-                is_parsed, value = arg.default(state=state, input=input)
-
-            handler = parse_handler(arg, prog, value)
-
-            kwargs[field_name] = Resolved(handler, args=(value, is_parsed))
-
-        # Collect all subcommand instances during construction
-        subcommand_deps: dict[Hashable, Any] = {}
-        subcommand = self.subcommand
-        if subcommand:
-            field_name = cast(str, subcommand.field_name)
-            if field_name in parsed_args:
-                value = parsed_args[field_name]
-                value, subcommand_deps = subcommand.map_result(
-                    prog, value, output=output, state=state
-                )
-                kwargs[field_name] = value
-
-        def map_result(**kwargs: dict[str, Any]) -> T:
-            with graceful_exit(command, prog, output):
-                return command.cmd_cls(**kwargs)
-
-        resolved = Resolved(map_result, kwargs=kwargs)
-
-        # Add this command instance to deps
-        key = cast(Hashable, command.cmd_cls)
-        deps: dict[Hashable, Any] = {key: resolved, **subcommand_deps}
-
-        return resolved, deps
+    arguments: Sequence[FinalArg[Any] | FinalSubcommand] = dataclasses.field(  # pyright: ignore
+        default_factory=list
+    )
+    propagated_arguments: list[FinalArg[Any]] = dataclasses.field(  # pyright: ignore
+        default_factory=list
+    )
 
     @property
-    def subcommand(self) -> Subcommand | None:
+    def subcommand(self) -> FinalSubcommand | None:
         return next(
-            (arg for arg in self.arguments if isinstance(arg, Subcommand)), None
+            (arg for arg in self.arguments if isinstance(arg, FinalSubcommand)),
+            None,
         )
 
     @property
-    def value_arguments(self) -> Iterable[Arg[Any]]:
+    def value_arguments(self) -> Iterable[FinalArg[Any]]:
         for arg in self.arguments:
-            if isinstance(arg, Arg) and arg.has_value:
+            if isinstance(arg, FinalArg) and arg.has_value:
                 yield arg
 
     @property
-    def all_arguments(self) -> Iterable[Arg[Any] | Subcommand]:
+    def all_arguments(self) -> Iterable[FinalArg[Any] | FinalSubcommand]:
         for arg in self.arguments:
             yield arg
-
         for arg in self.propagated_arguments:
             yield arg
 
     @property
-    def options(self) -> Iterable[Arg[Any]]:
+    def options(self) -> Iterable[FinalArg[Any]]:
         for arg in self.arguments:
-            if isinstance(arg, Arg) and arg.is_option:
+            if isinstance(arg, FinalArg) and arg.is_option:
                 yield arg
 
     @property
-    def positional_arguments(self) -> Iterable[Arg[Any] | Subcommand]:
+    def positional_arguments(
+        self,
+    ) -> Iterable[FinalArg[Any] | FinalSubcommand]:
         for arg in self.arguments:
             if (
-                isinstance(arg, Arg)
+                isinstance(arg, FinalArg)
                 and not arg.short
                 and not arg.long
                 and not arg.destructure
-            ) or isinstance(arg, Subcommand):
+            ) or isinstance(arg, FinalSubcommand):
                 yield arg
 
     def add_meta_actions(
         self,
-        help: Arg[bool] | None = None,
-        version: Arg[str] | None = None,
-        completion: Arg[bool] | None = None,
+        help: FinalArg[bool] | None = None,
+        version: FinalArg[str] | None = None,
+        completion: FinalArg[bool] | None = None,
     ):
         if self._collected:
             return self
@@ -402,7 +350,7 @@ class Command(Generic[T]):
                     for name, option in arg.options.items()
                 },
             )
-            if help and isinstance(arg, Subcommand)
+            if help and isinstance(arg, FinalSubcommand)
             else arg
             for arg in self.arguments
         ]
@@ -415,6 +363,83 @@ class Command(Generic[T]):
             arguments.append(completion)
         return dataclasses.replace(self, arguments=arguments, _collected=True)
 
+    def map_result(
+        self,
+        command: FinalCommand[T],
+        prog: str,
+        parsed_args: dict[str, Any],
+        output: Output,
+        state: State[Any] | None = None,
+        input: TextIO | None = None,
+    ) -> tuple[Resolved[T], dict[Hashable, Any]]:
+        state = State.ensure(state)  # pyright: ignore
+
+        kwargs: dict[str, Any] = {}
+        for arg in self.value_arguments:
+            field_name = arg.field_name
+
+            if field_name in parsed_args:
+                is_parsed, value = (False, parsed_args[field_name])
+            else:
+                assert isinstance(arg.default, Default), arg
+                is_parsed, value = arg.default(state=state, input=input)
+
+            handler = parse_handler(arg, prog, value)
+            kwargs[field_name] = Resolved(handler, args=(value, is_parsed))
+
+        subcommand_deps: dict[Hashable, Any] = {}
+        subcommand = self.subcommand
+        if subcommand:
+            field_name = subcommand.field_name
+            if field_name in parsed_args:
+                value = parsed_args[field_name]
+                value, subcommand_deps = subcommand.map_result(
+                    prog, value, output=output, state=state
+                )
+                kwargs[field_name] = value
+
+        def map_result(**kwargs: dict[str, Any]) -> T:
+            with graceful_exit(command, prog, output):
+                return command.cmd_cls(**kwargs)
+
+        resolved = Resolved(map_result, kwargs=kwargs)
+        key = cast(Hashable, command.cmd_cls)
+        deps: dict[Hashable, Any] = {key: resolved, **subcommand_deps}
+        return resolved, deps
+
+    def parse_command(
+        self,
+        *,
+        output: Output,
+        backend: Backend,
+        argv: list[str] | None = None,
+        input: TextIO | None = None,
+        state: State[S] | None = None,
+    ) -> ParseResult[T, S]:
+        if argv is None:  # pragma: no cover
+            argv = sys.argv[1:]
+
+        prog = self.real_name()
+        result_state: State[S] = State.ensure(state)  # type: ignore
+
+        with graceful_exit(self, prog, output):
+            parser, parsed_command, parsed_args = backend(
+                self, argv, output=output, prog=prog
+            )
+            prog = parser.prog
+            result, implicit_deps = self.map_result(
+                self, prog, parsed_args, state=state, input=input, output=output
+            )
+
+        return ParseResult(
+            root_command=self,
+            parsed_command=parsed_command,
+            instance=result,
+            implicit_deps=implicit_deps,
+            output=output,
+            state=result_state,
+        )
+
 
 H = TypeVar("H", covariant=True)
 
@@ -423,30 +448,24 @@ class HasCommand(Generic[H], Protocol):
     __cappa__: ClassVar[Command[Any]]
 
 
-def check_group_identity(args: list[Arg[Any]]):
+def check_group_identity(args: list[FinalArg[Any]]):
     group_identity: dict[str, Group] = {}
 
     for arg in args:
-        assert isinstance(arg.group, Group)
-
         identity = group_identity.get(arg.group.id)
         if identity and identity != arg.group:
             raise ValueError(
                 f"Group details do not match among arguments: {arg.group.diff(identity)}."
             )
 
-        assert isinstance(arg.group, Group)
         group_identity[arg.group.id] = arg.group
 
 
 @contextlib.contextmanager
 def parse_value(
-    arg: Arg[T], prog: str, value: Any, is_parsed: bool
+    arg: FinalArg[T], prog: str, value: Any, is_parsed: bool
 ) -> Generator[T, None, None]:
     if not is_parsed:
-        assert arg.parse
-        assert callable(arg.parse)
-
         try:
             value = arg.parse(value)
         except Exception as e:
@@ -460,11 +479,13 @@ def parse_value(
     yield value
 
 
-def parse_handler(arg: Arg[T], prog: str, value: Any) -> Callable[[Any, bool], Any]:
+def parse_handler(
+    arg: FinalArg[T], prog: str, value: Any
+) -> Callable[[Any, bool], Any]:
     is_async_value = inspect.iscoroutine(value)
-    is_async_parse = arg.parse and (
-        inspect.iscoroutinefunction(arg.parse) or inspect.isasyncgenfunction(arg.parse)
-    )
+    is_async_parse = inspect.iscoroutinefunction(
+        arg.parse
+    ) or inspect.isasyncgenfunction(arg.parse)
 
     if is_async_value or is_async_parse:
 
@@ -498,7 +519,7 @@ def parse_handler(arg: Arg[T], prog: str, value: Any) -> Callable[[Any, bool], A
 
 @contextlib.contextmanager
 def graceful_exit(
-    command: Command[T], prog: str, output: Output
+    command: FinalCommand[T], prog: str, output: Output
 ) -> Generator[None, None, None]:
     try:
         yield

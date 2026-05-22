@@ -4,12 +4,12 @@ import importlib
 import importlib.util
 import io
 import logging
-from typing import TYPE_CHECKING, Any, ClassVar, Sequence, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Sequence
 
 from rich.console import Console
 
 import cappa
-from cappa.command import Command
+from cappa.command import FinalCommand
 from cappa.default import Default
 from cappa.help import ArgGroup, HelpFormatter
 from cappa.output import Displayable, theme
@@ -58,7 +58,7 @@ class CappaDirective(Directive):
         module = importlib.import_module(module_path)
         item = getattr(module, item_name)
 
-        command: Command[Any] = cappa.collect(item)
+        command: FinalCommand[Any] = cappa.collect(item)
         if style == "terminal":
             return render_to_terminal(command, terminal_width)
 
@@ -68,7 +68,7 @@ class CappaDirective(Directive):
         raise ValueError(f"Unrecognized style {style}")
 
 
-def render_to_terminal(command: cappa.Command[Any], terminal_width: int):
+def render_to_terminal(command: cappa.FinalCommand[Any], terminal_width: int):
     raw_help: list[Displayable] = HelpFormatter.default.long(
         command, command.real_name()
     )
@@ -94,7 +94,7 @@ def render_to_terminal(command: cappa.Command[Any], terminal_width: int):
     return [nodes.raw(text=html, format="html")]
 
 
-def render_to_docutils(command: cappa.Command[Any], document: nodes.document):
+def render_to_docutils(command: cappa.FinalCommand[Any], document: nodes.document):
     section = nodes.section()
     document.note_implicit_target(section)
 
@@ -113,8 +113,8 @@ def render_to_docutils(command: cappa.Command[Any], document: nodes.document):
 
     for group in ArgGroup.collect(command):
         # Collect all Args and Subcommands from field_groups
-        command_options: list[cappa.Arg[Any]] = []
-        command_subcommands: list[cappa.Subcommand] = []
+        command_options: list[cappa.FinalArg[Any]] = []
+        command_subcommands: list[cappa.FinalSubcommand] = []
         for field_group in group.field_groups:
             if field_group.args:
                 command_options.extend(field_group.args)
@@ -137,8 +137,8 @@ def render_to_docutils(command: cappa.Command[Any], document: nodes.document):
                     for name in names:
                         option_content += nodes.literal(text=name)
                 else:
-                    name = cast(str, arg.field_name)
-                    value_name = cast(str, arg.value_name)
+                    name = arg.field_name
+                    value_name = arg.value_name
 
                     name += f" {value_name.upper()}"
                     option_content += nodes.literal(text=name)

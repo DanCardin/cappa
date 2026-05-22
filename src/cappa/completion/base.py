@@ -5,14 +5,18 @@ from pathlib import Path
 from typing import Any, Iterable, cast
 
 from cappa.arg import Arg
-from cappa.command import Command
+from cappa.command import FinalCommand
 from cappa.completion.shells import available_shells
 from cappa.output import Exit, Output
 from cappa.parser import Completion, FileCompletion, backend
 
 
 def execute(
-    command: Command[Any], prog: str, action: str, arg: Arg[Any], output: Output
+    command: FinalCommand[Any],
+    prog: str,
+    action: str,
+    arg: Arg[Any],
+    output: Output,
 ):
     shell_name = Path(os.environ.get("SHELL", "bash")).name
     shell = available_shells.get(shell_name)
