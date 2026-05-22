@@ -96,6 +96,7 @@ class Command(Generic[T]):
             any params/options.
         description: Optional extended help text. If omitted, the `cls` docstring will
             be parsed, and the extended long description section will be used.
+        epilog: Optional text displayed after the argument list in the help output.
         invoke: Optional command to be called in the event parsing is successful.
             In the case of subcommands, it will only call the parsed/selected
             function to invoke. The value can **either** be a callable object or
@@ -125,6 +126,7 @@ class Command(Generic[T]):
     aliases: list[str | Alias] = dataclasses.field(default_factory=lambda: [])
     help: str | None = None
     description: str | None = None
+    epilog: str | None = None
     invoke: Callable[..., Any] | str | None = None
 
     hidden: bool = False
@@ -270,6 +272,7 @@ class Command(Generic[T]):
             aliases=self.aliases,
             help=kwargs.get("help", self.help),
             description=kwargs.get("description", self.description),
+            epilog=self.epilog,
             invoke=self.invoke,
             hidden=self.hidden,
             default_short=self.default_short,

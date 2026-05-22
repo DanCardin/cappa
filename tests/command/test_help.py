@@ -2,13 +2,20 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from textwrap import dedent
 from typing import Any
 
 import pytest
 
 import cappa
 from cappa.output import Exit
-from tests.utils import Backend, backends, parse
+from tests.utils import (
+    Backend,
+    backends,
+    parse,
+    strip_trailing_whitespace,
+    terminal_width,
+)
 
 
 @pytest.mark.help
@@ -73,3 +80,26 @@ def test_description_without_help(backend: Backend, capsys: Any):
 
     stdout = capsys.readouterr().out
     assert "All the help." in stdout
+
+
+@pytest.mark.help
+@backends
+def test_epilog(backend: Backend, capsys: Any):
+    @cappa.command(epilog="See also: https://example.com")
+    @dataclass
+    class Command:
+        pass
+
+    with terminal_width(), pytest.raises(Exit):
+        parse(Command, "--help", backend=backend, completion=False)
+
+    result = strip_trailing_whitespace(capsys.readouterr().out)
+    tail = result[result.index("[-h, --help]") :]
+    assert tail == dedent(
+        """\
+        [-h, --help]  Show this message and exit.
+
+
+          See also: https://example.com
+        """
+    )
