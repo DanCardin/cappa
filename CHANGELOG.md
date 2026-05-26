@@ -3,6 +3,8 @@
 ## 0.32
 
 ### 0.32.0
+- feat: Add `epilog=` field on commands for text which should go after the argument help.
+- refactor: All root objects (Command/Arg/Subcommand) to have "Final" variants which represent their post-normalization shape.
 - feat: Add support for fixed size optional-value num_args arguments (e.g. --foo / --foo 4).
 - feat: Add `aliases=` support for subcommands. Each entry is either a string (visible alias) or a `cappa.Alias(name, hidden=..., deprecated=...)` for finer control. Hidden aliases dispatch but are omitted from help and completion; deprecated aliases emit a runtime warning when used. Collisions are detected at construction time.
 - fix: Display Args with the same group identity as alternatives in helptext on the same line.

@@ -501,6 +501,7 @@ def command(
     aliases: list[str | Alias] | None = None,
     help: str | None = None,
     description: str | None = None,
+    epilog: str | None = None,
     invoke: InvokeCallableSpec[Any] | None = None,
     hidden: bool = False,
     default_short: bool = False,
@@ -515,6 +516,7 @@ def command(
     aliases: list[str | Alias] | None = None,
     help: str | None = None,
     description: str | None = None,
+    epilog: str | None = None,
     invoke: InvokeCallableSpec[Any] | None = None,
     hidden: bool = False,
     default_short: bool = False,
@@ -530,6 +532,7 @@ def command(
     aliases: list[str | Alias] | None = None,
     help: str | None = None,
     description: str | None = None,
+    epilog: str | None = None,
     invoke: InvokeCallableSpec[Any] | None = None,
     hidden: bool = False,
     default_short: bool = False,
@@ -547,6 +550,7 @@ def command(
     aliases: list[str | Alias] | None = None,
     help: str | None = None,
     description: str | None = None,
+    epilog: str | None = None,
     invoke: InvokeCallableSpec[Any] | None = None,
     hidden: bool = False,
     default_short: bool = False,
@@ -570,6 +574,7 @@ def command(
             any params/options.
         description: Optional extended help text. If omitted, the `cls` docstring will
             be parsed, and the extended long description section will be used.
+        epilog: Optional text displayed after the argument list in the help output.
         invoke: Optional command to be called in the event parsing is successful.
             In the case of subcommands, it will only call the parsed/selected
             function to invoke.
@@ -597,6 +602,7 @@ def command(
             aliases=list(aliases) if aliases is not None else command.aliases,
             help=help,
             description=description,
+            epilog=epilog,
             hidden=hidden,
             default_short=default_short,
             default_long=default_long,

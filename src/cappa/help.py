@@ -159,6 +159,11 @@ class HelpFormatter(HelpFormattable):
 
         console = Console()
         lines.extend(add_long_args(console, self, arg_groups))
+
+        if command.epilog:
+            lines.append(NewLine())
+            lines.append(Padding(Markdown(command.epilog), self.left_padding))
+
         return lines
 
     def short(self, command: FinalCommand[Any], prog: str) -> Displayable:
