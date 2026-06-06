@@ -12,6 +12,7 @@
 - fix: Allow negative number arguments and option values.
 - fix: Precalculate implicit deps during class construction rather than traversing the output shape.
 - fix: Thread `output` into `parse_result.instance` resolution in `parse`/`parse_async`/`invoke`/`invoke_async`, so `cappa.Exit` raised from `Arg(parse=...)` callbacks renders an error message instead of silently exiting non-zero.
+- refactor: Destructured implementation to be more like Arg handling to fix default and helptext behavior. 
 
 ## 0.31
 

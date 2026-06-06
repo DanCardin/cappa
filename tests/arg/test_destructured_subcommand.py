@@ -30,5 +30,5 @@ def test_invalid_subcommand():
         parse(InvalidSubcommand)
     assert (
         str(e.value)
-        == "Subcommands are unsupported in the context of a destructured argument"
+        == "Only `Arg` is supported in the context of a destructured argument"
     )

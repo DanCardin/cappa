@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
-import inspect
 import sys
 from collections.abc import Callable
 from typing import (
@@ -26,7 +25,6 @@ from type_lens.type_view import TypeView
 from cappa.arg import Arg, FinalArg, Group
 from cappa.class_inspect import fields as get_fields
 from cappa.class_inspect import get_command, get_command_capable_object
-from cappa.default import Default
 from cappa.docstring import ClassHelpText
 from cappa.help import HelpFormattable, HelpFormatter
 from cappa.invoke.types import Resolved
@@ -115,8 +113,8 @@ class Command(Generic[T]):
     """
 
     cmd_cls: type[T]
-    arguments: Sequence[Arg[Any] | Subcommand] = dataclasses.field(
-        default_factory=lambda: []
+    arguments: Sequence[Arg[Any] | Subcommand | FinalDestructure[Any]] = (
+        dataclasses.field(default_factory=lambda: [])
     )
     propagated_arguments: list[FinalArg[Any]] = dataclasses.field(
         default_factory=lambda: []
@@ -192,7 +190,7 @@ class Command(Generic[T]):
 
         propagated_arguments = propagated_arguments or []
 
-        arguments: list[FinalArg[Any]] = []
+        arguments: list[FinalArg[Any] | FinalDestructure[Any]] = []
         raw_subcommands: list[tuple[Subcommand, TypeView[Any] | None, str | None]] = []
         if self.arguments:
             param_by_name = {p.name: p for p in function_view.parameters}
@@ -213,6 +211,8 @@ class Command(Generic[T]):
                             state=state,
                         )
                     )
+                elif isinstance(arg, FinalDestructure):
+                    arguments.append(arg)
                 else:
                     raw_subcommands.append((arg, None, None))
 
@@ -233,7 +233,7 @@ class Command(Generic[T]):
                         )
                     )
                 else:
-                    arg_defs: list[FinalArg[Any]] = Arg.collect(
+                    arg_defs = Arg.collect(
                         field,
                         param_view.type_view,
                         fallback_help=arg_help,
@@ -245,7 +245,7 @@ class Command(Generic[T]):
 
         propagating_arguments = [
             *propagated_arguments,
-            *(arg for arg in arguments if arg.propagate),
+            *(arg for arg in arguments if isinstance(arg, FinalArg) and arg.propagate),
         ]
         subcommands = [
             subcommand.normalize(
@@ -258,8 +258,10 @@ class Command(Generic[T]):
             for subcommand, type_view, field_name in raw_subcommands
         ]
 
-        check_group_identity(arguments)
-        final_arguments: list[FinalArg[Any] | FinalSubcommand] = [
+        check_group_identity([a for a in arguments if isinstance(a, FinalArg)])
+        final_arguments: list[
+            FinalArg[Any] | FinalSubcommand | FinalDestructure[Any]
+        ] = [
             *arguments,
             *subcommands,
         ]
@@ -290,8 +292,8 @@ class FinalCommand(Command[T]):
     Produced exclusively by :meth:`Command.collect`.
     """
 
-    arguments: Sequence[FinalArg[Any] | FinalSubcommand] = dataclasses.field(  # pyright: ignore
-        default_factory=list
+    arguments: Sequence[FinalArg[Any] | FinalSubcommand | FinalDestructure[Any]] = (  # pyright: ignore
+        dataclasses.field(default_factory=list)
     )
     propagated_arguments: list[FinalArg[Any]] = dataclasses.field(  # pyright: ignore
         default_factory=list
@@ -311,9 +313,16 @@ class FinalCommand(Command[T]):
                 yield arg
 
     @property
+    def destructured_arguments(self) -> Iterable[FinalDestructure[Any]]:
+        for arg in self.arguments:
+            if isinstance(arg, FinalDestructure):
+                yield arg
+
+    @property
     def all_arguments(self) -> Iterable[FinalArg[Any] | FinalSubcommand]:
         for arg in self.arguments:
-            yield arg
+            if not isinstance(arg, FinalDestructure):
+                yield arg
         for arg in self.propagated_arguments:
             yield arg
 
@@ -329,10 +338,7 @@ class FinalCommand(Command[T]):
     ) -> Iterable[FinalArg[Any] | FinalSubcommand]:
         for arg in self.arguments:
             if (
-                isinstance(arg, FinalArg)
-                and not arg.short
-                and not arg.long
-                and not arg.destructure
+                isinstance(arg, FinalArg) and not arg.short and not arg.long
             ) or isinstance(arg, FinalSubcommand):
                 yield arg
 
@@ -379,18 +385,18 @@ class FinalCommand(Command[T]):
 
         kwargs: dict[str, Any] = {}
         for arg in self.value_arguments:
-            field_name = arg.field_name
-
-            if field_name in parsed_args:
-                is_parsed, value = (False, parsed_args[field_name])
-            else:
-                assert isinstance(arg.default, Default), arg
-                is_parsed, value = arg.default(state=state, input=input)
-
-            handler = parse_handler(arg, prog, value)
-            kwargs[field_name] = Resolved(handler, args=(value, is_parsed))
+            kwargs[arg.field_name] = arg.map_result(
+                prog, parsed_args, state=state, input=input
+            )
 
         subcommand_deps: dict[Hashable, Any] = {}
+        for destructure in self.destructured_arguments:
+            fd_parsed = parsed_args.get(destructure.field_name, {})
+            fd_resolved = destructure.map_result(
+                prog, fd_parsed, output, state=state, input=input
+            )
+            kwargs[destructure.field_name] = fd_resolved
+
         subcommand = self.subcommand
         if subcommand:
             field_name = subcommand.field_name
@@ -465,62 +471,6 @@ def check_group_identity(args: list[FinalArg[Any]]):
 
 
 @contextlib.contextmanager
-def parse_value(
-    arg: FinalArg[T], prog: str, value: Any, is_parsed: bool
-) -> Generator[T, None, None]:
-    if not is_parsed:
-        try:
-            value = arg.parse(value)
-        except Exception as e:
-            exception_reason = str(e)
-            raise Exit(
-                f"Invalid value for '{arg.names_str()}': {exception_reason}",
-                code=2,
-                prog=prog,
-            )
-
-    yield value
-
-
-def parse_handler(
-    arg: FinalArg[T], prog: str, value: Any
-) -> Callable[[Any, bool], Any]:
-    is_async_value = inspect.iscoroutine(value)
-    is_async_parse = inspect.iscoroutinefunction(
-        arg.parse
-    ) or inspect.isasyncgenfunction(arg.parse)
-
-    if is_async_value or is_async_parse:
-
-        async def async_parse(raw_value: Any, is_parsed: bool) -> T:
-            # Await the value if it's a coroutine
-            if inspect.iscoroutine(raw_value):
-                raw_value = await raw_value
-
-            with parse_value(arg, prog, raw_value, is_parsed) as parsed:
-                # Check if the parse result is a coroutine and await it
-                if inspect.iscoroutine(parsed):
-                    try:
-                        return await parsed
-                    except Exception as e:
-                        exception_reason = str(e)
-                        raise Exit(
-                            f"Invalid value for '{arg.names_str()}': {exception_reason}",
-                            code=2,
-                            prog=prog,
-                        )
-                return parsed
-
-        return async_parse
-
-    def sync_parse(raw_value: Any, is_parsed: bool) -> T:
-        with parse_value(arg, prog, raw_value, is_parsed) as parsed:
-            return parsed
-
-    return sync_parse
-
-
-@contextlib.contextmanager
 def graceful_exit(
     command: FinalCommand[T], prog: str, output: Output
 ) -> Generator[None, None, None]:
@@ -544,3 +494,6 @@ def graceful_exit(
             raise
 
         raise
+
+
+from cappa.destructure import FinalDestructure  # noqa: E402

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import contextlib
 import enum
 import functools
+import inspect
 import types
 from datetime import date, datetime, time
 from typing import (
@@ -9,6 +11,7 @@ from typing import (
     BinaryIO,
     Callable,
     Final,
+    Generator,
     List,
     Sequence,
     TextIO,
@@ -18,6 +21,7 @@ from typing import (
 )
 
 from cappa.file_io import FileMode
+from cappa.output import Exit
 from cappa.state import S, State
 from cappa.type_view import TypeView
 from cappa.typing import T
@@ -345,3 +349,61 @@ def evaluate_parse(
 def choices_error(choices: Sequence[Any], value: Any) -> Exception:
     options = ", ".join(f"{t!r}" for t in choices)
     return ValueError(f"Invalid choice: '{value}' (choose from {options})")
+
+
+@contextlib.contextmanager
+def apply_parse(
+    parse_fn: Callable[..., Any],
+    prog: str,
+    value: Any,
+    is_parsed: bool,
+    names_str: str,
+) -> Generator[Any, None, None]:
+    if not is_parsed:
+        try:
+            value = parse_fn(value)
+        except Exception as e:
+            raise Exit(
+                f"Invalid value for '{names_str}': {e}",
+                code=2,
+                prog=prog,
+            )
+    yield value
+
+
+def parse_handler(
+    parse_fn: Callable[..., Any],
+    prog: str,
+    value: Any,
+    names_str: str,
+) -> Callable[[Any, bool], Any]:
+    is_async_value = inspect.iscoroutine(value)
+    is_async_parse = inspect.iscoroutinefunction(
+        parse_fn
+    ) or inspect.isasyncgenfunction(parse_fn)
+
+    if is_async_value or is_async_parse:
+
+        async def async_parse(raw_value: Any, is_parsed: bool) -> Any:
+            if inspect.iscoroutine(raw_value):
+                raw_value = await raw_value
+
+            with apply_parse(parse_fn, prog, raw_value, is_parsed, names_str) as parsed:
+                if inspect.iscoroutine(parsed):
+                    try:
+                        return await parsed
+                    except Exception as e:
+                        raise Exit(
+                            f"Invalid value for '{names_str}': {e}",
+                            code=2,
+                            prog=prog,
+                        )
+                return parsed
+
+        return async_parse
+
+    def sync_parse(raw_value: Any, is_parsed: bool) -> Any:
+        with apply_parse(parse_fn, prog, raw_value, is_parsed, names_str) as parsed:
+            return parsed
+
+    return sync_parse

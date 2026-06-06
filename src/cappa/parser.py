@@ -677,6 +677,20 @@ def check_exclusive_group(
     context.exclusive_args[group.id] = arg
 
 
+def _resolve_context(
+    context: ParseContext,
+    field_name: str,
+    option: RawOption | None,
+    arg: FinalArg[Any],
+) -> tuple[ParseContext, bool]:
+    resolved = context.resolve_context(field_name, option)
+    if arg.destructure:
+        nested = resolved.result.setdefault(arg.destructure.field_name, {})
+        resolved = dataclasses.replace(resolved, result=nested)
+        return resolved, True
+    return resolved, arg.has_value
+
+
 def consume_arg(
     parse_state: ParseState,
     context: ParseContext,
@@ -697,12 +711,9 @@ def consume_arg(
     # an optional argument, who's value would be unrecorded and apply the default during mapping.
     if option is not None and not normalized_num_args.required and not values:
         check_exclusive_group(arg, context, normalized_num_args.default, parse_state)
-        resolved_context = context.resolve_context(field_name, option)
+        resolved_context, has_value = _resolve_context(context, field_name, option, arg)
         resolved_context.set_result(
-            field_name,
-            normalized_num_args.default,
-            option,
-            arg.has_value,
+            field_name, normalized_num_args.default, option, has_value
         )
         check_deprecated(parse_state, arg, option)
         return
@@ -726,7 +737,7 @@ def consume_arg(
     check_exclusive_group(arg, context, result, parse_state)
 
     action_handler = determine_action_handler(arg.action)
-    resolved_context = context.resolve_context(field_name, option)
+    resolved_context, has_value = _resolve_context(context, field_name, option, arg)
 
     fulfilled_deps: dict[Hashable, Any] = {
         FinalCommand: parse_state.current_command,
@@ -745,7 +756,7 @@ def consume_arg(
     kwargs = fulfill_deps(action_handler, fulfilled_deps).kwargs
     result = action_handler(**kwargs)
 
-    resolved_context.set_result(field_name, result, option, arg.has_value)
+    resolved_context.set_result(field_name, result, option, has_value)
 
     check_deprecated(parse_state, arg, option)
 
