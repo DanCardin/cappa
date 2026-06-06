@@ -115,7 +115,7 @@ class Default:
 
     def __call__(
         self, state: State[Any] | None = None, input: TextIO | None = None
-    ) -> tuple[bool, Any | None]:
+    ) -> tuple[bool, Any]:
         """Evaluate the default retrieval sequence, returning the first non-Empty value."""
         for default in self.sequence:
             if isinstance(default, ValueFrom):

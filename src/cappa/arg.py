@@ -14,6 +14,7 @@ from typing import (
     Literal,
     Sequence,
     Set,
+    TextIO,
     Union,
     cast,
 )
@@ -24,7 +25,14 @@ from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
 from cappa.default import Default, DefaultFormatter, ValueFrom
-from cappa.parse import Parser, evaluate_parse, parse_literal, parse_value
+from cappa.invoke.types import Resolved
+from cappa.parse import (
+    Parser,
+    evaluate_parse,
+    parse_handler,
+    parse_literal,
+    parse_value,
+)
 from cappa.state import State
 from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import (
@@ -36,7 +44,7 @@ from cappa.typing import (
 )
 
 if TYPE_CHECKING:
-    from cappa.destructure import Destructure, destructure
+    from cappa.destructure import Destructure
 
 
 @enum.unique
@@ -418,7 +426,7 @@ class Arg(Generic[T]):
         default_short: bool = False,
         default_long: bool = False,
         state: State[Any] | None = None,
-    ) -> list[FinalArg[Any]]:
+    ) -> list[FinalArg[Any] | FinalDestructure[Any]]:
         args: list[Arg[Any]] = find_annotations(type_view, cls) or [Arg()]
 
         exclusive = field.name if len(args) > 1 else False
@@ -436,7 +444,7 @@ class Arg(Generic[T]):
         if field_metadata:
             args = field_metadata
 
-        result: list[FinalArg[Any]] = []
+        result: list[FinalArg[Any] | FinalDestructure[Any]] = []
         for i, arg in enumerate(args, start=1):
             # field_name and default are evaluated outside `normalize` because they can
             # potentially depend on the type's dataclass-like field information, whereas
@@ -458,8 +466,7 @@ class Arg(Generic[T]):
             )
 
             if normalized_arg.destructure:
-                destructured_args = destructure(normalized_arg, type_view)
-                result.extend(destructured_args)
+                result.extend(normalized_arg.destructure.explode_args())
             else:
                 result.append(normalized_arg)
 
@@ -514,12 +521,9 @@ class Arg(Generic[T]):
             show_default if show_default is not None else self.show_default
         )
 
-        destructure = destructure or self.destructure
-        if not destructure:
-            destructure = None
-        if destructure is True:
-            destructure = Destructure()
-
+        destructure = Destructure.collect(
+            field_name, default, destructure or self.destructure, type_view
+        )
         result: FinalArg[Any] = FinalArg(
             # preserved from self
             count=self.count,
@@ -578,7 +582,22 @@ class FinalArg(Arg[T]):
     type_view: TypeView[Any] = dataclasses.field(default_factory=lambda: TypeView(Any))
     parse: Callable[..., Any] = dataclasses.field(default=parse_value)
     show_default: DefaultFormatter = dataclasses.field(default_factory=DefaultFormatter)
-    destructure: Destructure | None = None
+    destructure: FinalDestructure[Any] | None = None
+
+    def map_result(
+        self,
+        prog: str,
+        parsed_args: dict[str, Any],
+        state: State[Any] | None = None,
+        input: TextIO | None = None,
+    ) -> Resolved[T]:
+        field_name = self.field_name
+        if field_name in parsed_args:
+            is_parsed, value = False, parsed_args[field_name]
+        else:
+            is_parsed, value = self.default(state=state, input=input)
+        handler = parse_handler(self.parse, prog, value, self.names_str())
+        return Resolved(handler, args=(value, is_parsed))
 
     def names(self, *, n: int = 0) -> list[str]:
         result = (self.short or []) + (self.long or [])
@@ -878,14 +897,19 @@ def infer_value_name(arg: Arg[Any], field_name: str, num_args: NumArgs) -> str:
 
 
 def explode_negated_bool_args(
-    args: Sequence[FinalArg[Any]],
-) -> Iterable[FinalArg[Any]]:
+    args: Sequence[FinalArg[Any] | FinalDestructure[Any]],
+) -> Iterable[FinalArg[Any] | FinalDestructure[Any]]:
     """Expand `--foo/--no-foo` solo arguments into dual-arguments.
 
     Acts as a transform from `Arg(long='--foo/--no-foo')` to
     `Annotated[Arg(long='--foo', action=ArgAction.store_true), Arg(long='--no-foo', action=ArgAction.store_false)]`
     """
     for arg in args:
+        # Only args can *be* bool negatable args.
+        if not isinstance(arg, FinalArg):
+            yield arg
+            continue
+
         yielded = False
         if isinstance(arg.action, ArgAction) and arg.action.is_bool_action and arg.long:
             long = arg.long
@@ -940,4 +964,4 @@ def infer_has_value(arg: Arg[Any], action: ArgActionType):
     return True
 
 
-from cappa.destructure import Destructure, destructure  # noqa: E402
+from cappa.destructure import Destructure, FinalDestructure  # noqa: E402
