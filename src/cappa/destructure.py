@@ -24,6 +24,8 @@ class Destructure:
         default: Default,
         destructure: Destructure | bool | None,
         type_view: TypeView[Any],
+        default_short: bool = False,
+        default_long: bool = False,
     ) -> FinalDestructure[Any] | None:
         if not destructure:
             return None
@@ -37,7 +39,13 @@ class Destructure:
                 "Destructured arguments currently only support singular concrete types."
             )
 
-        command: FinalCommand[Any] = Command.get(annotation).collect()  # pyright: ignore
+        inner: Command[Any] = Command.get(annotation)  # pyright: ignore
+        inner = replace(
+            inner,
+            default_short=inner.default_short or default_short,
+            default_long=inner.default_long or default_long,
+        )
+        command: FinalCommand[Any] = inner.collect()
         return FinalDestructure(
             field_name=field_name,
             command=command,
