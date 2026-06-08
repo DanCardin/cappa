@@ -522,7 +522,12 @@ class Arg(Generic[T]):
         )
 
         destructure = Destructure.collect(
-            field_name, default, destructure or self.destructure, type_view
+            field_name,
+            default,
+            destructure or self.destructure,
+            type_view,
+            default_short=default_short,
+            default_long=default_long,
         )
         result: FinalArg[Any] = FinalArg(
             # preserved from self
