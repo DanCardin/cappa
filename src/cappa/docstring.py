@@ -53,7 +53,7 @@ class ClassHelpText:
         return cls(summary=summary, body=body, args=args)
 
 
-def get_doc(cls: type):
+def get_doc(cls: type) -> str:
     """Lifted from dataclasses source."""
     doc = cls.__doc__ or ""
 
@@ -77,12 +77,41 @@ def get_doc(cls: type):
 def get_attribute_docstrings(command: type) -> dict[str, str]:
     result: dict[str, str] = {}
 
-    raw_source = inspect.getsource(command)
+    remaining = {
+        name
+        for cls in command.__mro__
+        if cls is not object
+        for name in getattr(cls, "__annotations__", {})
+    }
+
+    for cls in command.__mro__:
+        if cls is object:
+            continue
+        if not remaining:
+            break
+        try:
+            found = _class_attribute_docstrings(cls)
+        except Exception:
+            continue
+
+        for key, val in found.items():
+            if key not in result:
+                result[key] = val
+                remaining.discard(key)
+
+    return result
+
+
+def _class_attribute_docstrings(cls: type) -> dict[str, str]:
+    result: dict[str, str] = {}
+
+    raw_source = inspect.getsource(cls)
     source = textwrap.dedent(raw_source)
     module = ast.parse(source)
 
     cls_node = module.body[-1]
-    assert isinstance(cls_node, ast.ClassDef)
+    if not isinstance(cls_node, ast.ClassDef):
+        return result
 
     last_assignment: ast.AnnAssign | None = None
     for node in cls_node.body:
