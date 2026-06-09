@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import sys
 from dataclasses import dataclass
 from typing import Any, Union
 from unittest.mock import patch
@@ -23,8 +24,13 @@ __all__ = [
     "invoke",
     "invoke_async",
     "parse",
+    "require_dataclass_kw_only",
     "runner",
 ]
+
+require_dataclass_kw_only = pytest.mark.skipif(
+    sys.version_info < (3, 10), reason="kw_only requires Python 3.10+"
+)
 
 backends = pytest.mark.parametrize(
     "backend",

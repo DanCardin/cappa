@@ -2,6 +2,10 @@
 
 ## 0.32
 
+### 0.32.1
+
+- fix: kw_only dataclass inheritance mis-ordering.
+
 ### 0.32.0
 - feat: Add `epilog=` field on commands for text which should go after the argument help.
 - refactor: All root objects (Command/Arg/Subcommand) to have "Final" variants which represent their post-normalization shape.

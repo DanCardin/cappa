@@ -217,7 +217,9 @@ class Command(Generic[T]):
                     raw_subcommands.append((arg, None, None))
 
         else:
-            for field, param_view in zip(fields, function_view.parameters):
+            param_by_name = {p.name: p for p in function_view.parameters}
+            for field in fields:
+                param_view = param_by_name[field.name]
                 arg_help = help_text.args.get(param_view.name)
 
                 maybe_subcommand = Subcommand.detect(

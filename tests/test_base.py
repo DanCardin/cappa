@@ -5,7 +5,7 @@ import pytest
 
 import cappa
 from cappa.command import Command
-from tests.utils import Backend, backends
+from tests.utils import Backend, backends, require_dataclass_kw_only
 
 
 @backends
@@ -163,6 +163,27 @@ def test_collect_composes_with_parse(backend: Backend):
     result = cappa.parse(command, argv=[], backend=backend)
 
     assert result == Example()
+
+
+@require_dataclass_kw_only
+@backends
+def test_kw_only_base_class_field_ordering(backend: Backend):
+    kwargs = {"kw_only": True}
+
+    @dataclass(**kwargs)
+    class Base:
+        name: str = "hello"
+
+    @dataclass
+    class Child(Base):
+        number: int = 0
+
+    result = cappa.parse(
+        cappa.Command(Child, default_long=True),
+        argv=["--name", "world"],
+        backend=backend,
+    )
+    assert result == Child(number=0, name="world")
 
 
 @backends
