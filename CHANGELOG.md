@@ -4,7 +4,7 @@
 
 ### 0.32.1
 
-- fix: kw_only dataclass inheritance mis-ordering.
+- fix: kw_only dataclass inheritance incorrect ordering.
 
 ### 0.32.0
 - feat: Add `epilog=` field on commands for text which should go after the argument help.
