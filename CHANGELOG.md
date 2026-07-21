@@ -3,6 +3,7 @@
 ## 0.32
 
 ### 0.32.2
+- fix: Preserve multiline help text formatting.
 - fix: Dedent attribute docstrings' content.
 
 ### 0.32.1
