@@ -2,6 +2,9 @@
 
 ## 0.32
 
+### 0.32.2
+- fix: Dedent attribute docstrings' content.
+
 ### 0.32.1
 
 - fix: kw_only dataclass inheritance incorrect ordering.
