@@ -3,6 +3,7 @@
 ## 0.32
 
 ### 0.32.2
+- fix: Negated boolean args rendering default help text in incorrect location.
 - fix: Preserve multiline help text formatting.
 - fix: Dedent attribute docstrings' content.
 
