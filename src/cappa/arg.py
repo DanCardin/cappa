@@ -189,7 +189,10 @@ class NumArgs:
 
         is_positional = arg is None or (not arg.short and not long)
         is_sequence = type_view.is_variadic_tuple or type_view.is_subclass_of(
-            (list, set)
+            (
+                list,
+                set,
+            )
         )
         if is_positional and is_sequence:
             return cls.unbounded()
@@ -924,10 +927,6 @@ def explode_negated_bool_args(
             if negatives and positives:
                 assert isinstance(arg.default, Default)
 
-                not_required = not arg.required
-                show_default = arg.show_default
-                default_is_true = arg.default.fallback_value is True and not_required
-                default_is_false = arg.default.fallback_value is False and not_required
                 disabled: DefaultFormatter = DefaultFormatter.disabled()
                 group = dataclasses.replace(
                     arg.group,
@@ -939,7 +938,7 @@ def explode_negated_bool_args(
                     arg,
                     long=positives,
                     action=ArgAction.store_true,
-                    show_default=show_default if default_is_true else disabled,
+                    show_default=disabled,
                     group=group,
                     help=None,
                 )
@@ -947,7 +946,7 @@ def explode_negated_bool_args(
                     arg,
                     long=negatives,
                     action=ArgAction.store_false,
-                    show_default=show_default if default_is_false else disabled,
+                    show_default=arg.show_default,
                     group=group,
                 )
 
