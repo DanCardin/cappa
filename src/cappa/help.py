@@ -271,27 +271,43 @@ def format_args(
 
 
 def _markdown_to_text(console: Console, renderables: Sequence[TextComponent]) -> Text:
+    # Render the text without line-wrapping because we're not yet printing it and it should reflow
+    # until the point at which it's being printed to the user.
+    render_console = Console(soft_wrap=True)
+    render_options = render_console.options.update(no_wrap=True, overflow="ignore")
+
     result = Text()
     for renderable in renderables:
         if isinstance(renderable, Markdown):
-            for segment in console.render(renderable):
-                text = segment.text.strip("\n")
+            renderable_result = Text()
+            for segment in render_console.render(renderable, render_options):
+                text = segment.text
+                if not text:
+                    continue
                 if text.startswith(" "):  # dedup leading spaces
                     text = " " + text.lstrip()
                 if text.endswith(" "):  # dedup trailing spaces
                     text = text.rstrip() + " "
-                if text:
-                    result.append(Text(text, style=segment.style or "", end=""))
+                renderable_result.append(Text(text, style=segment.style or "", end=""))
+            renderable_result.rstrip()
+            if renderable_result:
+                _append_to_text(result, renderable_result)
         else:
-            if result:
-                result.append(" ")
-
             if isinstance(renderable, str):
                 renderable = Text.from_markup(renderable)
 
-            result.append(renderable)
+            _append_to_text(result, renderable)
 
     return result
+
+
+def _append_to_text(text: Text, component: Text) -> None:
+    # When a component is multiline (like long, structured {help}), it looks weird when components
+    # like {choices} or {default} are appended to the end of the last line. In such cases, add a newline.
+    # Sort of a weird heuristic, we'll see if this holds well in practice.
+    if text:
+        text.append("\n" if "\n" in text.plain else " ")
+    text.append(component)
 
 
 def _get_text_component_text(c: TextComponent) -> str:
