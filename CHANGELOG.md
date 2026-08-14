@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.33
+
+### 0.33.0
+- feat: Add `default_negate_bool` as option to automatically infer `--no-*` bool options.
+
 ## 0.32
 
 ### 0.32.2

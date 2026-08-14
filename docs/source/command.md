@@ -185,6 +185,30 @@ class Foo:
 # `foo --bar 4`
 ```
 
+## `@command(default_negate_bool=...)` / `Command.default_negate_bool`
+
+By default, boolean arguments receive a single `--flag` option that stores `True` when present.
+
+This option controls whether un-annotated boolean arguments default to implying
+[Arg(long="--flag/--no-flag")](arg-long), generating both a positive and negative
+variant so the flag can be explicitly set to `False`.
+
+For example:
+
+```python
+@command(default_negate_bool=True)
+@dataclass
+class Foo:
+    verbose: bool = False
+
+# which is then called like:
+# `foo --verbose`      → verbose=True
+# `foo --no-verbose`   → verbose=False
+```
+
+Non-boolean arguments are unaffected. Arguments with an explicit `long=` annotation
+are also unaffected.
+
 ## `@command(deprecated=...)` / `Command.deprecated`
 
 This generates a warning if the command in question is used at runtime.

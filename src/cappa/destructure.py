@@ -26,6 +26,7 @@ class Destructure:
         type_view: TypeView[Any],
         default_short: bool = False,
         default_long: bool = False,
+        default_negate_bool: bool = False,
     ) -> FinalDestructure[Any] | None:
         if not destructure:
             return None
@@ -44,6 +45,7 @@ class Destructure:
             inner,
             default_short=inner.default_short or default_short,
             default_long=inner.default_long or default_long,
+            default_negate_bool=inner.default_negate_bool or default_negate_bool,
         )
         command: FinalCommand[Any] = inner.collect()
         return FinalDestructure(
