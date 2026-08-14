@@ -10,6 +10,7 @@ from cappa.arg import FinalArg
 from cappa.default import Default
 from cappa.invoke.types import Resolved
 from cappa.output import Output
+from cappa.registry import Registry
 from cappa.state import State
 
 
@@ -24,12 +25,18 @@ class Destructure:
         default: Default,
         destructure: Destructure | bool | None,
         type_view: TypeView[Any],
+        registry: Registry | None = None,
         default_short: bool = False,
         default_long: bool = False,
         default_negate_bool: bool = False,
     ) -> FinalDestructure[Any] | None:
         if not destructure:
             return None
+
+        if registry is None:
+            raise ValueError(
+                "A registry is required to collect a destructured argument."
+            )
 
         if destructure is True:
             destructure = Destructure()
@@ -40,14 +47,14 @@ class Destructure:
                 "Destructured arguments currently only support singular concrete types."
             )
 
-        inner: Command[Any] = Command.get(annotation)  # pyright: ignore
+        inner: Command[Any] = Command.get(annotation, registry=registry)  # pyright: ignore
         inner = replace(
             inner,
             default_short=inner.default_short or default_short,
             default_long=inner.default_long or default_long,
             default_negate_bool=inner.default_negate_bool or default_negate_bool,
         )
-        command: FinalCommand[Any] = inner.collect()
+        command: FinalCommand[Any] = inner.collect(registry=registry)
         return FinalDestructure(
             field_name=field_name,
             command=command,

@@ -7,12 +7,10 @@ from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
     Any,
-    ClassVar,
     Generator,
     Generic,
     Hashable,
     Iterable,
-    Protocol,
     Sequence,
     TextIO,
     TypedDict,
@@ -24,11 +22,12 @@ from type_lens.type_view import TypeView
 
 from cappa.arg import Arg, FinalArg, Group
 from cappa.class_inspect import fields as get_fields
-from cappa.class_inspect import get_command, get_command_capable_object
+from cappa.class_inspect import get_command_capable_object
 from cappa.docstring import ClassHelpText
 from cappa.help import HelpFormattable, HelpFormatter
 from cappa.invoke.types import Resolved
 from cappa.output import Exit, Output
+from cappa.registry import Registry
 from cappa.state import S, State
 from cappa.subcommand import FinalSubcommand, Subcommand
 from cappa.type_view import CallableView
@@ -140,23 +139,28 @@ class Command(Generic[T]):
 
     @classmethod
     def get(
-        cls, obj: CappaCapable[T], help_formatter: HelpFormattable | None = None
+        cls,
+        obj: CappaCapable[T],
+        registry: Registry,
+        help_formatter: HelpFormattable | None = None,
     ) -> Command[T]:
         help_formatter = help_formatter or HelpFormatter.default
 
-        instance = None
         if isinstance(obj, cls):
-            instance = obj
-        else:
-            obj = get_command_capable_object(obj)
-            instance = get_command(obj)
+            return dataclasses.replace(obj, help_formatter=help_formatter)
 
-        if instance:
+        instance = registry.get(obj)
+        if instance is not None:
             return dataclasses.replace(instance, help_formatter=help_formatter)
 
-        assert not isinstance(obj, Command)
+        capable_obj = get_command_capable_object(obj, registry)
+        instance = registry.get(capable_obj)
+        if instance is not None:
+            return dataclasses.replace(instance, help_formatter=help_formatter)
+
+        assert not isinstance(capable_obj, Command)
         return cls(
-            obj,  # pyright: ignore
+            capable_obj,  # pyright: ignore
             help_formatter=help_formatter,
         )
 
@@ -174,6 +178,7 @@ class Command(Generic[T]):
 
     def collect(
         self,
+        registry: Registry,
         propagated_arguments: list[FinalArg[Any]] | None = None,
         state: State[Any] | None = None,
     ) -> FinalCommand[T]:
@@ -207,6 +212,7 @@ class Command(Generic[T]):
                     arguments.append(
                         arg.normalize(
                             type_view=type_view,
+                            registry=registry,
                             default_short=self.default_short,
                             default_long=self.default_long,
                             default_negate_bool=self.default_negate_bool,
@@ -241,6 +247,7 @@ class Command(Generic[T]):
                     arg_defs = Arg.collect(
                         field,
                         param_view.type_view,
+                        registry=registry,
                         fallback_help=arg_help,
                         default_short=self.default_short,
                         default_long=self.default_long,
@@ -257,6 +264,7 @@ class Command(Generic[T]):
             subcommand.normalize(
                 type_view,
                 field_name,
+                registry=registry,
                 help_formatter=self.help_formatter,
                 propagated_arguments=propagating_arguments,
                 state=state,
@@ -455,13 +463,6 @@ class FinalCommand(Command[T]):
             output=output,
             state=result_state,
         )
-
-
-H = TypeVar("H", covariant=True)
-
-
-class HasCommand(Generic[H], Protocol):
-    __cappa__: ClassVar[Command[Any]]
 
 
 def check_group_identity(args: list[FinalArg[Any]]):

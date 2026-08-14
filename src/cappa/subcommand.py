@@ -9,6 +9,7 @@ from cappa.arg import Group
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.types import Completion
 from cappa.invoke.types import Resolved
+from cappa.registry import Registry
 from cappa.state import State
 from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import T, assert_type, find_annotations
@@ -75,6 +76,8 @@ class Subcommand:
         self,
         type_view: TypeView[Any] | None = None,
         field_name: str | None = None,
+        *,
+        registry: Registry,
         help_formatter: HelpFormattable | None = None,
         propagated_arguments: list[FinalArg[Any]] | None = None,
         state: State[Any] | None = None,
@@ -88,6 +91,7 @@ class Subcommand:
         options = infer_options(
             self,
             types,
+            registry=registry,
             help_formatter=help_formatter,
             propagated_arguments=propagated_arguments,
             state=state,
@@ -196,6 +200,7 @@ def infer_required(arg: Subcommand, annotation: TypeView[Any]) -> bool:
 def infer_options(
     arg: Subcommand,
     types: Iterable[type],
+    registry: Registry,
     help_formatter: HelpFormattable | None = None,
     propagated_arguments: list[FinalArg[Any]] | None = None,
     state: State[Any] | None = None,
@@ -205,6 +210,7 @@ def infer_options(
     if arg.options:
         return {
             name: type_command.collect(
+                registry=registry,
                 propagated_arguments=propagated_arguments,
                 state=state,
             )
@@ -213,10 +219,13 @@ def infer_options(
 
     options: dict[str, FinalCommand[Any]] = {}
     for type_ in types:
-        type_command: Command[Any] = Command.get(type_, help_formatter=help_formatter)  # pyright: ignore
+        type_command: Command[Any] = Command.get(  # pyright: ignore[reportUnknownVariableType,reportUnknownMemberType]
+            type_, registry=registry, help_formatter=help_formatter
+        )
         type_name = type_command.real_name()
         options[type_name] = type_command.collect(
-            propagated_arguments=propagated_arguments
+            registry=registry,
+            propagated_arguments=propagated_arguments,
         )
 
     return options

@@ -7,6 +7,7 @@ from cappa.help import HelpFormattable, HelpFormatter
 from cappa.invoke.types import Dep, Self
 from cappa.output import Exit, HelpExit, Output
 from cappa.parse import default_parse, unpack_arguments
+from cappa.registry import Registry, default_registry
 from cappa.state import State
 from cappa.subcommand import FinalSubcommand, Subcommand, Subcommands
 from cappa.type_view import Empty, EmptyType
@@ -44,6 +45,7 @@ __all__ = [
     "NumArgs",
     "Output",
     "Prompt",
+    "Registry",
     "Self",
     "State",
     "Subcommand",
@@ -54,6 +56,7 @@ __all__ = [
     "collect",
     "command",
     "default_parse",
+    "default_registry",
     "invoke",
     "invoke_async",
     "parse",

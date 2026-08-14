@@ -255,7 +255,7 @@ def test_visible_aliases_for_unknown_canonical_returns_empty():
 
 def test_format_subcommand_without_subcommand_arg():
     """`format_subcommand` works with the default `subcommand=None`."""
-    cmd = cappa.Command(List).collect()
+    cmd = cappa.Command(List).collect(cappa.default_registry)
     padding, help_text = format_subcommand(HelpFormatter(), cmd)
     rendered = str(padding.renderable)
     assert "list" in rendered

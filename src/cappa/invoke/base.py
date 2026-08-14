@@ -16,7 +16,6 @@ from typing import (
 
 from typing_extensions import TypeGuard
 
-from cappa.class_inspect import has_command
 from cappa.command import Command
 from cappa.invoke.types import (
     C,
@@ -29,6 +28,7 @@ from cappa.invoke.types import (
     SelfType,
 )
 from cappa.output import Output
+from cappa.registry import Registry
 from cappa.state import State
 from cappa.type_view import CallableView, TypeView
 from cappa.typing import find_annotations, get_method_class
@@ -39,6 +39,7 @@ def resolve_callable(
     parsed_command: Command[C],
     instance: C,
     *,
+    registry: Registry,
     implicit_deps: dict[Hashable, Any],
     output: Output,
     state: State[Any],
@@ -52,10 +53,10 @@ def resolve_callable(
         implicit_deps[State] = state
         implicit_deps[SelfType] = implicit_deps[cast(Hashable, parsed_command.cmd_cls)]
 
-        global_deps = resolve_global_deps(deps, implicit_deps)
+        global_deps = resolve_global_deps(deps, implicit_deps, registry=registry)
 
         fulfilled_deps: dict[Hashable, Any] = {**implicit_deps, **global_deps}
-        resolved = fulfill_deps(fn, fulfilled_deps)
+        resolved = fulfill_deps(fn, fulfilled_deps, registry=registry)
     except InvokeResolutionError as e:
         raise InvokeResolutionError(
             f"Failed to invoke {parsed_command.cmd_cls} due to resolution failure."
@@ -65,7 +66,10 @@ def resolve_callable(
 
 
 def resolve_global_deps(
-    deps: DepTypes, implicit_deps: dict[Hashable, Any]
+    deps: DepTypes,
+    implicit_deps: dict[Hashable, Any],
+    *,
+    registry: Registry | None = None,
 ) -> dict[Hashable, Any]:
     result: dict[Hashable, Any] = {}
 
@@ -80,7 +84,7 @@ def resolve_global_deps(
         # Deps need to be fulfilled, whereas raw values are taken directly.
         if isinstance(dep, Dep):
             dep_callable = resolve_callable_reference(dep.callable)  # pyright: ignore
-            value = fulfill_deps(dep_callable, implicit_deps)
+            value = fulfill_deps(dep_callable, implicit_deps, registry=registry)
         else:
             value = Resolved(source_function, result=dep)
 
@@ -143,7 +147,11 @@ def resolve_callable_reference(fn: InvokeCallableSpec[C] | None) -> InvokeCallab
 
 
 def fulfill_deps(
-    fn: Callable[..., C], fulfilled_deps: dict[Hashable, Any], allow_empty: bool = False
+    fn: Callable[..., C],
+    fulfilled_deps: dict[Hashable, Any],
+    *,
+    registry: Registry | None = None,
+    allow_empty: bool = False,
 ) -> Resolved[C]:
     args: list[Any] = []
     result: dict[str, Any] = {}
@@ -183,7 +191,9 @@ def fulfill_deps(
             # already been fullfullfilled, or yet need to be.
             if dep not in fulfilled_deps:
                 fulfilled_deps[dep] = fulfill_deps(
-                    cast(Callable[..., Any], dep.callable), fulfilled_deps
+                    cast(Callable[..., Any], dep.callable),
+                    fulfilled_deps,
+                    registry=registry,
                 )
 
             result[param_view.name] = fulfilled_deps[dep]
@@ -193,7 +203,7 @@ def fulfill_deps(
         elif index == 0 and inspect.ismethod(fn):
             cls = get_method_class(fn)
 
-            if has_command(fn.__self__):
+            if registry is not None and cls in registry:
                 value = fulfilled_deps[cls]
                 args.append(value)
 
