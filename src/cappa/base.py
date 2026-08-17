@@ -506,6 +506,7 @@ def command(
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
+    default_negate_bool: bool = False,
     deprecated: bool = False,
     help_formatter: HelpFormattable = HelpFormatter.default,
 ) -> type[T]: ...
@@ -521,6 +522,7 @@ def command(
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
+    default_negate_bool: bool = False,
     deprecated: bool = False,
     help_formatter: HelpFormattable = HelpFormatter.default,
 ) -> FuncOrClassDecorator: ...
@@ -537,6 +539,7 @@ def command(
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
+    default_negate_bool: bool = False,
     deprecated: bool = False,
     help_formatter: HelpFormattable = HelpFormatter.default,
 ) -> T: ...
@@ -555,6 +558,7 @@ def command(
     hidden: bool = False,
     default_short: bool = False,
     default_long: bool = False,
+    default_negate_bool: bool = False,
     deprecated: bool = False,
     help_formatter: HelpFormattable = HelpFormatter.default,
 ) -> type[T] | T | FuncOrClassDecorator:
@@ -584,6 +588,9 @@ def command(
             with `Annotated[T, Arg(short=True)]`, unless otherwise annotated.
         default_long: If `True`, all arguments will be treated as though annotated
             with `Annotated[T, Arg(long=True)]`, unless otherwise annotated.
+        default_negate_bool: If `True`, all boolean arguments that receive an
+            auto-inferred long name will produce both a ``--flag`` and ``--no-flag``
+            option, allowing the flag to be explicitly set to `False`.
         deprecated: If supplied, the argument will be marked as deprecated. If given `True`,
             a default message will be generated, otherwise a supplied string will be
             used as the deprecation message.
@@ -606,6 +613,7 @@ def command(
             hidden=hidden,
             default_short=default_short,
             default_long=default_long,
+            default_negate_bool=default_negate_bool,
             deprecated=deprecated,
             help_formatter=help_formatter,
         )

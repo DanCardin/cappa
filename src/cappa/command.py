@@ -78,6 +78,7 @@ class CommandArgs(TypedDict, total=False):
     hidden: bool
     default_short: bool
     default_long: bool
+    default_negate_bool: bool
 
 
 @dataclasses.dataclass
@@ -130,6 +131,7 @@ class Command(Generic[T]):
     hidden: bool = False
     default_short: bool = False
     default_long: bool = False
+    default_negate_bool: bool = False
     deprecated: bool | str = False
 
     help_formatter: HelpFormattable = HelpFormatter.default
@@ -207,6 +209,7 @@ class Command(Generic[T]):
                             type_view=type_view,
                             default_short=self.default_short,
                             default_long=self.default_long,
+                            default_negate_bool=self.default_negate_bool,
                             fallback_help=arg_help,
                             state=state,
                         )
@@ -241,6 +244,7 @@ class Command(Generic[T]):
                         fallback_help=arg_help,
                         default_short=self.default_short,
                         default_long=self.default_long,
+                        default_negate_bool=self.default_negate_bool,
                         state=state,
                     )
                     arguments.extend(arg_defs)
@@ -281,6 +285,7 @@ class Command(Generic[T]):
             hidden=self.hidden,
             default_short=self.default_short,
             default_long=self.default_long,
+            default_negate_bool=self.default_negate_bool,
             deprecated=self.deprecated,
             help_formatter=self.help_formatter,
             _collected=self._collected,

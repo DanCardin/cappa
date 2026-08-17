@@ -425,9 +425,11 @@ class Arg(Generic[T]):
         cls,
         field: Field,
         type_view: TypeView[Any],
+        *,
         fallback_help: str | None = None,
         default_short: bool = False,
         default_long: bool = False,
+        default_negate_bool: bool = False,
         state: State[Any] | None = None,
     ) -> list[FinalArg[Any] | FinalDestructure[Any]]:
         args: list[Arg[Any]] = find_annotations(type_view, cls) or [Arg()]
@@ -460,6 +462,7 @@ class Arg(Generic[T]):
                 fallback_help=fallback_help,
                 default_short=default_short,
                 default_long=default_long,
+                default_negate_bool=default_negate_bool,
                 exclusive=exclusive,
                 field_name=field_name,
                 default=default,
@@ -478,12 +481,14 @@ class Arg(Generic[T]):
     def normalize(
         self,
         type_view: TypeView[Any] | None = None,
+        *,
         fallback_help: str | None = None,
         action: ArgActionType | None = None,
         default: Any = Empty,
         field_name: str | None = None,
         default_short: bool = False,
         default_long: bool = False,
+        default_negate_bool: bool = False,
         exclusive: bool | str = False,
         state: State[Any] | None = None,
         destructure: Destructure | bool | None = None,
@@ -497,7 +502,13 @@ class Arg(Generic[T]):
         field_name = cast(str, field_name or self.field_name)
 
         short = infer_short(self, field_name, default_short)
-        long = infer_long(self, type_view, field_name, default_long)
+        long = infer_long(
+            self,
+            type_view,
+            field_name,
+            default=default_long,
+            default_negate_bool=default_negate_bool,
+        )
         choices = infer_choices(self, type_view)
         action = action or infer_action(self, type_view, long, default)
         num_args = NumArgs.infer(
@@ -531,6 +542,7 @@ class Arg(Generic[T]):
             type_view,
             default_short=default_short,
             default_long=default_long,
+            default_negate_bool=default_negate_bool,
         )
         result: FinalArg[Any] = FinalArg(
             # preserved from self
@@ -770,7 +782,12 @@ def infer_short(
 
 
 def infer_long(
-    arg: Arg[Any], type_view: TypeView[Any], name: str, default: bool
+    arg: Arg[Any],
+    type_view: TypeView[Any],
+    name: str,
+    *,
+    default: bool,
+    default_negate_bool: bool = False,
 ) -> list[str] | Literal[False]:
     long = arg.long or default
 
@@ -783,6 +800,8 @@ def infer_long(
 
     if isinstance(long, bool):
         long = name.replace("_", "-")
+        if default_negate_bool and type_view.is_subclass_of(bool):
+            return [f"--{long}", f"--no-{long}"]
         return [f"--{long}"]
 
     if isinstance(long, str):
