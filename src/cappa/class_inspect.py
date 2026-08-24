@@ -11,12 +11,10 @@ from typing import TYPE_CHECKING, Any
 from typing_extensions import Annotated, Self
 
 from cappa.output import Output
+from cappa.registry import Registry
 from cappa.state import State
 from cappa.type_view import CallableView, Empty, EmptyType
 from cappa.typing import T, find_annotations
-
-if typing.TYPE_CHECKING:
-    from cappa.command import Command
 
 __all__ = [
     "detect",
@@ -228,7 +226,7 @@ def extract_dataclass_metadata(field: Field, cls: type[T]) -> list[T]:
     return [field_metadata]
 
 
-def get_command_capable_object(obj: Any) -> type:
+def get_command_capable_object(obj: Any, registry: Registry) -> type:
     """Convert raw functions into a stub class.
 
     Internally, a dataclass is constructed with a `__call__` method which **splats
@@ -282,10 +280,9 @@ def get_command_capable_object(obj: Any) -> type:
             namespace={"__call__": call},
         )
         result.__doc__ = obj.__doc__
-        result.__cappa__ = getattr(obj, "__cappa__", None)  # type: ignore
         return result
 
-    method_subcommands = collect_method_subcommands(obj)
+    method_subcommands = collect_method_subcommands(obj, registry=registry)
     if method_subcommands:
         from cappa.subcommand import Subcommand
 
@@ -313,17 +310,9 @@ def get_command_capable_object(obj: Any) -> type:
     return obj
 
 
-def collect_method_subcommands(cls: type) -> tuple[typing.Callable[..., Any], ...]:
+def collect_method_subcommands(
+    cls: type, registry: Registry
+) -> tuple[typing.Callable[..., Any], ...]:
     return tuple(
-        method
-        for _, method in inspect.getmembers(cls, callable)
-        if hasattr(method, "__cappa__")
+        method for _, method in inspect.getmembers(cls, callable) if method in registry
     )
-
-
-def has_command(obj: object) -> bool:
-    return hasattr(obj, "__cappa__")
-
-
-def get_command(obj: type) -> Command[Any] | None:
-    return getattr(obj, "__cappa__", None)

@@ -3,8 +3,8 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import inspect
+from dataclasses import replace
 from typing import (
-    TYPE_CHECKING,
     Any,
     Hashable,
     TextIO,
@@ -16,26 +16,19 @@ from rich.theme import Theme
 from typing_extensions import dataclass_transform
 
 from cappa import argparse, parser
+from cappa.arg import Arg, ArgAction, Empty, FinalArg, Group
 from cappa.class_inspect import detect
 from cappa.command import Alias, Command, FinalCommand
 from cappa.help import HelpFormattable, HelpFormatter
 from cappa.invoke.base import resolve_callable
 from cappa.invoke.types import DepTypes, InvokeCallableSpec
 from cappa.output import Output
+from cappa.registry import Registry, default_registry
 from cappa.state import S, State
 from cappa.types import Backend, CappaCapable, FuncOrClassDecorator, ParseResult, T, U
 
-if TYPE_CHECKING:
-    from cappa.arg import Arg, FinalArg
 
-
-def create_version_arg(
-    version: str | Arg[Any] | None = None,
-) -> FinalArg[Any] | None:
-    from dataclasses import replace
-
-    from cappa.arg import Arg, ArgAction, Empty, Group
-
+def create_version_arg(version: str | Arg[Any] | None) -> FinalArg[Any] | None:
     if not version:
         return None
 
@@ -62,9 +55,7 @@ def create_version_arg(
     )
 
 
-def create_help_arg(help: bool | Arg[bool] | None = True) -> FinalArg[bool] | None:
-    from cappa.arg import Arg, ArgAction, Group
-
+def create_help_arg(help: bool | Arg[bool] | None) -> FinalArg[bool] | None:
     if not help:
         return None
 
@@ -80,11 +71,7 @@ def create_help_arg(help: bool | Arg[bool] | None = True) -> FinalArg[bool] | No
     return help.normalize(action=ArgAction.help, field_name="help", default=None)
 
 
-def create_completion_arg(
-    completion: bool | Arg[bool] = True,
-) -> FinalArg[bool] | None:
-    from cappa.arg import Arg, ArgAction, Group
-
+def create_completion_arg(completion: bool | Arg[bool]) -> FinalArg[bool] | None:
     if not completion:
         return None
 
@@ -119,6 +106,7 @@ def parse(
     help_formatter: HelpFormattable | None = None,
     state: State[Any] | None = None,
     exit_stack: contextlib.ExitStack | None = None,
+    registry: Registry = default_registry,
 ) -> T:
     """Parse the command, returning an instance of `obj`.
 
@@ -154,6 +142,8 @@ def parse(
             the caller is responsible for closing the stack, allowing context to exceed the
             function call. If not provided, contexts are not entered (parse does not manage
             contexts by default).
+        registry: Registry mapping decorated classes/functions to their Command configuration.
+            Defaults to `cappa.default_registry`.
     """
     parse_result = parse_command(
         obj=obj,
@@ -168,6 +158,7 @@ def parse(
         output=output,
         help_formatter=help_formatter,
         state=state,
+        registry=registry,
     )
     if exit_stack is not None:
         return exit_stack.enter_context(
@@ -191,6 +182,7 @@ async def parse_async(
     help_formatter: HelpFormattable | None = None,
     state: State[Any] | None = None,
     exit_stack: contextlib.AsyncExitStack | None = None,
+    registry: Registry = default_registry,
 ) -> T:
     """Parse the command asynchronously, returning an instance of `obj`.
 
@@ -228,6 +220,8 @@ async def parse_async(
             If provided, the caller is responsible for closing the stack, allowing context
             to exceed the function call. If not provided, contexts are not entered (parse does
             not manage contexts by default).
+        registry: Registry mapping decorated classes/functions to their Command configuration.
+            Defaults to `cappa.default_registry`.
     """
     parse_result = parse_command(
         obj=obj,
@@ -242,6 +236,7 @@ async def parse_async(
         output=output,
         help_formatter=help_formatter,
         state=state,
+        registry=registry,
     )
     if exit_stack is not None:
         return await exit_stack.enter_async_context(
@@ -268,6 +263,7 @@ def invoke(
     help_formatter: HelpFormattable | None = None,
     state: State[Any] | None = None,
     exit_stack: contextlib.ExitStack | None = None,
+    registry: Registry = default_registry,
 ) -> Any:
     """Parse the command, and invoke the selected async command or subcommand.
 
@@ -304,6 +300,8 @@ def invoke(
         exit_stack: Optional ExitStack to use for managing context managers. If provided,
             the caller is responsible for closing the stack, allowing context to exceed the
             function call. If not provided, a new stack is created and automatically closed.
+        registry: Registry mapping decorated classes/functions to their Command configuration.
+            Defaults to `cappa.default_registry`.
     """
     parse_result = parse_command(
         obj=obj,
@@ -318,6 +316,7 @@ def invoke(
         output=output,
         help_formatter=help_formatter,
         state=state,
+        registry=registry,
     )
 
     def _invoke_with_stack(stack: contextlib.ExitStack):
@@ -336,6 +335,7 @@ def invoke(
             parse_result.root_command,
             parse_result.parsed_command,
             instance,
+            registry=registry,
             implicit_deps=resolved_implicit_deps,
             output=parse_result.output,
             state=parse_result.state,
@@ -369,6 +369,7 @@ async def invoke_async(
     help_formatter: HelpFormattable | None = None,
     state: State[Any] | None = None,
     exit_stack: contextlib.AsyncExitStack | None = None,
+    registry: Registry = default_registry,
 ) -> Any:
     """Parse the command, and invoke the selected command or subcommand.
 
@@ -405,6 +406,8 @@ async def invoke_async(
         exit_stack: Optional AsyncExitStack to use for managing async context managers.
             If provided, the caller is responsible for closing the stack, allowing context to
             exceed the function call. If not provided, a new stack is created and automatically closed.
+        registry: Registry mapping decorated classes/functions to their Command configuration.
+            Defaults to `cappa.default_registry`.
     """
     parse_result = parse_command(
         obj=obj,
@@ -419,6 +422,7 @@ async def invoke_async(
         output=output,
         help_formatter=help_formatter,
         state=state,
+        registry=registry,
     )
 
     async def _invoke_async_with_stack(stack: contextlib.AsyncExitStack):
@@ -437,6 +441,7 @@ async def invoke_async(
             parse_result.root_command,
             parse_result.parsed_command,
             instance,
+            registry=registry,
             implicit_deps=resolved_implicit_deps,
             output=parse_result.output,
             state=parse_result.state,
@@ -470,6 +475,7 @@ def parse_command(
     output: Output | None = None,
     help_formatter: HelpFormattable | None = None,
     state: State[S] | None = None,
+    registry: Registry = default_registry,
 ) -> ParseResult[T, S]:
     concrete_backend = _coalesce_backend(backend)
     concrete_output = _coalesce_output(output, theme, color)
@@ -483,6 +489,7 @@ def parse_command(
         backend=concrete_backend,
         help_formatter=help_formatter,
         state=concrete_state,
+        registry=registry,
     )
     return command.parse_command(
         argv=argv,
@@ -509,6 +516,7 @@ def command(
     default_negate_bool: bool = False,
     deprecated: bool = False,
     help_formatter: HelpFormattable = HelpFormatter.default,
+    registry: Registry = default_registry,
 ) -> type[T]: ...
 @overload
 def command(
@@ -525,6 +533,7 @@ def command(
     default_negate_bool: bool = False,
     deprecated: bool = False,
     help_formatter: HelpFormattable = HelpFormatter.default,
+    registry: Registry = default_registry,
 ) -> FuncOrClassDecorator: ...
 @overload
 def command(
@@ -542,6 +551,7 @@ def command(
     default_negate_bool: bool = False,
     deprecated: bool = False,
     help_formatter: HelpFormattable = HelpFormatter.default,
+    registry: Registry = default_registry,
 ) -> T: ...
 
 
@@ -561,6 +571,7 @@ def command(
     default_negate_bool: bool = False,
     deprecated: bool = False,
     help_formatter: HelpFormattable = HelpFormatter.default,
+    registry: Registry = default_registry,
 ) -> type[T] | T | FuncOrClassDecorator:
     """Register a cappa CLI command/subcomment.
 
@@ -595,13 +606,15 @@ def command(
             a default message will be generated, otherwise a supplied string will be
             used as the deprecation message.
         help_formatter: Override the default help formatter.
+        registry: Registry to register the command in. Defaults to `cappa.default_registry`.
+            Supply a custom registry to isolate command sets from one another.
     """
 
     def wrapper(_decorated_cls: U) -> U:
         if inspect.isclass(_decorated_cls) and not detect(_decorated_cls):
             _decorated_cls = dataclasses.dataclass(_decorated_cls)  # type: ignore
 
-        command: Command[T] = Command.get(_decorated_cls)  # type: ignore
+        command: Command[T] = Command.get(_decorated_cls, registry=registry)  # type: ignore
         instance = dataclasses.replace(
             command,
             invoke=invoke,
@@ -617,7 +630,8 @@ def command(
             deprecated=deprecated,
             help_formatter=help_formatter,
         )
-        _decorated_cls.__cappa__ = instance  # type: ignore
+        registry.register(_decorated_cls, instance)
+        registry.register(instance.cmd_cls, instance)
 
         # Functions (and in particular class methods, must return a function object in order
         # to be attached as methods) cannot be nested, so we can just directly return it.
@@ -642,6 +656,7 @@ def collect(
     completion: bool | Arg[bool] = True,
     help_formatter: HelpFormattable | None = None,
     state: State[Any] | None = None,
+    registry: Registry = default_registry,
 ) -> FinalCommand[T]:
     """Retrieve the `Command` object from a cappa-capable source class.
 
@@ -658,15 +673,16 @@ def collect(
         completion: Enables completion when using the cappa `backend` option. If `True`
             (default to True), adds a --completion flag. An `Arg` can be supplied to customize
             the argument's behavior.
-        color: Whether to output in color.
         help_formatter: Override the default help formatter.
         state: Optional initial State object.
+        registry: Registry mapping decorated classes/functions to their Command configuration.
+            Defaults to `cappa.default_registry`.
     """
     state = State.ensure(state)  # pyright: ignore
 
     command: FinalCommand[T] = Command.get(  # pyright: ignore
-        obj, help_formatter=help_formatter
-    ).collect(state=state)
+        obj, registry=registry, help_formatter=help_formatter
+    ).collect(registry=registry, state=state)
 
     concrete_backend = _coalesce_backend(backend)
     if concrete_backend is argparse.backend:  # pyright: ignore

@@ -33,6 +33,7 @@ from cappa.parse import (
     parse_literal,
     parse_value,
 )
+from cappa.registry import Registry
 from cappa.state import State
 from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import (
@@ -426,6 +427,7 @@ class Arg(Generic[T]):
         field: Field,
         type_view: TypeView[Any],
         *,
+        registry: Registry,
         fallback_help: str | None = None,
         default_short: bool = False,
         default_long: bool = False,
@@ -459,6 +461,7 @@ class Arg(Generic[T]):
 
             normalized_arg = arg.normalize(
                 type_view,
+                registry=registry,
                 fallback_help=fallback_help,
                 default_short=default_short,
                 default_long=default_long,
@@ -482,6 +485,7 @@ class Arg(Generic[T]):
         self,
         type_view: TypeView[Any] | None = None,
         *,
+        registry: Registry | None = None,
         fallback_help: str | None = None,
         action: ArgActionType | None = None,
         default: Any = Empty,
@@ -540,6 +544,7 @@ class Arg(Generic[T]):
             default,
             destructure or self.destructure,
             type_view,
+            registry=registry,
             default_short=default_short,
             default_long=default_long,
             default_negate_bool=default_negate_bool,
@@ -868,7 +873,9 @@ def infer_action(
 
 
 def infer_parse(
-    arg: Arg[Any], type_view: TypeView[Any], state: State[Any] | None = None
+    arg: Arg[Any],
+    type_view: TypeView[Any],
+    state: State[Any] | None = None,
 ) -> Callable[..., Any]:
     parse: Parser[Any] | Sequence[Parser[Any]] = arg.parse  # type: ignore
     default_parse = parse_value(type_view)
