@@ -497,6 +497,7 @@ def parse_command(
         backend=concrete_backend,
         output=concrete_output,
         state=concrete_state,
+        registry=registry,
     )
 
 
@@ -630,12 +631,12 @@ def command(
             deprecated=deprecated,
             help_formatter=help_formatter,
         )
-        registry.register(_decorated_cls, instance)
         registry.register(instance.cmd_cls, instance)
 
         # Functions (and in particular class methods, must return a function object in order
         # to be attached as methods) cannot be nested, so we can just directly return it.
         if inspect.isfunction(_decorated_cls):
+            registry.register_method(_decorated_cls)
             return cast(U, _decorated_cls)
 
         # Whereas classes will **generally** be the **exact** object as `_decorated_cls` was,

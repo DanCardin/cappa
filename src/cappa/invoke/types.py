@@ -17,7 +17,7 @@ from typing import (
     cast,
 )
 
-from typing_extensions import Annotated
+from typing_extensions import Annotated, TypeGuard
 
 from cappa.output import Exit, Output
 from cappa.type_view import Empty, EmptyType
@@ -95,19 +95,16 @@ class Resolved(Generic[C]):
 
             with self.handle_exit(output):
                 callable = cast(Callable[..., Any], self.callable)
-                requires_management = inspect.isgeneratorfunction(callable)
+                requires_management = is_implicit_context_manager(callable)
                 if requires_management:
                     # Yield functions are assumed to be context-manager style generators
                     # that we just need to wrap...
                     callable = contextlib.contextmanager(callable)
 
                 result: Any = callable(*args, *self.args, **finalized_kwargs)
-                is_context_manager = isinstance(
-                    result, contextlib.AbstractContextManager
-                )
 
                 # And then enter before producing the result.
-                if requires_management or (managed and is_context_manager):
+                if requires_management or (managed and is_context_manager(result)):
                     result = stack.enter_context(result)  # pyright: ignore
 
             self.result = result
@@ -137,21 +134,17 @@ class Resolved(Generic[C]):
 
             with self.handle_exit(output):
                 callable = cast(Callable[..., Any], self.callable)
-                requires_management = inspect.isasyncgenfunction(callable)
+                requires_management = is_implicit_async_context_manager(callable)
                 if requires_management:
                     callable = contextlib.asynccontextmanager(callable)
 
                 result: Any = callable(*args, *self.args, **finalized_kwargs)
-                is_async_context_manager = isinstance(
-                    result, contextlib.AbstractAsyncContextManager
-                )
-                is_sync_context_manager = isinstance(
-                    result, contextlib.AbstractContextManager
-                )
 
-                if requires_management or (managed and is_async_context_manager):
+                if requires_management or (
+                    managed and is_async_context_manager(result)
+                ):
                     result = await stack.enter_async_context(result)  # pyright: ignore
-                elif managed and is_sync_context_manager:
+                elif managed and is_context_manager(result):
                     # Handle synchronous context managers in async context
                     result = stack.enter_context(result)  # pyright: ignore
                 elif isinstance(result, Coroutine):
@@ -174,3 +167,25 @@ class Resolved(Generic[C]):
             if output:  # pragma: no cover
                 output.exit(e)
             raise e
+
+
+def is_context_manager(value: Any) -> TypeGuard[contextlib.AbstractContextManager[Any]]:
+    return isinstance(value, contextlib.AbstractContextManager)
+
+
+def is_async_context_manager(
+    value: Any,
+) -> TypeGuard[contextlib.AbstractAsyncContextManager[Any]]:
+    return isinstance(value, contextlib.AbstractAsyncContextManager)
+
+
+def is_implicit_context_manager(
+    value: Any,
+) -> TypeGuard[Callable[..., Generator[Any, Any, Any]]]:
+    return inspect.isgeneratorfunction(value)
+
+
+def is_implicit_async_context_manager(
+    value: Any,
+) -> TypeGuard[Callable[..., AsyncGenerator[Any, Any]]]:
+    return inspect.isasyncgenfunction(value)

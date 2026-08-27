@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, Any, Iterable, Mapping, TextIO
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, TextIO
 
 from typing_extensions import Annotated, TypeAlias
 
@@ -9,7 +9,7 @@ from cappa.arg import Group
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.types import Completion
 from cappa.invoke.types import Resolved
-from cappa.registry import Registry
+from cappa.registry import Registry, default_registry
 from cappa.state import State
 from cappa.type_view import Empty, EmptyType, TypeView
 from cappa.typing import T, assert_type, find_annotations
@@ -48,9 +48,10 @@ class Subcommand:
     required: bool | None = None
     group: str | tuple[int, str] | Group = DEFAULT_SUBCOMMAND_GROUP
     hidden: bool = False
+    has_value: bool = True
 
     options: Mapping[str, Command[Any]] = dataclasses.field(default_factory=lambda: {})
-    types: Iterable[type] | EmptyType = Empty
+    types: Iterable[type | Callable[..., Any]] | EmptyType = Empty
 
     # Mapping of alias name -> (canonical name in `options`, Alias metadata).
     # Populated during `normalize` from each Command's `aliases` field; collisions raise.
@@ -107,6 +108,7 @@ class Subcommand:
             options=options,
             alias_map=alias_map,
             group=group,
+            has_value=self.has_value,
         )
 
 
@@ -120,7 +122,10 @@ class FinalSubcommand(Subcommand):
     field_name: str = ""  # pyright: ignore
     required: bool = False  # pyright: ignore
     group: Group = dataclasses.field(default_factory=lambda: DEFAULT_SUBCOMMAND_GROUP)  # pyright: ignore
-    types: Iterable[type] = dataclasses.field(default_factory=tuple)  # pyright: ignore
+    types: Iterable[type | Callable[..., Any]] = dataclasses.field(  # pyright: ignore[reportIncompatibleVariableOverride]
+        default_factory=tuple
+    )
+    has_value: bool = True  # pyright: ignore
     options: Mapping[str, FinalCommand[Any]] = dataclasses.field(  # pyright: ignore
         default_factory=dict
     )
@@ -144,11 +149,18 @@ class FinalSubcommand(Subcommand):
         output: Output,
         state: State[Any] | None = None,
         input: TextIO | None = None,
+        registry: Registry = default_registry,
     ) -> tuple[Resolved[Any], dict[Any, Any]]:
         canonical = parsed_args.pop("__name__")
         option = self.options[canonical]
         return option.map_result(
-            option, prog, parsed_args, output=output, state=state, input=input
+            option,
+            prog,
+            parsed_args,
+            output=output,
+            state=state,
+            input=input,
+            registry=registry,
         )
 
     def available_options(self) -> list[FinalCommand[Any]]:
@@ -180,7 +192,9 @@ class FinalSubcommand(Subcommand):
         return [Completion(o) for o in self.all_visible_names() if partial in o]
 
 
-def infer_types(arg: Subcommand, type_view: TypeView[Any]) -> Iterable[type]:
+def infer_types(
+    arg: Subcommand, type_view: TypeView[Any]
+) -> Iterable[type | Callable[..., Any]]:
     if arg.types is not Empty:
         return arg.types
 
@@ -199,7 +213,7 @@ def infer_required(arg: Subcommand, annotation: TypeView[Any]) -> bool:
 
 def infer_options(
     arg: Subcommand,
-    types: Iterable[type],
+    types: Iterable[type | Callable[..., Any]],
     registry: Registry,
     help_formatter: HelpFormattable | None = None,
     propagated_arguments: list[FinalArg[Any]] | None = None,

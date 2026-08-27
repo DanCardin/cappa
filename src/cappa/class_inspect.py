@@ -1,20 +1,16 @@
 from __future__ import annotations
 
 import dataclasses
-import functools
 import inspect
-import sys
 import typing
+from collections.abc import Callable
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from typing_extensions import Annotated, Self
+from typing_extensions import Self
 
-from cappa.output import Output
-from cappa.registry import Registry
-from cappa.state import State
 from cappa.type_view import CallableView, Empty, EmptyType
-from cappa.typing import T, find_annotations
+from cappa.typing import T
 
 __all__ = [
     "detect",
@@ -162,7 +158,38 @@ class PydanticV2DataclassField(Field):
         return fields
 
 
-def fields(cls: type):
+@dataclasses.dataclass
+class FunctionField(Field):
+    @classmethod
+    def collect(cls, typ: type) -> list[Self]:
+        params = list(inspect.signature(typ).parameters.items())
+
+        # For method functions, annotate the first param if it's unannotated so the
+        # invoke DI system can resolve it as the parent command instance.
+        if params and params[0][1].annotation is inspect.Parameter.empty:
+            qualname = getattr(typ, "__qualname__", "")
+            if "." in qualname:
+                parent_name = qualname.rsplit(".", 1)[0]
+                parent_cls = getattr(typ, "__globals__", {}).get(parent_name)
+                if parent_cls is not None and inspect.isclass(parent_cls):
+                    typ.__annotations__[params[0][0]] = parent_cls
+
+        fields: list[Self] = []
+        for name, param in params:
+            if param.annotation is inspect.Parameter.empty:
+                continue
+            field = cls(
+                name=name,
+                default=param.default
+                if param.default is not inspect.Parameter.empty
+                else Empty,
+                default_factory=Empty,
+            )
+            fields.append(field)
+        return fields
+
+
+def fields(cls: type | Callable[..., Any]):
     class_type = ClassTypes.from_cls(cls)
     if class_type is None:
         raise ValueError(
@@ -180,9 +207,13 @@ class ClassTypes(Enum):
     pydantic_v2 = PydanticV2Field
     pydantic_v2_dataclass = PydanticV2DataclassField
     msgspec = MsgspecField
+    function = FunctionField
 
     @classmethod
-    def from_cls(cls, obj: type) -> ClassTypes | None:
+    def from_cls(cls, obj: type | Callable[..., Any]) -> ClassTypes | None:
+        if inspect.isfunction(obj):
+            return cls.function
+
         if hasattr(obj, "__pydantic_fields__"):
             return cls.pydantic_v2_dataclass
 
@@ -224,95 +255,3 @@ def extract_dataclass_metadata(field: Field, cls: type[T]) -> list[T]:
         return []
 
     return [field_metadata]
-
-
-def get_command_capable_object(obj: Any, registry: Registry) -> type:
-    """Convert raw functions into a stub class.
-
-    Internally, a dataclass is constructed with a `__call__` method which **splats
-    the arguments to the dataclass into the original callable.
-    """
-    if inspect.isfunction(obj):
-        from cappa import Dep
-        from cappa.command import Command
-
-        function_args: list[Any] = []
-
-        @functools.wraps(obj)
-        def call(self: Any, *args: Any, **deps: Any):
-            kwargs: dict[str, Any] = dataclasses.asdict(self)
-            return obj(*args, **kwargs, **deps)
-
-        callable_view = CallableView.from_callable(obj, include_extras=True)
-
-        # We need to create a fake signature for the above callable, which does
-        # not retain the `Arg` annotations
-        signature = callable_view.signature
-        sig_params: dict[str, inspect.Parameter] = dict(signature.parameters)
-        signature._parameters = sig_params  # type: ignore
-        call.__signature__ = signature  # type: ignore
-
-        for param_view in callable_view.parameters:
-            if not param_view.has_annotation:
-                continue
-
-            if find_annotations(
-                param_view.type_view, Dep
-            ) or param_view.type_view.is_subclass_of((Output, State, Command)):
-                continue
-
-            sig_params.pop(param_view.name, None)
-            function_args.append(
-                (
-                    param_view.name,
-                    param_view.type_view.raw,
-                    dataclasses.field(
-                        default=param_view.default
-                        if param_view.has_default
-                        else dataclasses.MISSING
-                    ),
-                )
-            )
-
-        result = dataclasses.make_dataclass(
-            obj.__name__,
-            function_args,
-            namespace={"__call__": call},
-        )
-        result.__doc__ = obj.__doc__
-        return result
-
-    method_subcommands = collect_method_subcommands(obj, registry=registry)
-    if method_subcommands:
-        from cappa.subcommand import Subcommand
-
-        kw_only: dict[str, typing.Any] = {}
-        if sys.version_info >= (3, 10):
-            kw_only["kw_only"] = True
-
-        return dataclasses.make_dataclass(
-            obj.__name__,
-            [
-                (
-                    "__cappa_subcommand__",
-                    Annotated[
-                        typing.Union[method_subcommands],  # pyright: ignore
-                        Subcommand("command", required=True),
-                    ],
-                    dataclasses.field(
-                        repr=False, compare=False, default=None, **kw_only
-                    ),
-                ),
-            ],
-            bases=(obj,),
-        )
-
-    return obj
-
-
-def collect_method_subcommands(
-    cls: type, registry: Registry
-) -> tuple[typing.Callable[..., Any], ...]:
-    return tuple(
-        method for _, method in inspect.getmembers(cls, callable) if method in registry
-    )

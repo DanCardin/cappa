@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import functools
+import inspect
 import sys
 from collections.abc import Callable
 from typing import (
@@ -22,12 +24,11 @@ from type_lens.type_view import TypeView
 
 from cappa.arg import Arg, FinalArg, Group
 from cappa.class_inspect import fields as get_fields
-from cappa.class_inspect import get_command_capable_object
 from cappa.docstring import ClassHelpText
 from cappa.help import HelpFormattable, HelpFormatter
 from cappa.invoke.types import Resolved
 from cappa.output import Exit, Output
-from cappa.registry import Registry
+from cappa.registry import Registry, default_registry
 from cappa.state import S, State
 from cappa.subcommand import FinalSubcommand, Subcommand
 from cappa.type_view import CallableView
@@ -112,7 +113,7 @@ class Command(Generic[T]):
             used as the deprecation message.
     """
 
-    cmd_cls: type[T]
+    cmd_cls: type[T] | Callable[..., T]
     arguments: Sequence[Arg[Any] | Subcommand | FinalDestructure[Any]] = (
         dataclasses.field(default_factory=lambda: [])
     )
@@ -153,14 +154,9 @@ class Command(Generic[T]):
         if instance is not None:
             return dataclasses.replace(instance, help_formatter=help_formatter)
 
-        capable_obj = get_command_capable_object(obj, registry)
-        instance = registry.get(capable_obj)
-        if instance is not None:
-            return dataclasses.replace(instance, help_formatter=help_formatter)
-
-        assert not isinstance(capable_obj, Command)
+        assert not isinstance(obj, Command)
         return cls(
-            capable_obj,  # pyright: ignore
+            obj,
             help_formatter=help_formatter,
         )
 
@@ -202,13 +198,17 @@ class Command(Generic[T]):
         if self.arguments:
             param_by_name = {p.name: p for p in function_view.parameters}
             for arg in self.arguments:
+                type_view = (
+                    param_by_name[cast(str, arg.field_name)].type_view
+                    if arg.field_name in param_by_name
+                    else None
+                )
+
+                if is_invoke_dependency(type_view, registry):
+                    continue
+
                 arg_help = help_text.args.get(assert_type(arg.field_name, str))
                 if isinstance(arg, Arg):
-                    type_view = (
-                        param_by_name[cast(str, arg.field_name)].type_view
-                        if arg.field_name in param_by_name
-                        else None
-                    )
                     arguments.append(
                         arg.normalize(
                             type_view=type_view,
@@ -229,6 +229,10 @@ class Command(Generic[T]):
             param_by_name = {p.name: p for p in function_view.parameters}
             for field in fields:
                 param_view = param_by_name[field.name]
+
+                if is_invoke_dependency(param_view.type_view, registry):
+                    continue
+
                 arg_help = help_text.args.get(param_view.name)
 
                 maybe_subcommand = Subcommand.detect(
@@ -255,6 +259,18 @@ class Command(Generic[T]):
                         state=state,
                     )
                     arguments.extend(arg_defs)
+
+            if inspect.isfunction(self.cmd_cls):
+                registry.register_dep_signature(self.cmd_cls, function_view.signature)
+
+            method_subcmds = registry.method_subcommands(self.cmd_cls)
+            if method_subcmds:
+                method_subcommand = Subcommand(
+                    types=method_subcmds,
+                    required=True,
+                    has_value=False,
+                )
+                raw_subcommands.append((method_subcommand, None, "subcommand"))
 
         propagating_arguments = [
             *propagated_arguments,
@@ -395,6 +411,7 @@ class FinalCommand(Command[T]):
         output: Output,
         state: State[Any] | None = None,
         input: TextIO | None = None,
+        registry: Registry = default_registry,
     ) -> tuple[Resolved[T], dict[Hashable, Any]]:
         state = State.ensure(state)  # pyright: ignore
 
@@ -408,7 +425,7 @@ class FinalCommand(Command[T]):
         for destructure in self.destructured_arguments:
             fd_parsed = parsed_args.get(destructure.field_name, {})
             fd_resolved = destructure.map_result(
-                prog, fd_parsed, output, state=state, input=input
+                prog, fd_parsed, output, state=state, input=input, registry=registry
             )
             kwargs[destructure.field_name] = fd_resolved
 
@@ -418,17 +435,45 @@ class FinalCommand(Command[T]):
             if field_name in parsed_args:
                 value = parsed_args[field_name]
                 value, subcommand_deps = subcommand.map_result(
-                    prog, value, output=output, state=state
+                    prog, value, output=output, state=state, registry=registry
                 )
-                kwargs[field_name] = value
+                if subcommand.has_value:
+                    kwargs[field_name] = value
 
-        def map_result(**kwargs: dict[str, Any]) -> T:
-            with graceful_exit(command, prog, output):
-                return command.cmd_cls(**kwargs)
+        if inspect.isfunction(command.cmd_cls):
+            fn = command.cmd_cls
+            cli_names = set(kwargs.keys())
 
-        resolved = Resolved(map_result, kwargs=kwargs)
-        key = cast(Hashable, command.cmd_cls)
-        deps: dict[Hashable, Any] = {key: resolved, **subcommand_deps}
+            def fn_map_result(**cli_args: Any) -> Any:
+                @functools.wraps(fn)
+                def fn_wrapper(**dep_kwargs: Any) -> Any:
+                    with graceful_exit(command, prog, output):
+                        return fn(**cli_args, **dep_kwargs)
+
+                # PEP 649 (3.14+) changed functools.wraps to copy __annotate__ instead
+                # of __annotations__, so mutations to fn.__annotations__ made
+                # by FunctionField.collect are lost.
+                fn_wrapper.__annotations__ = dict(fn.__annotations__)
+
+                dep_sig = registry.get_dep_signature(fn, cli_names)
+                if dep_sig is not None:
+                    fn_wrapper.__signature__ = dep_sig  # type: ignore
+
+                return fn_wrapper  # pyright: ignore[reportUnknownVariableType]
+
+            resolved: Resolved[T] = Resolved(fn_map_result, kwargs=kwargs)
+            key = cast(Hashable, fn)
+            deps: dict[Hashable, Any] = {key: resolved, **subcommand_deps}
+        else:
+
+            def map_result(**kwargs: dict[str, Any]) -> T:
+                with graceful_exit(command, prog, output):
+                    return command.cmd_cls(**kwargs)
+
+            resolved = Resolved(map_result, kwargs=kwargs)
+            key = cast(Hashable, command.cmd_cls)
+            deps = {key: resolved, **subcommand_deps}
+
         return resolved, deps
 
     def parse_command(
@@ -439,6 +484,7 @@ class FinalCommand(Command[T]):
         argv: list[str] | None = None,
         input: TextIO | None = None,
         state: State[S] | None = None,
+        registry: Registry = default_registry,
     ) -> ParseResult[T, S]:
         if argv is None:  # pragma: no cover
             argv = sys.argv[1:]
@@ -452,7 +498,13 @@ class FinalCommand(Command[T]):
             )
             prog = parser.prog
             result, implicit_deps = self.map_result(
-                self, prog, parsed_args, state=state, input=input, output=output
+                self,
+                prog,
+                parsed_args,
+                state=state,
+                input=input,
+                output=output,
+                registry=registry,
             )
 
         return ParseResult(
@@ -505,3 +557,4 @@ def graceful_exit(
 
 
 from cappa.destructure import FinalDestructure  # noqa: E402
+from cappa.invoke.base import is_invoke_dependency  # noqa: E402
