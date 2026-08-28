@@ -21,6 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 docstring = ["docstring-parser >= 0.15", "docstring-parser >= 0.17; python_version >= '3.14'"]
+annotated-types = ["annotated-types >= 0.4.0"]
 
 [dependency-groups]
 dev = [

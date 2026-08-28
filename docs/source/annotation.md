@@ -310,3 +310,20 @@ class Args:
 As shown, [FileMode](cappa.FileMode) is annotated much like a [Arg](cappa.Arg),
 and can be used alongside one depending on the details of the argument in
 question.
+
+## `annotated-types` compatibility
+
+When the optional [`annotated-types`](https://github.com/annotated-types/annotated-types)
+package is installed, constraint metadata placed in `Annotated[...]` is automatically
+applied as a post-parse validator.
+
+```python
+from annotated_types import Gt, Le
+
+@dataclass
+class Args:
+    count: Annotated[int, Gt(0), Le(100)]
+```
+
+See [Argument Validation](validation) for the full list of supported constraints and
+usage details.

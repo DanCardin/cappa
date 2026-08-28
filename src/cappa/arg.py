@@ -21,6 +21,7 @@ from typing import (
 
 from typing_extensions import TypeAlias
 
+from cappa.annotated_types import collect_validators
 from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
@@ -896,6 +897,10 @@ def infer_parse(
 
     if arg.parse_inference:
         parsers = [*parsers, default_parse]
+
+    at_validators = collect_validators(type_view)
+    if at_validators:
+        parsers = [*parsers, *at_validators]
 
     return evaluate_parse(parsers, type_view, state=state)
 
