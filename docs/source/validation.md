@@ -107,6 +107,51 @@ With that said, all 3 options produce `ValueError`-based exceptions on validatio
 errors, and will do the correct thing with regards to cappa.
 ````
 
+1. Use [annotated-types](https://github.com/annotated-types/annotated-types) constraints
+
+When the optional `annotated-types` package is installed, constraints placed directly
+in `Annotated[...]` metadata are automatically applied as post-parse validators without
+manually authoring a `parse=` function.
+
+```python
+import cappa
+from typing import Annotated
+from dataclasses import dataclass
+from annotated_types import Gt, Le, MultipleOf, MinLen, Predicate
+
+@cappa.command
+@dataclass
+class Foo:
+    count: Annotated[int, Gt(0), Le(100)]
+    step: Annotated[int, MultipleOf(5)]
+    name: Annotated[str, MinLen(3)]
+    tag: Annotated[str, Predicate(str.isupper)]
+
+print(cappa.parse(Foo))
+```
+
+Semantically, these are appended to the end of the `parse` function list that exists
+whether you define one yourself or not. As such, automatic type inference will
+have already run. In the above example, `count` would already an `int` when `Gt(0)` checks
+it. Any violation raises a `ValueError` that cappa converts to a clean parse error.
+
+**Supported constraints**
+
+| Constraint | Validates |
+|---|---|
+| `Gt(x)` | `value > x` |
+| `Ge(x)` | `value >= x` |
+| `Lt(x)` | `value < x` |
+| `Le(x)` | `value <= x` |
+| `Interval(gt=..., ge=..., lt=..., le=...)` | combined range |
+| `MultipleOf(x)` | `value % x == 0` |
+| `MinLen(n)` | `len(value) >= n` |
+| `MaxLen(n)` | `len(value) <= n` |
+| `Len(min, max)` | `min <= len(value) <= max` |
+| `Predicate(func)` | `func(value)` is truthy |
+| `Timezone(tz)` | datetime timezone matches |
+| `IsDigits`, `LowerCase`, `UpperCase`, etc. | predicate type aliases — expanded automatically |
+
 1. Custom [Arg.action](arg-action)
 
 As usual, custom actions should probably only be considered as a last resort,

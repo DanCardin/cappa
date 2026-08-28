@@ -94,6 +94,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+annotated-types = [
+    { name = "annotated-types" },
+]
 docstring = [
     { name = "docstring-parser" },
 ]
@@ -124,6 +127,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "annotated-types", marker = "extra == 'annotated-types'", specifier = ">=0.4.0" },
     { name = "docstring-parser", marker = "python_full_version >= '3.14' and extra == 'docstring'", specifier = ">=0.17" },
     { name = "docstring-parser", marker = "extra == 'docstring'", specifier = ">=0.15" },
     { name = "rich", specifier = ">=12.1.0" },
@@ -131,7 +135,7 @@ requires-dist = [
     { name = "typing-extensions", specifier = ">=4.8.0" },
     { name = "typing-extensions", marker = "python_full_version >= '3.13'", specifier = ">=4.12.0" },
 ]
-provides-extras = ["docstring"]
+provides-extras = ["docstring", "annotated-types"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.34
+
+### 0.34.0
+- feat: Support `annotated-types` as a source of value validators.
+- refactor: Replace class_inspect Field subclass hierarchy with free functions.
+- refactor: Avoid creation of stub classes in support of function/method based commands.
+- refactor: Create command registry to avoid mutating target objects.
+
 ## 0.33
 
 ### 0.33.0
