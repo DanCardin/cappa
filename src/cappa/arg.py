@@ -540,16 +540,23 @@ class Arg(Generic[T]):
             show_default if show_default is not None else self.show_default
         )
 
-        destructure = Destructure.collect(
-            field_name,
-            default,
-            destructure or self.destructure,
-            type_view,
-            registry=registry,
-            default_short=default_short,
-            default_long=default_long,
-            default_negate_bool=default_negate_bool,
-        )
+        self_destructure = self.destructure
+        if isinstance(self_destructure, FinalDestructure):
+            destructure_result: FinalDestructure[Any] | None = cast(
+                FinalDestructure[Any], self_destructure
+            )
+        else:
+            destructure_result = Destructure.collect(
+                field_name,
+                default,
+                destructure or self.destructure,
+                type_view,
+                registry=registry,
+                default_short=default_short,
+                default_long=default_long,
+                default_negate_bool=default_negate_bool,
+            )
+
         result: FinalArg[Any] = FinalArg(
             # preserved from self
             count=self.count,
@@ -572,7 +579,7 @@ class Arg(Generic[T]):
             required=required,
             field_name=field_name,
             show_default=default_formatter,
-            destructure=destructure,
+            destructure=destructure_result,
             has_value=has_value,
             type_view=type_view,
         )

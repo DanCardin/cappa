@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, TextIO
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, TextIO, cast
 
 from typing_extensions import Annotated, TypeAlias
 
@@ -60,6 +60,89 @@ class Subcommand:
     )
 
     @classmethod
+    def normalize_all(
+        cls,
+        *sources: tuple[Subcommand, TypeView[Any] | None]
+        | type
+        | Callable[..., Any]
+        | None,
+        registry: Registry,
+        help_formatter: HelpFormattable | None = None,
+        propagated_arguments: list[FinalArg[Any]] | None = None,
+        state: State[Any] | None = None,
+    ) -> FinalSubcommand | None:
+        """Merge every source of subcommands into a single `FinalSubcommand`.
+
+        `sources` is a mix of:
+          - `(Subcommand, TypeView | None)`: an attribute source (a `Subcommand`-annotated
+            field, or an explicit `Subcommand` in `Command.arguments`). At most one may be
+            present, and its result is stored back onto the field/constructor arg.
+          - a bare `type`/`Callable`: a method- or kwarg-declared subcommand option, which
+            never stores a value.
+          - `None`: marks the merged subcommand as optional (from the `Command.subcommands`
+            kwarg's `None`-means-optional convention).
+
+        When an attribute source coexists with valueless options, the merged subcommand
+        becomes optional, since the field is left at its default whenever a valueless
+        option is selected.
+        """
+        merged: Subcommand | None = None
+        type_view: TypeView[Any] | None = None
+        all_types: list[type | Callable[..., Any]] = []
+        value_types: set[type | Callable[..., Any]] = set()
+        has_none = False
+
+        for source in sources:
+            if source is None:
+                has_none = True
+            elif isinstance(source, tuple):
+                subcommand, type_view = cast(
+                    "tuple[Subcommand, TypeView[Any] | None]", source
+                )
+                if merged is not None:
+                    raise ValueError(
+                        "Only one subcommand field or argument is allowed per command."
+                    )
+                merged = subcommand
+                types = list(
+                    infer_types(
+                        subcommand,
+                        type_view if type_view is not None else TypeView(Any),
+                    )
+                )
+                all_types.extend(types)
+                value_types.update(types)
+            else:
+                all_types.append(source)
+
+        if not all_types:
+            return None
+
+        has_mixed = bool(value_types) and len(all_types) != len(value_types)
+        if merged is None:
+            merged = Subcommand(
+                field_name="subcommand",
+                required=not has_none,
+                has_value=False,
+                types=all_types,
+            )
+        else:
+            merged = dataclasses.replace(
+                merged,
+                types=all_types,
+                required=False if (has_mixed or has_none) else merged.required,
+            )
+
+        return merged.normalize(
+            type_view,
+            registry=registry,
+            help_formatter=help_formatter,
+            propagated_arguments=propagated_arguments,
+            state=state,
+            value_types=frozenset(value_types) if has_mixed else None,
+        )
+
+    @classmethod
     def detect(cls, field: Field, type_view: TypeView[Any]) -> Subcommand | None:
         subcommands = find_annotations(type_view, Subcommand) or None
 
@@ -82,6 +165,7 @@ class Subcommand:
         help_formatter: HelpFormattable | None = None,
         propagated_arguments: list[FinalArg[Any]] | None = None,
         state: State[Any] | None = None,
+        value_types: frozenset[type | Callable[..., Any]] | None = None,
     ) -> FinalSubcommand:
         if type_view is None:
             type_view = TypeView(Any)
@@ -99,6 +183,7 @@ class Subcommand:
         )
         alias_map = build_alias_map(options)
         group = infer_group(self)
+        value_options = _build_value_options(self, options, value_types)
 
         return FinalSubcommand(
             hidden=self.hidden,
@@ -108,7 +193,10 @@ class Subcommand:
             options=options,
             alias_map=alias_map,
             group=group,
-            has_value=self.has_value,
+            has_value=bool(value_options)
+            if value_types is not None
+            else self.has_value,
+            value_options=value_options,
         )
 
 
@@ -128,6 +216,9 @@ class FinalSubcommand(Subcommand):
     has_value: bool = True  # pyright: ignore
     options: Mapping[str, FinalCommand[Any]] = dataclasses.field(  # pyright: ignore
         default_factory=dict
+    )
+    value_options: frozenset[str] = dataclasses.field(
+        default_factory=lambda: frozenset()
     )
 
     def resolve_name(self, name: str) -> str | None:
@@ -190,6 +281,20 @@ class FinalSubcommand(Subcommand):
 
     def completion(self, partial: str):
         return [Completion(o) for o in self.all_visible_names() if partial in o]
+
+
+def _build_value_options(
+    subcmd: Subcommand,
+    options: dict[str, FinalCommand[Any]],
+    value_types: frozenset[type | Callable[..., Any]] | None,
+) -> frozenset[str]:
+    if value_types is not None:
+        return frozenset(
+            name for name, cmd in options.items() if cmd.cmd_cls in value_types
+        )
+    if subcmd.has_value:
+        return frozenset(options.keys())
+    return frozenset()
 
 
 def infer_types(
