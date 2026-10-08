@@ -31,7 +31,7 @@ from cappa.output import Exit, Output
 from cappa.registry import Registry, default_registry
 from cappa.state import S, State
 from cappa.subcommand import FinalSubcommand, Subcommand
-from cappa.type_view import CallableView
+from cappa.type_view import CallableView, Empty
 from cappa.types import ParseResult
 from cappa.typing import assert_type
 
@@ -134,6 +134,8 @@ class Command(Generic[T]):
     default_negate_bool: bool = False
     deprecated: bool | str = False
 
+    subcommands: Sequence[type | Callable[..., Any] | None] | None = None
+
     help_formatter: HelpFormattable = HelpFormatter.default
 
     _collected: bool = False
@@ -167,7 +169,7 @@ class Command(Generic[T]):
         import re
 
         cls_name = self.cmd_cls.__name__
-        return re.sub(r"(?<!^)(?=[A-Z])", "-", cls_name).lower()
+        return re.sub(r"(?<!^)(?=[A-Z])", "-", cls_name).lower().replace("_", "-")
 
     def resolved_aliases(self) -> list[Alias]:
         return [Alias.coerce(a) for a in self.aliases]
@@ -194,9 +196,11 @@ class Command(Generic[T]):
         propagated_arguments = propagated_arguments or []
 
         arguments: list[FinalArg[Any] | FinalDestructure[Any]] = []
-        raw_subcommands: list[tuple[Subcommand, TypeView[Any] | None, str | None]] = []
+        attribute_subcommands: list[tuple[Subcommand, TypeView[Any] | None]] = []
+        method_subcommands: tuple[Callable[..., Any], ...] = ()
+        param_by_name = {p.name: p for p in function_view.parameters}
+
         if self.arguments:
-            param_by_name = {p.name: p for p in function_view.parameters}
             for arg in self.arguments:
                 type_view = (
                     param_by_name[cast(str, arg.field_name)].type_view
@@ -223,10 +227,9 @@ class Command(Generic[T]):
                 elif isinstance(arg, FinalDestructure):
                     arguments.append(arg)
                 else:
-                    raw_subcommands.append((arg, None, None))
+                    attribute_subcommands.append((arg, None))
 
         else:
-            param_by_name = {p.name: p for p in function_view.parameters}
             for field in fields:
                 param_view = param_by_name[field.name]
 
@@ -235,58 +238,47 @@ class Command(Generic[T]):
 
                 arg_help = help_text.args.get(param_view.name)
 
-                maybe_subcommand = Subcommand.detect(
-                    field,
-                    param_view.type_view,
-                )
-                if maybe_subcommand:
-                    raw_subcommands.append(
-                        (
-                            maybe_subcommand,
+                subcommand = Subcommand.detect(field, param_view.type_view)
+                if subcommand:
+                    if subcommand.field_name is Empty:
+                        subcommand = dataclasses.replace(
+                            subcommand, field_name=field.name
+                        )
+                    attribute_subcommands.append((subcommand, param_view.type_view))
+                else:
+                    arguments.extend(
+                        Arg.collect(
+                            field,
                             param_view.type_view,
-                            field.name,
+                            registry=registry,
+                            fallback_help=arg_help,
+                            default_short=self.default_short,
+                            default_long=self.default_long,
+                            default_negate_bool=self.default_negate_bool,
+                            state=state,
                         )
                     )
-                else:
-                    arg_defs = Arg.collect(
-                        field,
-                        param_view.type_view,
-                        registry=registry,
-                        fallback_help=arg_help,
-                        default_short=self.default_short,
-                        default_long=self.default_long,
-                        default_negate_bool=self.default_negate_bool,
-                        state=state,
-                    )
-                    arguments.extend(arg_defs)
 
             if inspect.isfunction(self.cmd_cls):
                 registry.register_dep_signature(self.cmd_cls, function_view.signature)
 
-            method_subcmds = registry.method_subcommands(self.cmd_cls)
-            if method_subcmds:
-                method_subcommand = Subcommand(
-                    types=method_subcmds,
-                    required=True,
-                    has_value=False,
-                )
-                raw_subcommands.append((method_subcommand, None, "subcommand"))
+            method_subcommands = registry.method_subcommands(self.cmd_cls)
 
         propagating_arguments = [
             *propagated_arguments,
             *(arg for arg in arguments if isinstance(arg, FinalArg) and arg.propagate),
         ]
-        subcommands = [
-            subcommand.normalize(
-                type_view,
-                field_name,
-                registry=registry,
-                help_formatter=self.help_formatter,
-                propagated_arguments=propagating_arguments,
-                state=state,
-            )
-            for subcommand, type_view, field_name in raw_subcommands
-        ]
+        subcommand_sources: list[
+            tuple[Subcommand, TypeView[Any] | None] | type | Callable[..., Any] | None
+        ] = [*attribute_subcommands, *method_subcommands, *(self.subcommands or ())]
+        subcommand = Subcommand.normalize_all(
+            *subcommand_sources,
+            registry=registry,
+            help_formatter=self.help_formatter,
+            propagated_arguments=propagating_arguments,
+            state=state,
+        )
+        subcommands = [subcommand] if subcommand is not None else []
 
         check_group_identity([a for a in arguments if isinstance(a, FinalArg)])
         final_arguments: list[
@@ -433,11 +425,16 @@ class FinalCommand(Command[T]):
         if subcommand:
             field_name = subcommand.field_name
             if field_name in parsed_args:
-                value = parsed_args[field_name]
+                subcommand_parsed = parsed_args[field_name]
+                canonical = subcommand_parsed.get("__name__", "")
                 value, subcommand_deps = subcommand.map_result(
-                    prog, value, output=output, state=state, registry=registry
+                    prog,
+                    subcommand_parsed,
+                    output=output,
+                    state=state,
+                    registry=registry,
                 )
-                if subcommand.has_value:
+                if canonical in subcommand.value_options:
                     kwargs[field_name] = value
 
         if inspect.isfunction(command.cmd_cls):

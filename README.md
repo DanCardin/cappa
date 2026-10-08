@@ -194,20 +194,27 @@ a given CLI):
   import cappa
   from typing_extensions import Annotated
   
+  @cappa.command(subcommands=[sub1, None]
   def function(foo: int, bar: bool, option: Annotated[str, cappa.Arg(long=True)] = "opt"):
       ...
-  
+
+  def sub1(arg: int) -> int:
+      return arg + 3
   
   cappa.invoke(function)
   ```
   
-  There are, however, some downsides to using functions. Namely, that `function`
-  has no nameable type! As such, a free function can not be easily named as a
-  subcommand option (`Subcommand[Foo | Bar]`).
+  As shown above, you can approximate click-style nested subcommands using purely functions.
+  With function-based commands, `Arg`s and `Dep`s end up interspersed within the
+  same signature.
 
-  You **can** define a root level function with class-based subcommands, but
-  the reverse is not possible because there is no valid type you can supply in
-  the subcommand union.
+  There are some downsides to using function-based commands in combination with class-based commands
+  (namely, a function has no nameable type. This will mean that a class-based command cannot
+  have a function-based subcommand as an attribute in order to access its arguments).
+
+  Additionally function-based commands necessarily require importing the content of the command more
+  eagerly than class-based commands. If you notice longer startup time, you may either need to inline
+  imports into the function body, or else use the class-based module reference strategy.
 </details>
 
 <details>

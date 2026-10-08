@@ -4,13 +4,7 @@ import contextlib
 import dataclasses
 import inspect
 from dataclasses import replace
-from typing import (
-    Any,
-    Hashable,
-    TextIO,
-    cast,
-    overload,
-)
+from typing import Any, Callable, Hashable, Sequence, TextIO, cast, overload
 
 from rich.theme import Theme
 from typing_extensions import dataclass_transform
@@ -25,7 +19,7 @@ from cappa.invoke.types import DepTypes, InvokeCallableSpec
 from cappa.output import Output
 from cappa.registry import Registry, default_registry
 from cappa.state import S, State
-from cappa.types import Backend, CappaCapable, FuncOrClassDecorator, ParseResult, T, U
+from cappa.types import Backend, CappaCapable, ParseResult, T, U
 
 
 def create_version_arg(version: str | Arg[Any] | None) -> FinalArg[Any] | None:
@@ -503,41 +497,6 @@ def parse_command(
 
 @overload
 def command(
-    _cls: type[T],
-    *,
-    name: str | None = None,
-    aliases: list[str | Alias] | None = None,
-    help: str | None = None,
-    description: str | None = None,
-    epilog: str | None = None,
-    invoke: InvokeCallableSpec[Any] | None = None,
-    hidden: bool = False,
-    default_short: bool = False,
-    default_long: bool = False,
-    default_negate_bool: bool = False,
-    deprecated: bool = False,
-    help_formatter: HelpFormattable = HelpFormatter.default,
-    registry: Registry = default_registry,
-) -> type[T]: ...
-@overload
-def command(
-    *,
-    name: str | None = None,
-    aliases: list[str | Alias] | None = None,
-    help: str | None = None,
-    description: str | None = None,
-    epilog: str | None = None,
-    invoke: InvokeCallableSpec[Any] | None = None,
-    hidden: bool = False,
-    default_short: bool = False,
-    default_long: bool = False,
-    default_negate_bool: bool = False,
-    deprecated: bool = False,
-    help_formatter: HelpFormattable = HelpFormatter.default,
-    registry: Registry = default_registry,
-) -> FuncOrClassDecorator: ...
-@overload
-def command(
     _cls: T,
     *,
     name: str | None = None,
@@ -551,12 +510,33 @@ def command(
     default_long: bool = False,
     default_negate_bool: bool = False,
     deprecated: bool = False,
+    subcommands: Sequence[type | Callable[..., Any] | None] | None = None,
     help_formatter: HelpFormattable = HelpFormatter.default,
     registry: Registry = default_registry,
 ) -> T: ...
 
 
-@dataclass_transform()  # type: ignore[misc]
+@overload
+def command(
+    *,
+    name: str | None = None,
+    aliases: list[str | Alias] | None = None,
+    help: str | None = None,
+    description: str | None = None,
+    epilog: str | None = None,
+    invoke: InvokeCallableSpec[Any] | None = None,
+    hidden: bool = False,
+    default_short: bool = False,
+    default_long: bool = False,
+    default_negate_bool: bool = False,
+    deprecated: bool = False,
+    subcommands: Sequence[type | Callable[..., Any] | None] | None = None,
+    help_formatter: HelpFormattable = HelpFormatter.default,
+    registry: Registry = default_registry,
+) -> Callable[[T], T]: ...
+
+
+@dataclass_transform()
 def command(
     _cls: type[T] | T | None = None,
     *,
@@ -571,9 +551,10 @@ def command(
     default_long: bool = False,
     default_negate_bool: bool = False,
     deprecated: bool = False,
+    subcommands: Sequence[type | Callable[..., Any] | None] | None = None,
     help_formatter: HelpFormattable = HelpFormatter.default,
     registry: Registry = default_registry,
-) -> type[T] | T | FuncOrClassDecorator:
+) -> type[T] | T | Callable[[T], T]:
     """Register a cappa CLI command/subcomment.
 
     Args:
@@ -606,6 +587,9 @@ def command(
         deprecated: If supplied, the argument will be marked as deprecated. If given `True`,
             a default message will be generated, otherwise a supplied string will be
             used as the deprecation message.
+        subcommands: A list of subcommands to register under this command. Each entry
+            is either a class or function decorated with `@command`, or `None` to
+            indicate that the subcommand is optional.
         help_formatter: Override the default help formatter.
         registry: Registry to register the command in. Defaults to `cappa.default_registry`.
             Supply a custom registry to isolate command sets from one another.
@@ -629,6 +613,7 @@ def command(
             default_long=default_long,
             default_negate_bool=default_negate_bool,
             deprecated=deprecated,
+            subcommands=subcommands,
             help_formatter=help_formatter,
         )
         registry.register(instance.cmd_cls, instance)

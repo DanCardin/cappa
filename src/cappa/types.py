@@ -10,7 +10,6 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    overload,
 )
 
 from cappa.state import S, State
@@ -36,13 +35,6 @@ class Backend(Protocol):
         prog: str,
         provide_completions: bool = False,
     ) -> tuple[Any, Command[T], dict[str, Any]]: ...  # pragma: no cover
-
-
-class FuncOrClassDecorator(Protocol):
-    @overload
-    def __call__(self, x: type[T], /) -> type[T]: ...
-    @overload
-    def __call__(self, x: T, /) -> T: ...
 
 
 @dataclass()
