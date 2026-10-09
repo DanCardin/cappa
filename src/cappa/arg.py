@@ -390,6 +390,10 @@ class Arg(Generic[T]):
             of an `Arg` for which it is false.
         propagate: Specifies that an argument can be matched to all child. Global arguments only
             propagate down. When used at the top-level, in effect it creates a "global" argument.
+        allow_prefixed_values: Allows an option's values to start with `-` (e.g. `--foo --bar`
+            yields `foo="--bar"`), rather than being interpreted as another option. Only valid
+            for non-positional options. Note this can make the CLI ambiguous, e.g. when
+            combined with unbounded `num_args`, and `--` becomes the only way to end it.
     """
 
     def __hash__(self):
@@ -416,6 +420,7 @@ class Arg(Generic[T]):
     deprecated: bool | str = False
     show_default: bool | str | DefaultFormatter = True
     propagate: bool = False
+    allow_prefixed_values: bool = False
 
     destructure: Destructure | bool | None = None
     has_value: bool | None = None
@@ -536,6 +541,11 @@ class Arg(Generic[T]):
                 "`Arg.propagate` requires a non-positional named option (`short` or `long`)."
             )
 
+        if self.allow_prefixed_values and not short and not long:
+            raise ValueError(
+                "`Arg.allow_prefixed_values` requires a non-positional named option (`short` or `long`)."
+            )
+
         default_formatter: DefaultFormatter = DefaultFormatter.from_unknown(
             show_default if show_default is not None else self.show_default
         )
@@ -563,6 +573,7 @@ class Arg(Generic[T]):
             hidden=self.hidden,
             deprecated=self.deprecated,
             propagate=self.propagate,
+            allow_prefixed_values=self.allow_prefixed_values,
             parse_inference=self.parse_inference,
             # computed/narrowed
             value_name=value_name,

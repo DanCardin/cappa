@@ -240,6 +240,11 @@ def add_argument(
     if arg.propagate:
         raise RuntimeError("The argparse backend does not support the `Arg.propagate`.")
 
+    if arg.allow_prefixed_values:
+        raise RuntimeError(
+            "The argparse backend does not support the `Arg.allow_prefixed_values`."
+        )
+
     names: list[str] = []
     if arg.short:
         names.extend(arg.short)

@@ -285,15 +285,26 @@ class ArgCollection:
     def has_values(self) -> bool:
         return bool(self.argv) or bool(self.pending_args)
 
-    def peek_value(self, context: ParseContext) -> RawArg | RawOption | None:
-        next_value = self.next(context)
+    def peek_value(
+        self, context: ParseContext, *, as_value: bool = False
+    ) -> RawArg | RawOption | None:
+        next_value = self.next(context, as_value=as_value)
         if next_value is None:
             return None
 
         self.pending_args.appendleft(next_value)
         return next_value
 
-    def next(self, context: ParseContext) -> RawArg | RawOption | None:
+    def next(
+        self, context: ParseContext, *, as_value: bool = False
+    ) -> RawArg | RawOption | None:
+        """Produce the next fragment.
+
+        Args:
+            context: The current command's parse context.
+            as_value: Treat a fragment which looks like an option as a plain value instead.
+                Has no effect on already-tokenized (pending) fragments.
+        """
         if self.pending_args:
             return self.pending_args.popleft()
 
@@ -310,6 +321,9 @@ class ArgCollection:
             if item is None:
                 self.encountered_double_dash = True
                 return None
+
+            if as_value and isinstance(item, RawOption):
+                return RawArg(next_value)
 
             if isinstance(item, RawOption) and not item.is_long:
                 item = self.generate_virtual_args(item, context.arguments_by_value_name)
@@ -551,6 +565,7 @@ def consume_subcommand(
 
 
 def iter_arg_values(
+    arg: FinalArg[Any],
     context: ParseContext,
     parse_state: ParseState,
     num_args: int,
@@ -564,7 +579,9 @@ def iter_arg_values(
 
     remaining = num_args
     while remaining:
-        peeked_value = parse_state.args.peek_value(context)
+        peeked_value = parse_state.args.peek_value(
+            context, as_value=arg.allow_prefixed_values
+        )
         if peeked_value is None:
             break
 
@@ -705,7 +722,7 @@ def consume_arg(
     if ArgAction.is_non_value_consuming(arg.action):
         expected_count = 0
 
-    values = list(iter_arg_values(context, parse_state, expected_count, option))
+    values = list(iter_arg_values(arg, context, parse_state, expected_count, option))
 
     # Argument whose value is optional, without a value: falls back to NumArgs.default. Distinct from
     # an optional argument, who's value would be unrecorded and apply the default during mapping.
