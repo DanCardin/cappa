@@ -113,7 +113,9 @@ def custom_action(arg: Arg[Any], action: Callable[..., Any]):
                 Arg: arg,
             }
             if option_string:
-                fulfilled_deps[RawOption] = RawOption.from_str(option_string)
+                fulfilled_deps[RawOption] = RawOption.from_str(
+                    option_string, parser.prefix_chars
+                )
 
             deps = fulfill_deps(action, fulfilled_deps)
             result = action(**deps.kwargs)
@@ -186,6 +188,7 @@ def create_parser(
         description=join_help(command.help, command.description),
         allow_abbrev=False,
         add_help=False,
+        prefix_chars=command.prefix_chars,
         **kwargs,
     )
     parser.set_defaults(__command__=command)
@@ -319,6 +322,7 @@ def add_subcommands(
             description=subcommand.description,
             formatter_class=parser.formatter_class,
             add_help=False,
+            prefix_chars=subcommand.prefix_chars,
             command=subcommand,
             output=output,
             prog=f"{parser.prog} {subcommand.real_name()}",

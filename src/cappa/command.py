@@ -22,7 +22,7 @@ from typing import (
 
 from type_lens.type_view import TypeView
 
-from cappa.arg import Arg, FinalArg, Group
+from cappa.arg import DEFAULT_PREFIX_CHARS, Arg, FinalArg, Group
 from cappa.class_inspect import fields as get_fields
 from cappa.docstring import ClassHelpText
 from cappa.help import HelpFormattable, HelpFormatter
@@ -79,6 +79,7 @@ class CommandArgs(TypedDict, total=False):
     default_short: bool
     default_long: bool
     default_negate_bool: bool
+    prefix_chars: str
 
 
 @dataclasses.dataclass
@@ -108,6 +109,14 @@ class Command(Generic[T]):
             with `Annotated[T, Arg(short=True)]`, unless otherwise annotated.
         default_long: If `True`, all arguments will be treated as though annotated
             with `Annotated[T, Arg(long=True)]`, unless otherwise annotated.
+        default_negate_bool: If `True`, all boolean arguments that receive an
+            auto-inferred long name will produce both a ``--flag`` and ``--no-flag``
+            option, allowing the flag to be explicitly set to `False`.
+        prefix_chars: The characters which mark an argument as an option, rather than a
+            value (like `argparse`'s `prefix_chars`). A short option has a single
+            prefix character, and a long option has a doubled one (e.x. `-v`/`--verbose`).
+            The first character is used when inferring option names. The `--` terminator
+            is unaffected.
         deprecated: If supplied, the argument will be marked as deprecated. If given `True`,
             a default message will be generated, otherwise a supplied string will be
             used as the deprecation message.
@@ -132,6 +141,7 @@ class Command(Generic[T]):
     default_short: bool = False
     default_long: bool = False
     default_negate_bool: bool = False
+    prefix_chars: str = DEFAULT_PREFIX_CHARS
     deprecated: bool | str = False
 
     subcommands: Sequence[type | Callable[..., Any] | None] | None = None
@@ -180,6 +190,9 @@ class Command(Generic[T]):
         propagated_arguments: list[FinalArg[Any]] | None = None,
         state: State[Any] | None = None,
     ) -> FinalCommand[T]:
+        if not self.prefix_chars:
+            raise ValueError("`Command.prefix_chars` must not be empty.")
+
         kwargs: CommandArgs = CommandArgs()
 
         help_text = ClassHelpText.collect(self.cmd_cls)
@@ -220,6 +233,7 @@ class Command(Generic[T]):
                             default_short=self.default_short,
                             default_long=self.default_long,
                             default_negate_bool=self.default_negate_bool,
+                            prefix_chars=self.prefix_chars,
                             fallback_help=arg_help,
                             state=state,
                         )
@@ -255,6 +269,7 @@ class Command(Generic[T]):
                             default_short=self.default_short,
                             default_long=self.default_long,
                             default_negate_bool=self.default_negate_bool,
+                            prefix_chars=self.prefix_chars,
                             state=state,
                         )
                     )
@@ -302,6 +317,7 @@ class Command(Generic[T]):
             default_short=self.default_short,
             default_long=self.default_long,
             default_negate_bool=self.default_negate_bool,
+            prefix_chars=self.prefix_chars,
             deprecated=self.deprecated,
             help_formatter=self.help_formatter,
             _collected=self._collected,

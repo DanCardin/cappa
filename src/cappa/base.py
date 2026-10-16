@@ -10,7 +10,7 @@ from rich.theme import Theme
 from typing_extensions import dataclass_transform
 
 from cappa import argparse, parser
-from cappa.arg import Arg, ArgAction, Empty, FinalArg, Group
+from cappa.arg import DEFAULT_PREFIX_CHARS, Arg, ArgAction, Empty, FinalArg, Group
 from cappa.class_inspect import detect
 from cappa.command import Alias, Command, FinalCommand
 from cappa.help import HelpFormattable, HelpFormatter
@@ -22,15 +22,17 @@ from cappa.state import S, State
 from cappa.types import Backend, CappaCapable, ParseResult, T, U
 
 
-def create_version_arg(version: str | Arg[Any] | None) -> FinalArg[Any] | None:
+def create_version_arg(
+    version: str | Arg[Any] | None, prefix_chars: str = DEFAULT_PREFIX_CHARS
+) -> FinalArg[Any] | None:
     if not version:
         return None
 
     if isinstance(version, str):
         version = Arg(
             value_name=version,
-            short=["-v"],
-            long=["--version"],
+            short=["v"],
+            long=["version"],
             help="Show the version and exit.",
             group=Group(1, "Help", section=2),
             action=ArgAction.version,
@@ -42,36 +44,48 @@ def create_version_arg(version: str | Arg[Any] | None) -> FinalArg[Any] | None:
         )
 
     if version.long is True:
-        version = replace(version, long="--version")
+        version = replace(version, long="version")
 
     return version.normalize(
-        action=ArgAction.version, field_name="version", default=None
+        action=ArgAction.version,
+        field_name="version",
+        default=None,
+        prefix_chars=prefix_chars,
     )
 
 
-def create_help_arg(help: bool | Arg[bool] | None) -> FinalArg[bool] | None:
+def create_help_arg(
+    help: bool | Arg[bool] | None, prefix_chars: str = DEFAULT_PREFIX_CHARS
+) -> FinalArg[bool] | None:
     if not help:
         return None
 
     if isinstance(help, bool):
         help = Arg(
-            short=["-h"],
-            long=["--help"],
+            short=["h"],
+            long=["help"],
             help="Show this message and exit.",
             group=Group(0, "Help", section=2),
             action=ArgAction.help,
         )
 
-    return help.normalize(action=ArgAction.help, field_name="help", default=None)
+    return help.normalize(
+        action=ArgAction.help,
+        field_name="help",
+        default=None,
+        prefix_chars=prefix_chars,
+    )
 
 
-def create_completion_arg(completion: bool | Arg[bool]) -> FinalArg[bool] | None:
+def create_completion_arg(
+    completion: bool | Arg[bool], prefix_chars: str = DEFAULT_PREFIX_CHARS
+) -> FinalArg[bool] | None:
     if not completion:
         return None
 
     if isinstance(completion, bool):
         completion = Arg(
-            long=["--completion"],
+            long=["completion"],
             choices=["generate", "complete"],
             group=Group(2, "Help", section=2),
             help="Use `--completion generate` to print shell-specific completion source.",
@@ -82,6 +96,7 @@ def create_completion_arg(completion: bool | Arg[bool]) -> FinalArg[bool] | None
         field_name="completion",
         action=ArgAction.completion,
         default=None,
+        prefix_chars=prefix_chars,
     )
 
 
@@ -509,6 +524,7 @@ def command(
     default_short: bool = False,
     default_long: bool = False,
     default_negate_bool: bool = False,
+    prefix_chars: str = DEFAULT_PREFIX_CHARS,
     deprecated: bool = False,
     subcommands: Sequence[type | Callable[..., Any] | None] | None = None,
     help_formatter: HelpFormattable = HelpFormatter.default,
@@ -529,6 +545,7 @@ def command(
     default_short: bool = False,
     default_long: bool = False,
     default_negate_bool: bool = False,
+    prefix_chars: str = DEFAULT_PREFIX_CHARS,
     deprecated: bool = False,
     subcommands: Sequence[type | Callable[..., Any] | None] | None = None,
     help_formatter: HelpFormattable = HelpFormatter.default,
@@ -550,6 +567,7 @@ def command(
     default_short: bool = False,
     default_long: bool = False,
     default_negate_bool: bool = False,
+    prefix_chars: str = DEFAULT_PREFIX_CHARS,
     deprecated: bool = False,
     subcommands: Sequence[type | Callable[..., Any] | None] | None = None,
     help_formatter: HelpFormattable = HelpFormatter.default,
@@ -584,6 +602,9 @@ def command(
         default_negate_bool: If `True`, all boolean arguments that receive an
             auto-inferred long name will produce both a ``--flag`` and ``--no-flag``
             option, allowing the flag to be explicitly set to `False`.
+        prefix_chars: The characters which mark an argument as an option, rather than a
+            value. A short option has a single prefix character, and a long option has a
+            doubled one. The first character is used when inferring option names.
         deprecated: If supplied, the argument will be marked as deprecated. If given `True`,
             a default message will be generated, otherwise a supplied string will be
             used as the deprecation message.
@@ -612,6 +633,7 @@ def command(
             default_short=default_short,
             default_long=default_long,
             default_negate_bool=default_negate_bool,
+            prefix_chars=prefix_chars,
             deprecated=deprecated,
             subcommands=subcommands,
             help_formatter=help_formatter,
@@ -674,9 +696,9 @@ def collect(
     if concrete_backend is argparse.backend:  # pyright: ignore
         completion = False
 
-    help_arg = create_help_arg(help)
-    version_arg = create_version_arg(version)
-    completion_arg = create_completion_arg(completion)
+    help_arg = create_help_arg(help, command.prefix_chars)
+    version_arg = create_version_arg(version, command.prefix_chars)
+    completion_arg = create_completion_arg(completion, command.prefix_chars)
 
     return command.add_meta_actions(
         help=help_arg, version=version_arg, completion=completion_arg

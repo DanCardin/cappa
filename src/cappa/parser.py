@@ -13,7 +13,14 @@ from typing import (
     cast,
 )
 
-from cappa.arg import Arg, ArgAction, ArgActionType, FinalArg
+from cappa.arg import (
+    DEFAULT_PREFIX_CHARS,
+    Arg,
+    ArgAction,
+    ArgActionType,
+    FinalArg,
+    is_long_name,
+)
 from cappa.command import Alias, Command, FinalCommand
 from cappa.completion.types import Completion, FileCompletion
 from cappa.help import format_args, format_subcommand_names
@@ -315,7 +322,9 @@ class ArgCollection:
                 item: RawArg | RawOption | None = RawArg(next_value)
             else:
                 item = RawArg.from_str(
-                    next_value, provide_completions=self.provide_completions
+                    next_value,
+                    prefix_chars=context.command.prefix_chars,
+                    provide_completions=self.provide_completions,
                 )
 
             if item is None:
@@ -340,16 +349,23 @@ class ArgCollection:
             -abc -> -a, -b, -c
             -c0 -> -c 0
             -abc0 -> -a, -b, -c, 0
+
+        A fragment which exactly matches a known option (e.x. `-verbose`, or `/verbose`)
+        is never split.
         """
+        if arg.name in options:
+            return arg
+
         result: list[RawOption | RawArg] = []
 
+        prefix = arg.name[0]
         partial_arg = ""
         remaining_arg = arg.name[1:]
         while remaining_arg:
             partial_arg += remaining_arg[0]
             remaining_arg = remaining_arg[1:]
 
-            option_name = f"-{partial_arg}"
+            option_name = f"{prefix}{partial_arg}"
 
             option = options.get(option_name)
             if option:
@@ -381,16 +397,22 @@ class RawArg:
 
     @classmethod
     def from_str(
-        cls, arg: str, *, provide_completions: bool = False
+        cls,
+        arg: str,
+        *,
+        prefix_chars: str = DEFAULT_PREFIX_CHARS,
+        provide_completions: bool = False,
     ) -> RawArg | RawOption | None:
         skip = arg == "--" and not provide_completions
         if skip:
             return None
 
-        is_option = arg and arg[0] == "-" and (provide_completions or len(arg) > 1)
+        is_option = (
+            arg and arg[0] in prefix_chars and (provide_completions or len(arg) > 1)
+        )
 
         if is_option:
-            return RawOption.from_str(arg)
+            return RawOption.from_str(arg, prefix_chars)
 
         return cls(arg)
 
@@ -402,8 +424,8 @@ class RawOption:
     value: str | None = None
 
     @classmethod
-    def from_str(cls, arg: str) -> RawOption:
-        is_long = arg.startswith("--")
+    def from_str(cls, arg: str, prefix_chars: str = DEFAULT_PREFIX_CHARS) -> RawOption:
+        is_long = is_long_name(arg, prefix_chars)
         is_explicit = "=" in arg
 
         name = arg

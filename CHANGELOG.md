@@ -3,6 +3,7 @@
 ## 0.34
 
 ### 0.34.0
+- feat: Add `Command.prefix_chars` to configure which characters denote options (e.x. `/`).
 - feat: Add `Arg.allow_prefixed_values` to let option values start with `-`.
 - feat: Support function-based subcommands.
 - feat: Support `annotated-types` as a source of value validators.

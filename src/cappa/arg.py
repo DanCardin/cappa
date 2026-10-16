@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+import re
 from functools import cached_property
 from typing import (
     TYPE_CHECKING,
@@ -47,6 +48,25 @@ from cappa.typing import (
 
 if TYPE_CHECKING:
     from cappa.destructure import Destructure
+
+DEFAULT_PREFIX_CHARS = "-"
+
+negated_long = re.compile(r"^\W\Wno-")
+
+
+def split_names(names: str, prefix_chars: str = DEFAULT_PREFIX_CHARS) -> list[str]:
+    """Split the `"-a/-b"` multi-name syntax.
+
+    When `/` is itself a prefix character the syntax is ambiguous, and so disabled.
+    """
+    if "/" in prefix_chars:
+        return [names]
+    return names.split("/")
+
+
+def is_long_name(name: str, prefix_chars: str = DEFAULT_PREFIX_CHARS) -> bool:
+    """Whether the name starts with a doubled prefix character (e.x. `--foo`)."""
+    return len(name) > 1 and name[0] in prefix_chars and name[1] in prefix_chars
 
 
 @enum.unique
@@ -438,6 +458,7 @@ class Arg(Generic[T]):
         default_short: bool = False,
         default_long: bool = False,
         default_negate_bool: bool = False,
+        prefix_chars: str = DEFAULT_PREFIX_CHARS,
         state: State[Any] | None = None,
     ) -> list[FinalArg[Any] | FinalDestructure[Any]]:
         args: list[Arg[Any]] = find_annotations(type_view, cls) or [Arg()]
@@ -472,6 +493,7 @@ class Arg(Generic[T]):
                 default_short=default_short,
                 default_long=default_long,
                 default_negate_bool=default_negate_bool,
+                prefix_chars=prefix_chars,
                 exclusive=exclusive,
                 field_name=field_name,
                 default=default,
@@ -499,6 +521,7 @@ class Arg(Generic[T]):
         default_short: bool = False,
         default_long: bool = False,
         default_negate_bool: bool = False,
+        prefix_chars: str = DEFAULT_PREFIX_CHARS,
         exclusive: bool | str = False,
         state: State[Any] | None = None,
         destructure: Destructure | bool | None = None,
@@ -511,13 +534,14 @@ class Arg(Generic[T]):
 
         field_name = cast(str, field_name or self.field_name)
 
-        short = infer_short(self, field_name, default_short)
+        short = infer_short(self, field_name, default_short, prefix_chars=prefix_chars)
         long = infer_long(
             self,
             type_view,
             field_name,
             default=default_long,
             default_negate_bool=default_negate_bool,
+            prefix_chars=prefix_chars,
         )
         choices = infer_choices(self, type_view)
         action = action or infer_action(self, type_view, long, default)
@@ -565,6 +589,7 @@ class Arg(Generic[T]):
                 default_short=default_short,
                 default_long=default_long,
                 default_negate_bool=default_negate_bool,
+                prefix_chars=prefix_chars,
             )
 
         result: FinalArg[Any] = FinalArg(
@@ -787,22 +812,28 @@ def infer_required(
 
 
 def infer_short(
-    arg: Arg[Any], name: str, default: bool = False
+    arg: Arg[Any],
+    name: str,
+    default: bool = False,
+    *,
+    prefix_chars: str = DEFAULT_PREFIX_CHARS,
 ) -> list[str] | Literal[False]:
     short = arg.short or default
     if not short:
         return False
 
+    prefix = prefix_chars[0]
     if isinstance(short, bool):
         short_name = name[0]
-        return [f"-{short_name}"]
+        return [f"{prefix}{short_name}"]
 
     if isinstance(short, str):
-        short = short.split("/")
-    else:
-        short = short
+        short = split_names(short, prefix_chars)
 
-    return [item if item.startswith("-") else f"-{item}" for item in short]
+    return [
+        item if item.startswith(tuple(prefix_chars)) else f"{prefix}{item}"
+        for item in short
+    ]
 
 
 def infer_long(
@@ -812,8 +843,10 @@ def infer_long(
     *,
     default: bool,
     default_negate_bool: bool = False,
+    prefix_chars: str = DEFAULT_PREFIX_CHARS,
 ) -> list[str] | Literal[False]:
     long = arg.long or default
+    prefix = prefix_chars[0] * 2
 
     if not long:
         # bools get automatically coerced into flags, otherwise stay off.
@@ -825,13 +858,15 @@ def infer_long(
     if isinstance(long, bool):
         long = name.replace("_", "-")
         if default_negate_bool and type_view.is_subclass_of(bool):
-            return [f"--{long}", f"--no-{long}"]
-        return [f"--{long}"]
+            return [f"{prefix}{long}", f"{prefix}no-{long}"]
+        return [f"{prefix}{long}"]
 
     if isinstance(long, str):
-        long = long.split("/")
+        long = split_names(long, prefix_chars)
 
-    return [item if item.startswith("--") else f"--{item}" for item in long]
+    return [
+        item if is_long_name(item, prefix_chars) else f"{prefix}{item}" for item in long
+    ]
 
 
 def infer_choices(arg: Arg[Any], type_view: TypeView[Any]) -> list[str] | None:
@@ -971,8 +1006,8 @@ def explode_negated_bool_args(
         if isinstance(arg.action, ArgAction) and arg.action.is_bool_action and arg.long:
             long = arg.long
 
-            negatives = [item for item in long if "--no-" in item]
-            positives = [item for item in long if "--no-" not in item]
+            negatives = [item for item in long if negated_long.match(item)]
+            positives = [item for item in long if not negated_long.match(item)]
             if negatives and positives:
                 assert isinstance(arg.default, Default)
 

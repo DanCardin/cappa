@@ -832,6 +832,7 @@ a complex type from a single CLI argument, whereas a "destructured" argument com
 CLI arguments into one object without requiring a separate command.
 ```
 
+(arg-propagate)=
 ## `Arg.propagate`
 
 Argument propagation is a way of making higher-level arguments available during the parsing of child
