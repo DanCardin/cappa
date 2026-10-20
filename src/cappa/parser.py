@@ -13,7 +13,14 @@ from typing import (
     cast,
 )
 
-from cappa.arg import Arg, ArgAction, ArgActionType, FinalArg
+from cappa.arg import (
+    DEFAULT_PREFIX_CHARS,
+    Arg,
+    ArgAction,
+    ArgActionType,
+    FinalArg,
+    is_long_name,
+)
 from cappa.command import Alias, Command, FinalCommand
 from cappa.completion.types import Completion, FileCompletion
 from cappa.help import format_args, format_subcommand_names
@@ -285,15 +292,26 @@ class ArgCollection:
     def has_values(self) -> bool:
         return bool(self.argv) or bool(self.pending_args)
 
-    def peek_value(self, context: ParseContext) -> RawArg | RawOption | None:
-        next_value = self.next(context)
+    def peek_value(
+        self, context: ParseContext, *, as_value: bool = False
+    ) -> RawArg | RawOption | None:
+        next_value = self.next(context, as_value=as_value)
         if next_value is None:
             return None
 
         self.pending_args.appendleft(next_value)
         return next_value
 
-    def next(self, context: ParseContext) -> RawArg | RawOption | None:
+    def next(
+        self, context: ParseContext, *, as_value: bool = False
+    ) -> RawArg | RawOption | None:
+        """Produce the next fragment.
+
+        Args:
+            context: The current command's parse context.
+            as_value: Treat a fragment which looks like an option as a plain value instead.
+                Has no effect on already-tokenized (pending) fragments.
+        """
         if self.pending_args:
             return self.pending_args.popleft()
 
@@ -304,12 +322,17 @@ class ArgCollection:
                 item: RawArg | RawOption | None = RawArg(next_value)
             else:
                 item = RawArg.from_str(
-                    next_value, provide_completions=self.provide_completions
+                    next_value,
+                    prefix_chars=context.command.prefix_chars,
+                    provide_completions=self.provide_completions,
                 )
 
             if item is None:
                 self.encountered_double_dash = True
                 return None
+
+            if as_value and isinstance(item, RawOption):
+                return RawArg(next_value)
 
             if isinstance(item, RawOption) and not item.is_long:
                 item = self.generate_virtual_args(item, context.arguments_by_value_name)
@@ -326,16 +349,23 @@ class ArgCollection:
             -abc -> -a, -b, -c
             -c0 -> -c 0
             -abc0 -> -a, -b, -c, 0
+
+        A fragment which exactly matches a known option (e.x. `-verbose`, or `/verbose`)
+        is never split.
         """
+        if arg.name in options:
+            return arg
+
         result: list[RawOption | RawArg] = []
 
+        prefix = arg.name[0]
         partial_arg = ""
         remaining_arg = arg.name[1:]
         while remaining_arg:
             partial_arg += remaining_arg[0]
             remaining_arg = remaining_arg[1:]
 
-            option_name = f"-{partial_arg}"
+            option_name = f"{prefix}{partial_arg}"
 
             option = options.get(option_name)
             if option:
@@ -367,16 +397,22 @@ class RawArg:
 
     @classmethod
     def from_str(
-        cls, arg: str, *, provide_completions: bool = False
+        cls,
+        arg: str,
+        *,
+        prefix_chars: str = DEFAULT_PREFIX_CHARS,
+        provide_completions: bool = False,
     ) -> RawArg | RawOption | None:
         skip = arg == "--" and not provide_completions
         if skip:
             return None
 
-        is_option = arg and arg[0] == "-" and (provide_completions or len(arg) > 1)
+        is_option = (
+            arg and arg[0] in prefix_chars and (provide_completions or len(arg) > 1)
+        )
 
         if is_option:
-            return RawOption.from_str(arg)
+            return RawOption.from_str(arg, prefix_chars)
 
         return cls(arg)
 
@@ -388,8 +424,8 @@ class RawOption:
     value: str | None = None
 
     @classmethod
-    def from_str(cls, arg: str) -> RawOption:
-        is_long = arg.startswith("--")
+    def from_str(cls, arg: str, prefix_chars: str = DEFAULT_PREFIX_CHARS) -> RawOption:
+        is_long = is_long_name(arg, prefix_chars)
         is_explicit = "=" in arg
 
         name = arg
@@ -551,6 +587,7 @@ def consume_subcommand(
 
 
 def iter_arg_values(
+    arg: FinalArg[Any],
     context: ParseContext,
     parse_state: ParseState,
     num_args: int,
@@ -564,7 +601,9 @@ def iter_arg_values(
 
     remaining = num_args
     while remaining:
-        peeked_value = parse_state.args.peek_value(context)
+        peeked_value = parse_state.args.peek_value(
+            context, as_value=arg.allow_prefixed_values
+        )
         if peeked_value is None:
             break
 
@@ -705,7 +744,7 @@ def consume_arg(
     if ArgAction.is_non_value_consuming(arg.action):
         expected_count = 0
 
-    values = list(iter_arg_values(context, parse_state, expected_count, option))
+    values = list(iter_arg_values(arg, context, parse_state, expected_count, option))
 
     # Argument whose value is optional, without a value: falls back to NumArgs.default. Distinct from
     # an optional argument, who's value would be unrecorded and apply the default during mapping.

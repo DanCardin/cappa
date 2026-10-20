@@ -6,7 +6,7 @@ from typing import Any, Generic, TextIO, TypeVar
 from type_lens import TypeView
 from typing_extensions import Annotated
 
-from cappa.arg import FinalArg
+from cappa.arg import DEFAULT_PREFIX_CHARS, FinalArg
 from cappa.default import Default
 from cappa.invoke.types import Resolved
 from cappa.output import Output
@@ -29,6 +29,7 @@ class Destructure:
         default_short: bool = False,
         default_long: bool = False,
         default_negate_bool: bool = False,
+        prefix_chars: str = DEFAULT_PREFIX_CHARS,
     ) -> FinalDestructure[Any] | None:
         if not destructure:
             return None
@@ -53,6 +54,8 @@ class Destructure:
             default_short=inner.default_short or default_short,
             default_long=inner.default_long or default_long,
             default_negate_bool=inner.default_negate_bool or default_negate_bool,
+            # Destructured args become args of the outer command, which tokenizes them.
+            prefix_chars=prefix_chars,
         )
         command: FinalCommand[Any] = inner.collect(registry=registry)
         return FinalDestructure(

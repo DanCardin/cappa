@@ -832,6 +832,7 @@ a complex type from a single CLI argument, whereas a "destructured" argument com
 CLI arguments into one object without requiring a separate command.
 ```
 
+(arg-propagate)=
 ## `Arg.propagate`
 
 Argument propagation is a way of making higher-level arguments available during the parsing of child
@@ -937,6 +938,30 @@ Controls whether an argument is required.
 When truthy, will emit a deprecation message upon use of an argument. There is
 a default message generated, but supplying a string will yield **that** as the
 deprecation message.
+
+(arg-allow-prefixed-values)=
+## `Arg.allow_prefixed_values`
+
+By default, a value starting with `-` is interpreted as another option. With
+`Arg(allow_prefixed_values=True)`, an option will instead consume it as its value.
+
+```python
+@dataclass
+class Example:
+    foo: Annotated[str, cappa.Arg(long=True, allow_prefixed_values=True)]
+
+# example --foo --bar -> Example(foo="--bar")
+```
+
+This is useful for wrapper CLIs which forward options to other programs. Without it,
+the `--foo=--bar` form is always available.
+
+```{note}
+Opting in can make a CLI ambiguous (for example alongside unbounded `num_args`). That
+is left to the author. `--` is never consumed as a value, and still ends option parsing.
+```
+
+Only valid for non-positional options, and not implemented in the `argparse` backend.
 
 ## API
 
