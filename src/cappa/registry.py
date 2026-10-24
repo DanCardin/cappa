@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, cast
 
 if TYPE_CHECKING:
     from cappa.command import Command
@@ -32,7 +32,19 @@ class Registry:
     ) -> tuple[Callable[..., Any], ...]:
         """Return method subcommands registered for *cls* at decoration time."""
         key = (getattr(cls, "__module__", ""), cls.__qualname__)
-        return tuple(self._method_registry.get(key, []))
+        methods = self._method_registry.get(key, [])
+        if not inspect.isclass(cls):
+            return tuple(methods)
+
+        # Distinct classes from a factory can share a module and qualname.
+        # Inspect raw members so descriptors are not bound during collection.
+        member_ids = {
+            id(cast(Any, member).__func__)
+            if isinstance(member, (staticmethod, classmethod))
+            else id(member)
+            for member in vars(cls).values()
+        }
+        return tuple(method for method in methods if id(method) in member_ids)
 
     def register_dep_signature(self, fn: Any, signature: inspect.Signature) -> None:
         self._dep_signatures[fn] = signature
