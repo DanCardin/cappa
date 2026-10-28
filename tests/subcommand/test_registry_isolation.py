@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 from typing import Any
 
 import pytest
@@ -141,3 +142,32 @@ def test_subclasses_keep_their_own_method_declarations(
     assert isinstance(
         cappa.parse(Child, argv=["action"], backend=backend, registry=registry), Child
     )
+
+
+@backends
+def test_wrapped_methods_are_collected(backend: Backend, registry: cappa.Registry):
+    def decorate(fn: Any) -> Any:
+        @functools.wraps(fn)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            return fn(*args, **kwargs)
+
+        return wrapper
+
+    @cappa.command(registry=registry)
+    class Root:
+        @decorate
+        @cappa.command(registry=registry)
+        def wrapped(self) -> None:
+            pass
+
+        @cappa.command(registry=registry)
+        def plain(self) -> None:
+            pass
+
+    command = cappa.collect(Root, registry=registry)
+    assert command.subcommand is not None
+    assert list(command.subcommand.options) == ["wrapped", "plain"]
+    for argv in (["wrapped"], ["plain"]):
+        assert isinstance(
+            cappa.parse(Root, argv=argv, backend=backend, registry=registry), Root
+        )

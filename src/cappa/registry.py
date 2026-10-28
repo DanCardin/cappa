@@ -7,6 +7,22 @@ if TYPE_CHECKING:
     from cappa.command import Command
 
 
+def _function_chain_ids(member: Any) -> set[int]:
+    """Return the ids of a class member and everything it wraps.
+
+    The registered function may sit beneath other decorators (e.x. `functools.wraps`),
+    in which case the class holds an outer wrapper rather than the registered function.
+    """
+    if isinstance(member, (staticmethod, classmethod)):
+        member = cast(Any, member).__func__
+
+    ids: set[int] = set()
+    while member is not None and id(member) not in ids:
+        ids.add(id(member))
+        member = getattr(member, "__wrapped__", None)
+    return ids
+
+
 class Registry:
     """Maps decorated classes/functions to their Command configuration."""
 
@@ -39,10 +55,9 @@ class Registry:
         # Distinct classes from a factory can share a module and qualname.
         # Inspect raw members so descriptors are not bound during collection.
         member_ids = {
-            id(cast(Any, member).__func__)
-            if isinstance(member, (staticmethod, classmethod))
-            else id(member)
+            member_id
             for member in vars(cls).values()
+            for member_id in _function_chain_ids(member)
         }
         return tuple(method for method in methods if id(method) in member_ids)
 
