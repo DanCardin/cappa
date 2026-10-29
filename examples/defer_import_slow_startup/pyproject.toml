@@ -5,7 +5,7 @@ dependencies = [
     "pandas",
     "cappa",
 ]
-requires-python = ">=3.8,<4"
+requires-python = ">=3.10,<4"
 
 [project.scripts]
 defer-import = "defer_import.main:main"

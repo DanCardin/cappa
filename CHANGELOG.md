@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.35
+
+### 0.35.0
+- chore: Drop support for python 3.8 and 3.9.
+- chore: Add python 3.15 support (requires `typing-extensions >= 4.16.0` there).
+
 ## 0.34
 
 ### 0.34.0
