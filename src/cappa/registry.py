@@ -1,10 +1,26 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, cast
 
 if TYPE_CHECKING:
     from cappa.command import Command
+
+
+def _function_chain_ids(member: Any) -> set[int]:
+    """Return the ids of a class member and everything it wraps.
+
+    The registered function may sit beneath other decorators (e.x. `functools.wraps`),
+    in which case the class holds an outer wrapper rather than the registered function.
+    """
+    if isinstance(member, (staticmethod, classmethod)):
+        member = cast(Any, member).__func__
+
+    ids: set[int] = set()
+    while member is not None and id(member) not in ids:
+        ids.add(id(member))
+        member = getattr(member, "__wrapped__", None)
+    return ids
 
 
 class Registry:
@@ -32,7 +48,18 @@ class Registry:
     ) -> tuple[Callable[..., Any], ...]:
         """Return method subcommands registered for *cls* at decoration time."""
         key = (getattr(cls, "__module__", ""), cls.__qualname__)
-        return tuple(self._method_registry.get(key, []))
+        methods = self._method_registry.get(key, [])
+        if not inspect.isclass(cls):
+            return tuple(methods)
+
+        # Distinct classes from a factory can share a module and qualname.
+        # Inspect raw members so descriptors are not bound during collection.
+        member_ids = {
+            member_id
+            for member in vars(cls).values()
+            for member_id in _function_chain_ids(member)
+        }
+        return tuple(method for method in methods if id(method) in member_ids)
 
     def register_dep_signature(self, fn: Any, signature: inspect.Signature) -> None:
         self._dep_signatures[fn] = signature

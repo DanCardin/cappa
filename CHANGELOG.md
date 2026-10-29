@@ -5,6 +5,7 @@
 ### 0.35.0
 - chore: Drop support for python 3.8 and 3.9.
 - chore: Add python 3.15 support (requires `typing-extensions >= 4.16.0` there).
+- fix: Keep factory-created method subcommands isolated from eachother.
 
 ## 0.34
 
