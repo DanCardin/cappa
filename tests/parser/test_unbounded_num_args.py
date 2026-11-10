@@ -50,7 +50,7 @@ def test_unbounded_positional_args(backend: Backend):
     if backend:
         assert error == "the following arguments are required: a"
     else:
-        assert error == "argument 'a' requires at least one values, found 0"
+        assert error == "argument 'a' requires at least one value, found 0"
 
     t1 = parse(Args, "a", backend=backend)
     assert t1 == Args(["a"])
