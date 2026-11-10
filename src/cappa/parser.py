@@ -674,9 +674,9 @@ def arg_bypasses_action(
         and not is_unbounded_optional_without_value
     ):
         names_str = arg.names_str("/")
-        count_desc = "at least one" if is_unbounded else expected_count
+        count_desc = "at least one value" if is_unbounded else f"{expected_count} values"
         message = (
-            f"Argument '{names_str}' requires {count_desc} values, found {len(values)}"
+            f"Argument '{names_str}' requires {count_desc}, found {len(values)}"
         )
         if values:
             quoted = [f"'{v}'" for v in values]
